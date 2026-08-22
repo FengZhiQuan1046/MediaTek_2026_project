@@ -5,7 +5,7 @@
 #           bash run.sh 0,1,2    # three-GPU DDP
 set -euo pipefail
 
-CACHE_DIR="/home/P78123011/cache"
+CACHE_DIR="/workspace/P78123011/cache"
 SEED="25252"
 CUDA_IDS="${1:-0}"
 
