@@ -1,0 +1,28 @@
+2026-08-23 01:10:03,490 | INFO | run_id=20260823_011003 seed=25252 device=cuda cache_dir=/workspace/P78123011/cache world_size=1
+2026-08-23 01:11:39,032 | INFO | users=9159 items=19450 train_edges=21109
+2026-08-23 01:31:22,269 | INFO | full train interactions per epoch=21109; full test users=9159; catalog items=19450
+2026-08-23 01:31:24,548 | INFO | epoch=1 loss=0.5397 full-catalog valid Recall@10=0.0064 NDCG@10=0.0034 inference=12144.85 users/s
+2026-08-23 01:31:26,651 | INFO | epoch=2 loss=0.2705 full-catalog valid Recall@10=0.0141 NDCG@10=0.0072 inference=12441.06 users/s
+2026-08-23 01:31:28,714 | INFO | epoch=3 loss=0.2066 full-catalog valid Recall@10=0.0174 NDCG@10=0.0087 inference=12458.30 users/s
+2026-08-23 01:31:30,837 | INFO | epoch=4 loss=0.1637 full-catalog valid Recall@10=0.0189 NDCG@10=0.0090 inference=12304.49 users/s
+2026-08-23 01:31:32,987 | INFO | epoch=5 loss=0.1613 full-catalog valid Recall@10=0.0202 NDCG@10=0.0109 inference=12273.99 users/s
+2026-08-23 01:31:35,100 | INFO | epoch=6 loss=0.1354 full-catalog valid Recall@10=0.0217 NDCG@10=0.0112 inference=12469.45 users/s
+2026-08-23 01:31:37,171 | INFO | epoch=7 loss=0.1270 full-catalog valid Recall@10=0.0263 NDCG@10=0.0135 inference=12354.92 users/s
+2026-08-23 01:31:39,275 | INFO | epoch=8 loss=0.1223 full-catalog valid Recall@10=0.0321 NDCG@10=0.0174 inference=12250.66 users/s
+2026-08-23 01:31:41,447 | INFO | epoch=9 loss=0.1029 full-catalog valid Recall@10=0.0460 NDCG@10=0.0250 inference=12301.38 users/s
+2026-08-23 01:31:43,586 | INFO | epoch=10 loss=0.0994 full-catalog valid Recall@10=0.0421 NDCG@10=0.0232 inference=12288.30 users/s
+2026-08-23 01:31:45,698 | INFO | epoch=11 loss=0.1012 full-catalog valid Recall@10=0.0396 NDCG@10=0.0215 inference=12264.22 users/s
+2026-08-23 01:31:47,810 | INFO | epoch=12 loss=0.0925 full-catalog valid Recall@10=0.0539 NDCG@10=0.0317 inference=12289.97 users/s
+2026-08-23 01:31:49,923 | INFO | epoch=13 loss=0.0836 full-catalog valid Recall@10=0.0513 NDCG@10=0.0295 inference=12263.17 users/s
+2026-08-23 01:31:52,031 | INFO | epoch=14 loss=0.0831 full-catalog valid Recall@10=0.0466 NDCG@10=0.0270 inference=12267.63 users/s
+2026-08-23 01:31:54,142 | INFO | epoch=15 loss=0.0811 full-catalog valid Recall@10=0.0567 NDCG@10=0.0337 inference=12338.30 users/s
+2026-08-23 01:31:56,219 | INFO | epoch=16 loss=0.0727 full-catalog valid Recall@10=0.0582 NDCG@10=0.0359 inference=12358.55 users/s
+2026-08-23 01:31:58,286 | INFO | epoch=17 loss=0.0680 full-catalog valid Recall@10=0.0725 NDCG@10=0.0475 inference=12431.64 users/s
+2026-08-23 01:32:00,350 | INFO | epoch=18 loss=0.0672 full-catalog valid Recall@10=0.0694 NDCG@10=0.0443 inference=12390.70 users/s
+2026-08-23 01:32:02,416 | INFO | epoch=19 loss=0.0699 full-catalog valid Recall@10=0.0706 NDCG@10=0.0459 inference=12383.09 users/s
+2026-08-23 01:32:04,476 | INFO | epoch=20 loss=0.0680 full-catalog valid Recall@10=0.0740 NDCG@10=0.0499 inference=12355.33 users/s
+2026-08-23 01:32:05,221 | INFO | TEST full-catalog Recall@10=0.0694 NDCG@10=0.0477
+2026-08-23 01:32:05,221 | INFO | full-catalog inference=12326.53 users/s, 239750916.17 user-item scores/s
+2026-08-23 01:32:05,221 | INFO | GPU memory peak: Mamba encoding allocated=5956.4 MiB reserved=6172.0 MiB; training allocated=8133.7 MiB reserved=9198.0 MiB; required peak allocated=8133.7 MiB
+2026-08-23 01:32:05,626 | INFO | loss curve: /workspace/P78123011/MediaTek_2026_project/fig_outputs/loss_20260823_011003.png
+2026-08-23 01:32:05,626 | INFO | test samples: /workspace/P78123011/MediaTek_2026_project/json_outputs/test_samples_20260823_011003.json
