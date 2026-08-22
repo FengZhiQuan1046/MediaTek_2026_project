@@ -119,7 +119,7 @@ def candidates_with_target(targets, num_items, negatives, device):
 
 
 @torch.no_grad()
-def evaluate(model, data, edges, targets, device, batch_size: int, k=10):
+def evaluate(model, data, edges, targets, device, batch_size: int, k=10, progress_desc: str | None = None):
     """Evaluate every held-out user against the complete item catalogue."""
     model.eval()
     user_ids = sorted(targets)
@@ -128,7 +128,15 @@ def evaluate(model, data, edges, targets, device, batch_size: int, k=10):
     if str(device).startswith("cuda"):
         torch.cuda.synchronize(device)
     started = time.perf_counter()
-    for start in range(0, len(user_ids), batch_size):
+    starts = range(0, len(user_ids), batch_size)
+    for start in tqdm(
+        starts,
+        total=math.ceil(len(user_ids) / batch_size),
+        disable=progress_desc is None,
+        dynamic_ncols=True,
+        desc=progress_desc,
+        unit="batch",
+    ):
         batch_user_ids = user_ids[start:start + batch_size]
         users = torch.tensor(batch_user_ids, device=device)
         gold = torch.tensor([targets[user] for user in batch_user_ids], device=device)
@@ -207,7 +215,9 @@ def main():
     if str(args.device).startswith("cuda"):
         torch.cuda.reset_peak_memory_stats(args.device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-5)
-    train_pairs = [(user, item) for user, history in data.train_by_user.items() for item in history]
+    train_pairs = []
+    for user, history in tqdm(data.train_by_user.items(), total=len(data.train_by_user), disable=not is_main_process, desc="Creating full training interaction list", unit="user"):
+        train_pairs.extend((user, item) for item in history)
     logger.info("full train interactions per epoch=%d; full test users=%d; catalog items=%d", len(train_pairs), len(data.test_target), data.num_items)
 
     epoch_losses = []
@@ -255,13 +265,13 @@ def main():
         average_loss = (loss_stats[0] / loss_stats[1].clamp_min(1)).item()
         if is_main_process:
             epoch_losses.append(average_loss)
-            recall, ndcg, users_per_second, _ = evaluate(unwrap_model(model), data, edges, data.valid_target, args.device, args.batch_size)
+            recall, ndcg, users_per_second, _ = evaluate(unwrap_model(model), data, edges, data.valid_target, args.device, args.batch_size, progress_desc=f"Epoch {epoch}/{args.epochs} | Full-catalog validation")
             logger.info("epoch=%d loss=%.4f full-catalog valid Recall@10=%.4f NDCG@10=%.4f inference=%.2f users/s", epoch, average_loss, recall, ndcg, users_per_second)
         if args.distributed:
             dist.barrier()
     if is_main_process:
         recommender = unwrap_model(model)
-        recall, ndcg, users_per_second, item_scores_per_second = evaluate(recommender, data, edges, data.test_target, args.device, args.batch_size)
+        recall, ndcg, users_per_second, item_scores_per_second = evaluate(recommender, data, edges, data.test_target, args.device, args.batch_size, progress_desc="Full-catalog test evaluation")
         train_peak_allocated, train_peak_reserved = gpu_memory_mb(args.device)
         total_required_memory = max(mamba_peak_allocated, train_peak_allocated)
         logger.info("TEST full-catalog Recall@10=%.4f NDCG@10=%.4f", recall, ndcg)

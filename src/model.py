@@ -4,6 +4,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
+from tqdm.auto import tqdm
 
 MAMBA_MODEL_ID = "state-spaces/mamba-2.8b-hf"
 
@@ -39,11 +40,15 @@ class MambaTextEncoder:
         # The original mamba-2.8b repository has no complete HF tokenizer files.
         # Its official -hf companion keeps the same checkpoint and adds GPT-NeoX
         # tokenizer/config assets required by AutoTokenizer and Transformers.
-        self.tokenizer = AutoTokenizer.from_pretrained(MAMBA_MODEL_ID, cache_dir=cache_dir)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            MAMBA_MODEL_ID, cache_dir=cache_dir,
-            torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32,
-        ).to(device).eval()
+        with tqdm(total=1, desc="Loading Mamba tokenizer", unit="component") as progress:
+            self.tokenizer = AutoTokenizer.from_pretrained(MAMBA_MODEL_ID, cache_dir=cache_dir)
+            progress.update(1)
+        with tqdm(total=1, desc="Loading Mamba 2.8B weights", unit="model") as progress:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                MAMBA_MODEL_ID, cache_dir=cache_dir,
+                torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32,
+            ).to(device).eval()
+            progress.update(1)
         for p in self.model.parameters():
             p.requires_grad_(False)
         self.hidden_size = self.model.config.hidden_size
@@ -51,7 +56,7 @@ class MambaTextEncoder:
     @torch.inference_mode()
     def encode(self, texts: list[str], batch_size: int = 4) -> torch.Tensor:
         vectors = []
-        for start in range(0, len(texts), batch_size):
+        for start in tqdm(range(0, len(texts), batch_size), desc="Encoding item text with Mamba", unit="batch"):
             batch = self.tokenizer(texts[start : start + batch_size], padding=True, truncation=True,
                                    max_length=self.max_tokens, return_tensors="pt").to(self.device)
             output = self.model(**batch, output_hidden_states=True)
@@ -101,8 +106,13 @@ def load_or_encode_text(
     if skip_mamba:
         return None
     if path.exists():
-        return torch.load(path, map_location="cpu", weights_only=True)
+        with tqdm(total=1, desc="Loading cached Mamba item vectors", unit="artifact") as progress:
+            vectors = torch.load(path, map_location="cpu", weights_only=True)
+            progress.update(1)
+        return vectors
     path.parent.mkdir(parents=True, exist_ok=True)
     vectors = MambaTextEncoder(device, cache_dir).encode(texts)
-    torch.save(vectors, path)
+    with tqdm(total=1, desc="Saving Mamba item-vector cache", unit="artifact") as progress:
+        torch.save(vectors, path)
+        progress.update(1)
     return vectors
