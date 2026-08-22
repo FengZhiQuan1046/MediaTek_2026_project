@@ -22,7 +22,7 @@ pip install -r requirements.txt
 For a first smoke test (no network or GPU required):
 
 ```powershell
-bash ./run.sh ./cache 42 --synthetic --skip-mamba --epochs 3
+bash run.sh
 ```
 
 ## Amazon Reviews 2023 run
@@ -32,12 +32,12 @@ configuration from Hugging Face.  Change `--subset` to any available raw review
 configuration (for example `raw_review_Movies_and_TV`).
 
 ```powershell
-bash ./run.sh D:/hf-cache 42 --subset raw_review_All_Beauty --max-events 12000 --epochs 5 --device cuda
+bash run.sh
 ```
 
-`run.sh` requires two parameters: the shared Hugging Face cache directory and
-the random seed.  It passes the cache directory explicitly to both the dataset
-and Mamba loaders.  Every run writes a timestamped log under `log/`, a loss
+`run.sh` is configured with cache directory `/home/P78123011/cache` and random
+seed `25252`. It passes the cache directory explicitly to both the dataset and
+Mamba loaders. Every run writes a timestamped log under `log/`, a loss
 curve PNG under `fig_outputs/`, and up to five held-out recommendation examples
 as JSON under `json_outputs/`.
 
