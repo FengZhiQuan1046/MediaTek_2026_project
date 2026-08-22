@@ -21,6 +21,21 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+For the configured NVIDIA L40S environment, the requirements install
+`torch==2.7.1+cu128`. This CUDA 12.8 wheel is compatible with a driver reporting
+CUDA API 12.9. If a different Torch build is already installed, replace it with:
+
+```bash
+pip uninstall -y torch torchvision torchaudio
+pip install torch==2.7.1+cu128 --index-url https://download.pytorch.org/whl/cu128
+```
+
+Verify the installation before training:
+
+```bash
+python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.get_device_name(0))"
+```
+
 `McAuley-Lab/Amazon-Reviews-2023` currently uses a dataset loading script.
 The project therefore pins `datasets==3.6.0`; do not upgrade `datasets` to 4.x,
 which rejects these scripts.

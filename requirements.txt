@@ -1,4 +1,7 @@
-torch>=2.2
+# NVIDIA L40S / driver CUDA API 12.9: use the CUDA 12.8 PyTorch wheel.
+# The extra index keeps normal packages on PyPI while retrieving this GPU wheel.
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.7.1+cu128
 # Amazon-Reviews-2023 still uses a Hugging Face dataset loading script.
 # datasets 4.x removed support for such scripts; 3.6.0 is the validated version.
 transformers==4.56.1
