@@ -37,7 +37,7 @@ def _metadata_text(row: dict) -> str:
     return " ".join(str(part).strip() for part in parts if part and str(part).strip())
 
 
-def load_amazon(subset: str, max_events: int, cache_dir: str | None = None) -> list[tuple[str, str, int, str]]:
+def load_amazon(subset: str, max_events: int | None, cache_dir: str | None = None) -> list[tuple[str, str, int, str]]:
     """Load reviews and item metadata from matching Amazon Reviews 2023 configs.
 
     The raw review configuration has names such as ``raw_review_All_Beauty``;
@@ -62,7 +62,7 @@ def load_amazon(subset: str, max_events: int, cache_dir: str | None = None) -> l
         cache_dir=cache_dir,
     )
     review_split = reviews["full"]
-    limited_reviews = review_split.select(range(min(max_events, len(review_split))))
+    limited_reviews = review_split if max_events is None else review_split.select(range(min(max_events, len(review_split))))
 
     metadata_subset = subset.replace("raw_review_", "raw_meta_", 1)
     metadata = load_dataset(

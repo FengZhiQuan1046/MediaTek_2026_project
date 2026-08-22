@@ -7,6 +7,8 @@ set -euo pipefail
 
 CACHE_DIR="/workspace/P78123011/cache"
 SEED="25252"
+# Edit this value to control training and full-catalog evaluation batch size.
+BATCH_SIZE="128"
 CUDA_IDS="${1:-0}"
 
 if [[ $# -gt 1 || ! "$CUDA_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
@@ -26,8 +28,8 @@ export CUDA_VISIBLE_DEVICES="$CUDA_IDS"
 TRAIN_ARGS=(
   --cache-dir "$CACHE_DIR" \
   --seed "$SEED" \
+  --batch-size "$BATCH_SIZE" \
   --subset raw_review_All_Beauty \
-  --max-events 12000 \
   --epochs 20 \
   --device cuda
 )

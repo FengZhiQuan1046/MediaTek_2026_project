@@ -68,6 +68,12 @@ description become the item text encoded by Mamba. Every run writes a timestampe
 curve PNG under `fig_outputs/`, and up to five held-out recommendation examples
 as JSON under `json_outputs/`.
 
+The default run uses the complete review split: every training interaction is
+used once per epoch, and every held-out test user is ranked against the complete
+item catalogue. Edit `BATCH_SIZE` near the top of `run.sh` to fit GPU memory.
+The log records full-catalog inference throughput and peak GPU memory for Mamba
+item encoding and recommender training.
+
 ## GPU selection and multi-GPU training
 
 ```bash

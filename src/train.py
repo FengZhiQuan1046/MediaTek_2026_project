@@ -6,6 +6,7 @@ import logging
 import math
 import os
 import random
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -118,22 +119,42 @@ def candidates_with_target(targets, num_items, negatives, device):
 
 
 @torch.no_grad()
-def evaluate(model, data, edges, targets, device, k=10):
+def evaluate(model, data, edges, targets, device, batch_size: int, k=10):
+    """Evaluate every held-out user against the complete item catalogue."""
     model.eval()
-    users = torch.tensor(sorted(targets), device=device)
-    gold = torch.tensor([targets[int(u)] for u in users.tolist()], device=device)
-    candidates = candidates_with_target(gold, data.num_items, 99, device)
-    scores = model.score(users, candidates, edges, padded_histories(data, users, device))
-    ranks = (scores[:, 1:] >= scores[:, :1]).sum(1) + 1
-    recall = (ranks <= k).float().mean().item()
-    ndcg = torch.where(ranks <= k, 1 / torch.log2(ranks.float() + 1), torch.zeros_like(ranks, dtype=torch.float)).mean().item()
-    return recall, ndcg
+    user_ids = sorted(targets)
+    all_items = torch.arange(data.num_items, device=device)
+    recall_sum = ndcg_sum = 0.0
+    if str(device).startswith("cuda"):
+        torch.cuda.synchronize(device)
+    started = time.perf_counter()
+    for start in range(0, len(user_ids), batch_size):
+        batch_user_ids = user_ids[start:start + batch_size]
+        users = torch.tensor(batch_user_ids, device=device)
+        gold = torch.tensor([targets[user] for user in batch_user_ids], device=device)
+        candidates = all_items.unsqueeze(0).expand(len(batch_user_ids), -1)
+        scores = model.score(users, candidates, edges, padded_histories(data, users, device))
+        target_scores = scores.gather(1, gold.unsqueeze(1))
+        ranks = (scores >= target_scores).sum(1)
+        recall_sum += (ranks <= k).sum().item()
+        ndcg_sum += torch.where(ranks <= k, 1 / torch.log2(ranks.float() + 1), torch.zeros_like(ranks, dtype=torch.float)).sum().item()
+    if str(device).startswith("cuda"):
+        torch.cuda.synchronize(device)
+    elapsed = max(time.perf_counter() - started, 1e-9)
+    return recall_sum / len(user_ids), ndcg_sum / len(user_ids), len(user_ids) / elapsed, len(user_ids) * data.num_items / elapsed
+
+
+def gpu_memory_mb(device: str) -> tuple[float, float]:
+    """Return peak allocated and reserved GPU memory in MiB for this process."""
+    if not str(device).startswith("cuda"):
+        return 0.0, 0.0
+    return torch.cuda.max_memory_allocated(device) / 2**20, torch.cuda.max_memory_reserved(device) / 2**20
 
 
 def main():
     p = argparse.ArgumentParser(description="Mamba + bipartite graph recommender demo")
     p.add_argument("--subset", default="raw_review_All_Beauty")
-    p.add_argument("--max-events", type=int, default=12000)
+    p.add_argument("--max-events", type=int, default=None, help="Optional review cap; omit to use the complete review split")
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--batch-size", type=int, default=128)
     p.add_argument("--dim", type=int, default=128)
@@ -161,7 +182,8 @@ def main():
     seed_everything(args.seed)
     cache_dir = Path(args.cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    artifact = args.artifact or str(cache_dir / f"mamba_item_vectors_{args.subset}.pt")
+    event_tag = "full" if args.max_events is None else f"max{args.max_events}"
+    artifact = args.artifact or str(cache_dir / f"mamba_item_vectors_{args.subset}_{event_tag}.pt")
     logger.info("run_id=%s seed=%d device=%s cache_dir=%s world_size=%d", run_id, args.seed, args.device, cache_dir, world_size)
 
     events = synthetic_events() if args.synthetic else load_amazon(args.subset, args.max_events, str(cache_dir))
@@ -171,6 +193,7 @@ def main():
     # read the completed item-vector cache, avoiding duplicate model memory.
     if is_main_process:
         text = load_or_encode_text(data.item_texts, artifact, args.device, args.skip_mamba, str(cache_dir))
+        mamba_peak_allocated, mamba_peak_reserved = gpu_memory_mb(args.device)
     if args.distributed:
         dist.barrier()
     if not is_main_process:
@@ -181,34 +204,38 @@ def main():
     if args.distributed:
         model = DDP(model, device_ids=[local_rank], output_device=local_rank)
     edges = edge_index(data).to(args.device)
+    if str(args.device).startswith("cuda"):
+        torch.cuda.reset_peak_memory_stats(args.device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-5)
-    train_users = list(data.train_by_user)
+    train_pairs = [(user, item) for user, history in data.train_by_user.items() for item in history]
+    logger.info("full train interactions per epoch=%d; full test users=%d; catalog items=%d", len(train_pairs), len(data.test_target), data.num_items)
 
     epoch_losses = []
     for epoch in range(1, args.epochs + 1):
-        model.train(); random.shuffle(train_users); losses = []
-        local_users = train_users[rank::world_size]
+        model.train(); random.shuffle(train_pairs); losses = []
+        local_pairs = train_pairs[rank::world_size]
         # DDP requires every rank to execute the same number of backward calls.
-        # Pad the final shard by repeating local users, rather than dropping data.
+        # Pad the final shard by repeating local pairs, rather than dropping data.
         if args.distributed:
-            if not local_users:
-                raise RuntimeError("Number of training users must be at least the number of selected GPUs.")
-            batches_per_rank = math.ceil(len(train_users) / (world_size * args.batch_size))
+            if not local_pairs:
+                raise RuntimeError("Number of train interactions must be at least the number of selected GPUs.")
+            batches_per_rank = math.ceil(len(train_pairs) / (world_size * args.batch_size))
             required_users = batches_per_rank * args.batch_size
-            repeats = math.ceil(required_users / len(local_users))
-            local_users = (local_users * repeats)[:required_users]
-        batch_starts = range(0, len(local_users), args.batch_size)
+            repeats = math.ceil(required_users / len(local_pairs))
+            local_pairs = (local_pairs * repeats)[:required_users]
+        batch_starts = range(0, len(local_pairs), args.batch_size)
         progress = tqdm(
             batch_starts,
-            total=math.ceil(len(local_users) / args.batch_size),
+            total=math.ceil(len(local_pairs) / args.batch_size),
             disable=not is_main_process,
             dynamic_ncols=True,
             desc=f"Epoch {epoch}/{args.epochs} | BPR ranking",
             unit="step",
         )
         for step, start in enumerate(progress, start=1):
-            users = torch.tensor(local_users[start:start + args.batch_size], device=args.device)
-            positive = torch.tensor([random.choice(data.train_by_user[int(u)]) for u in users.tolist()], device=args.device)
+            pairs = local_pairs[start:start + args.batch_size]
+            users = torch.tensor([user for user, _ in pairs], device=args.device)
+            positive = torch.tensor([item for _, item in pairs], device=args.device)
             negative = torch.randint(data.num_items, positive.shape, device=args.device)
             # BPR needs a genuinely unobserved comparison item for each draw.
             while torch.any(negative == positive):
@@ -228,14 +255,18 @@ def main():
         average_loss = (loss_stats[0] / loss_stats[1].clamp_min(1)).item()
         if is_main_process:
             epoch_losses.append(average_loss)
-            recall, ndcg = evaluate(unwrap_model(model), data, edges, data.valid_target, args.device)
-            logger.info("epoch=%d loss=%.4f valid Recall@10=%.4f NDCG@10=%.4f", epoch, average_loss, recall, ndcg)
+            recall, ndcg, users_per_second, _ = evaluate(unwrap_model(model), data, edges, data.valid_target, args.device, args.batch_size)
+            logger.info("epoch=%d loss=%.4f full-catalog valid Recall@10=%.4f NDCG@10=%.4f inference=%.2f users/s", epoch, average_loss, recall, ndcg, users_per_second)
         if args.distributed:
             dist.barrier()
     if is_main_process:
         recommender = unwrap_model(model)
-        recall, ndcg = evaluate(recommender, data, edges, data.test_target, args.device)
-        logger.info("TEST Recall@10=%.4f NDCG@10=%.4f", recall, ndcg)
+        recall, ndcg, users_per_second, item_scores_per_second = evaluate(recommender, data, edges, data.test_target, args.device, args.batch_size)
+        train_peak_allocated, train_peak_reserved = gpu_memory_mb(args.device)
+        total_required_memory = max(mamba_peak_allocated, train_peak_allocated)
+        logger.info("TEST full-catalog Recall@10=%.4f NDCG@10=%.4f", recall, ndcg)
+        logger.info("full-catalog inference=%.2f users/s, %.2f user-item scores/s", users_per_second, item_scores_per_second)
+        logger.info("GPU memory peak: Mamba encoding allocated=%.1f MiB reserved=%.1f MiB; training allocated=%.1f MiB reserved=%.1f MiB; required peak allocated=%.1f MiB", mamba_peak_allocated, mamba_peak_reserved, train_peak_allocated, train_peak_reserved, total_required_memory)
         loss_path = Path(args.fig_output_dir) / f"loss_{run_id}.png"
         samples_path = Path(args.json_output_dir) / f"test_samples_{run_id}.json"
         save_loss_curve(epoch_losses, loss_path)
