@@ -29,12 +29,13 @@ def _normalise_row(row: dict) -> tuple[str, str, int, str] | None:
     return str(user), str(item), timestamp, text
 
 
-def load_amazon(subset: str, max_events: int) -> list[tuple[str, str, int, str]]:
+def load_amazon(subset: str, max_events: int, cache_dir: str | None = None) -> list[tuple[str, str, int, str]]:
     """Stream a bounded Amazon Reviews 2023 subset to avoid a full dataset download."""
     from datasets import load_dataset
 
     stream = load_dataset(
-        "McAuley-Lab/Amazon-Reviews-2023", subset, split="full", streaming=True
+        "McAuley-Lab/Amazon-Reviews-2023", subset, split="full", streaming=True,
+        cache_dir=cache_dir,
     )
     rows = []
     for row in stream:

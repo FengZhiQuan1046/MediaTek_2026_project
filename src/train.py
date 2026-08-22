@@ -1,13 +1,83 @@
 from __future__ import annotations
 
 import argparse
+import json
+import logging
 import random
+from datetime import datetime
+from pathlib import Path
 
+import numpy as np
 import torch
 from torch.nn import functional as F
 
 from src.data import build_data, edge_index, load_amazon, synthetic_events
 from src.model import HybridRecommender, load_or_encode_text
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def seed_everything(seed: int) -> None:
+    """Set all local random generators before loading data or creating a model."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+def configure_logging(log_dir: Path, run_id: str) -> logging.Logger:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger("recommender")
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
+    for handler in (logging.FileHandler(log_dir / f"train_{run_id}.log", encoding="utf-8"), logging.StreamHandler()):
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    return logger
+
+
+def save_loss_curve(losses: list[float], path: Path) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(range(1, len(losses) + 1), losses, marker="o", label="BPR loss")
+    ax.set(xlabel="Epoch", ylabel="Loss", title="Training loss", xticks=range(1, len(losses) + 1))
+    ax.grid(alpha=0.3); ax.legend(); fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
+@torch.no_grad()
+def save_test_samples(model, data, edges, device, path: Path, count: int = 5) -> None:
+    """Save a small, human-readable set of held-out ranking examples as JSON."""
+    model.eval()
+    rows = []
+    for user in sorted(data.test_target)[:count]:
+        target = data.test_target[user]
+        user_tensor = torch.tensor([user], device=device)
+        all_items = torch.arange(data.num_items, device=device).unsqueeze(0)
+        scores = model.score(user_tensor, all_items, edges, padded_histories(data, user_tensor, device))[0]
+        top_ids = torch.topk(scores, k=min(10, data.num_items)).indices.tolist()
+        rows.append({
+            "user_index": user,
+            "history_item_indices": data.train_by_user[user],
+            "held_out_item_index": target,
+            "held_out_item_text": data.item_texts[target],
+            "top_recommendations": [
+                {"item_index": item, "item_text": data.item_texts[item], "score": round(float(scores[item]), 6)}
+                for item in top_ids
+            ],
+        })
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def padded_histories(data, users, device):
@@ -48,21 +118,34 @@ def main():
     p.add_argument("--dim", type=int, default=128)
     p.add_argument("--lr", type=float, default=2e-3)
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    p.add_argument("--artifact", default="artifacts/item_text_embeddings.pt")
+    p.add_argument("--cache-dir", default=str(PROJECT_ROOT / "cache"), help="Hugging Face dataset and Mamba cache directory")
+    p.add_argument("--artifact", default=None, help="Optional item-vector cache path; defaults under --cache-dir")
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--log-dir", default=str(PROJECT_ROOT / "log"))
+    p.add_argument("--fig-output-dir", default=str(PROJECT_ROOT / "fig_outputs"))
+    p.add_argument("--json-output-dir", default=str(PROJECT_ROOT / "json_outputs"))
+    p.add_argument("--test-sample-count", type=int, default=5)
     p.add_argument("--skip-mamba", action="store_true")
     p.add_argument("--synthetic", action="store_true")
     args = p.parse_args()
-    random.seed(42); torch.manual_seed(42)
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    logger = configure_logging(Path(args.log_dir), run_id)
+    seed_everything(args.seed)
+    cache_dir = Path(args.cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    artifact = args.artifact or str(cache_dir / f"mamba_item_vectors_{args.subset}.pt")
+    logger.info("run_id=%s seed=%d device=%s cache_dir=%s", run_id, args.seed, args.device, cache_dir)
 
-    events = synthetic_events() if args.synthetic else load_amazon(args.subset, args.max_events)
+    events = synthetic_events() if args.synthetic else load_amazon(args.subset, args.max_events, str(cache_dir))
     data = build_data(events)
-    print(f"users={data.num_users}, items={data.num_items}, train_edges={sum(map(len, data.train_by_user.values()))}")
-    text = load_or_encode_text(data.item_texts, args.artifact, args.device, args.skip_mamba)
+    logger.info("users=%d items=%d train_edges=%d", data.num_users, data.num_items, sum(map(len, data.train_by_user.values())))
+    text = load_or_encode_text(data.item_texts, artifact, args.device, args.skip_mamba, str(cache_dir))
     model = HybridRecommender(data.num_users, data.num_items, args.dim, text).to(args.device)
     edges = edge_index(data).to(args.device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-5)
     train_users = list(data.train_by_user)
 
+    epoch_losses = []
     for epoch in range(1, args.epochs + 1):
         model.train(); random.shuffle(train_users); losses = []
         for start in range(0, len(train_users), args.batch_size):
@@ -77,10 +160,18 @@ def main():
             scores = model.score(users, candidates, edges, padded_histories(data, users, args.device))
             loss = F.softplus(-(scores[:, 0] - scores[:, 1])).mean()
             optimizer.zero_grad(); loss.backward(); optimizer.step(); losses.append(loss.item())
+        average_loss = sum(losses) / len(losses)
+        epoch_losses.append(average_loss)
         recall, ndcg = evaluate(model, data, edges, data.valid_target, args.device)
-        print(f"epoch={epoch} loss={sum(losses)/len(losses):.4f} valid Recall@10={recall:.4f} NDCG@10={ndcg:.4f}")
+        logger.info("epoch=%d loss=%.4f valid Recall@10=%.4f NDCG@10=%.4f", epoch, average_loss, recall, ndcg)
     recall, ndcg = evaluate(model, data, edges, data.test_target, args.device)
-    print(f"TEST Recall@10={recall:.4f} NDCG@10={ndcg:.4f}")
+    logger.info("TEST Recall@10=%.4f NDCG@10=%.4f", recall, ndcg)
+    loss_path = Path(args.fig_output_dir) / f"loss_{run_id}.png"
+    samples_path = Path(args.json_output_dir) / f"test_samples_{run_id}.json"
+    save_loss_curve(epoch_losses, loss_path)
+    save_test_samples(model, data, edges, args.device, samples_path, args.test_sample_count)
+    logger.info("loss curve: %s", loss_path)
+    logger.info("test samples: %s", samples_path)
 
 
 if __name__ == "__main__":

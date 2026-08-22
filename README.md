@@ -22,7 +22,7 @@ pip install -r requirements.txt
 For a first smoke test (no network or GPU required):
 
 ```powershell
-python -m src.train --synthetic --epochs 3
+bash ./run.sh ./cache 42 --synthetic --skip-mamba --epochs 3
 ```
 
 ## Amazon Reviews 2023 run
@@ -32,10 +32,16 @@ configuration from Hugging Face.  Change `--subset` to any available raw review
 configuration (for example `raw_review_Movies_and_TV`).
 
 ```powershell
-python -m src.train --subset raw_review_All_Beauty --max-events 12000 --epochs 5 --device cuda
+bash ./run.sh D:/hf-cache 42 --subset raw_review_All_Beauty --max-events 12000 --epochs 5 --device cuda
 ```
 
-By default, Mamba item vectors are cached in `artifacts/item_text_embeddings.pt`.
+`run.sh` requires two parameters: the shared Hugging Face cache directory and
+the random seed.  It passes the cache directory explicitly to both the dataset
+and Mamba loaders.  Every run writes a timestamped log under `log/`, a loss
+curve PNG under `fig_outputs/`, and up to five held-out recommendation examples
+as JSON under `json_outputs/`.
+
+By default, Mamba item vectors are cached under the `--cache-dir` directory.
 Use `--skip-mamba` during CPU-only graph development; this deliberately replaces
 the Mamba vectors with a trainable item vector, so it is not the target model.
 

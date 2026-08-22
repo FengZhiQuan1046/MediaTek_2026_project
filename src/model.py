@@ -30,13 +30,14 @@ class LightGCN(nn.Module):
 
 class MambaTextEncoder:
     """Frozen product-text encoder backed by state-spaces/mamba-2.8b."""
-    def __init__(self, device: str, max_tokens: int = 48):
+    def __init__(self, device: str, cache_dir: str, max_tokens: int = 48):
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         self.device, self.max_tokens = device, max_tokens
-        self.tokenizer = AutoTokenizer.from_pretrained("state-spaces/mamba-2.8b")
+        self.tokenizer = AutoTokenizer.from_pretrained("state-spaces/mamba-2.8b", cache_dir=cache_dir)
         self.model = AutoModelForCausalLM.from_pretrained(
-            "state-spaces/mamba-2.8b", torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32
+            "state-spaces/mamba-2.8b", cache_dir=cache_dir,
+            torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32,
         ).to(device).eval()
         for p in self.model.parameters():
             p.requires_grad_(False)
@@ -84,14 +85,15 @@ class HybridRecommender(nn.Module):
         return alpha * graph_score + (1 - alpha) * text_score
 
 
-def load_or_encode_text(texts: list[str], artifact: str, device: str, skip_mamba: bool) -> torch.Tensor | None:
+def load_or_encode_text(
+    texts: list[str], artifact: str, device: str, skip_mamba: bool, cache_dir: str
+) -> torch.Tensor | None:
     path = Path(artifact)
     if skip_mamba:
         return None
     if path.exists():
         return torch.load(path, map_location="cpu", weights_only=True)
     path.parent.mkdir(parents=True, exist_ok=True)
-    vectors = MambaTextEncoder(device).encode(texts)
+    vectors = MambaTextEncoder(device, cache_dir).encode(texts)
     torch.save(vectors, path)
     return vectors
-
