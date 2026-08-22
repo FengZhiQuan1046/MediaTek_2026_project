@@ -18,32 +18,63 @@ class InteractionData:
     num_items: int
 
 
-def _normalise_row(row: dict) -> tuple[str, str, int, str] | None:
+def _normalise_row(row: dict, item_texts: dict[str, str] | None = None) -> tuple[str, str, int, str] | None:
     user = row.get("user_id") or row.get("user")
     item = row.get("parent_asin") or row.get("asin") or row.get("item_id")
     if not user or not item:
         return None
-    # raw_review configs contain title; metadata enrichment is intentionally optional.
-    text = str(row.get("title") or row.get("text") or row.get("item_title") or item)
+    # Use item metadata when available; a review title/text is only a fallback.
+    text = (item_texts or {}).get(str(item)) or str(row.get("title") or row.get("text") or item)
     timestamp = int(row.get("timestamp") or 0)
     return str(user), str(item), timestamp, text
 
 
+def _metadata_text(row: dict) -> str:
+    """Make a compact LLM input from the Amazon item-metadata fields."""
+    parts = [row.get("title"), row.get("subtitle"), row.get("main_category")]
+    parts.extend(row.get("features") or [])
+    parts.extend(row.get("description") or [])
+    return " ".join(str(part).strip() for part in parts if part and str(part).strip())
+
+
 def load_amazon(subset: str, max_events: int, cache_dir: str | None = None) -> list[tuple[str, str, int, str]]:
-    """Stream a bounded Amazon Reviews 2023 subset to avoid a full dataset download."""
+    """Load reviews and item metadata from matching Amazon Reviews 2023 configs.
+
+    The raw review configuration has names such as ``raw_review_All_Beauty``;
+    its matching metadata configuration is ``raw_meta_All_Beauty``.
+    """
     from datasets import load_dataset
 
-    stream = load_dataset(
-        "McAuley-Lab/Amazon-Reviews-2023", subset, split="full", streaming=True,
+    if not subset.startswith("raw_review_"):
+        raise ValueError("--subset must start with 'raw_review_', e.g. raw_review_All_Beauty")
+    # Keep the DatasetDict form used in the official review-loading example.
+    reviews = load_dataset(
+        "McAuley-Lab/Amazon-Reviews-2023", subset,
+        trust_remote_code=True,
         cache_dir=cache_dir,
     )
+    review_split = reviews["full"]
+    limited_reviews = review_split.select(range(min(max_events, len(review_split))))
+
+    metadata_subset = subset.replace("raw_review_", "raw_meta_", 1)
+    metadata = load_dataset(
+        "McAuley-Lab/Amazon-Reviews-2023", metadata_subset, split="full",
+        trust_remote_code=True,
+        cache_dir=cache_dir,
+    )
+    required_items = {str(row["parent_asin"]) for row in limited_reviews if row.get("parent_asin")}
+    item_texts = {
+        str(row["parent_asin"]): text
+        for row in metadata
+        if row.get("parent_asin") in required_items
+        if (text := _metadata_text(row))
+    }
+
     rows = []
-    for row in stream:
-        normal = _normalise_row(row)
+    for row in limited_reviews:
+        normal = _normalise_row(row, item_texts)
         if normal is not None:
             rows.append(normal)
-        if len(rows) >= max_events:
-            break
     if not rows:
         raise RuntimeError(f"No usable user/item rows found in subset {subset!r}.")
     return rows

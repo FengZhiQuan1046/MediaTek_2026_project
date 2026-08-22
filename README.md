@@ -27,8 +27,9 @@ bash run.sh
 
 ## Amazon Reviews 2023 run
 
-The command below downloads a small streaming sample of the All_Beauty review
-configuration from Hugging Face.  Change `--subset` to any available raw review
+The command below loads the All_Beauty review configuration and its matching
+item metadata configuration from Hugging Face, using the configured cache
+directory. Change `--subset` to any available raw review
 configuration (for example `raw_review_Movies_and_TV`).
 
 ```powershell
@@ -37,7 +38,9 @@ bash run.sh
 
 `run.sh` is configured with cache directory `/home/P78123011/cache` and random
 seed `25252`. It passes the cache directory explicitly to both the dataset and
-Mamba loaders. Every run writes a timestamped log under `log/`, a loss
+Mamba loaders. The script loads `raw_review_All_Beauty` and joins it with
+`raw_meta_All_Beauty` using `parent_asin`; the metadata title, features, and
+description become the item text encoded by Mamba. Every run writes a timestamped log under `log/`, a loss
 curve PNG under `fig_outputs/`, and up to five held-out recommendation examples
 as JSON under `json_outputs/`.
 
