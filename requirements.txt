@@ -1,7 +1,9 @@
 torch>=2.2
-transformers>=4.44
-datasets>=2.20
-accelerate>=0.33
+# Amazon-Reviews-2023 still uses a Hugging Face dataset loading script.
+# datasets 4.x removed support for such scripts; 3.6.0 is the validated version.
+transformers==4.56.1
+datasets==3.6.0
+accelerate==1.10.1
 bitsandbytes>=0.43; platform_system != "Windows"
 numpy>=1.26
 tqdm>=4.66

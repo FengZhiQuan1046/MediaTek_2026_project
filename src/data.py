@@ -43,7 +43,15 @@ def load_amazon(subset: str, max_events: int, cache_dir: str | None = None) -> l
     The raw review configuration has names such as ``raw_review_All_Beauty``;
     its matching metadata configuration is ``raw_meta_All_Beauty``.
     """
+    import datasets
     from datasets import load_dataset
+
+    major_version = int(datasets.__version__.split(".", 1)[0])
+    if major_version >= 4:
+        raise RuntimeError(
+            "McAuley-Lab/Amazon-Reviews-2023 uses a dataset loading script, which datasets 4.x no "
+            "longer supports. Install the project requirements (datasets==3.6.0), then retry."
+        )
 
     if not subset.startswith("raw_review_"):
         raise ValueError("--subset must start with 'raw_review_', e.g. raw_review_All_Beauty")

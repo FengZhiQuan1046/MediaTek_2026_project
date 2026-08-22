@@ -19,6 +19,10 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+`McAuley-Lab/Amazon-Reviews-2023` currently uses a dataset loading script.
+The project therefore pins `datasets==3.6.0`; do not upgrade `datasets` to 4.x,
+which rejects these scripts.
+
 For a first smoke test (no network or GPU required):
 
 ```powershell
