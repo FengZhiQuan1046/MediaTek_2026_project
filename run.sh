@@ -28,7 +28,7 @@ TRAIN_ARGS=(
   --seed "$SEED" \
   --subset raw_review_All_Beauty \
   --max-events 12000 \
-  --epochs 5 \
+  --epochs 20 \
   --device cuda
 )
 
