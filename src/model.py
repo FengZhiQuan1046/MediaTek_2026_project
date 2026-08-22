@@ -5,6 +5,8 @@ from pathlib import Path
 import torch
 from torch import nn
 
+MAMBA_MODEL_ID = "state-spaces/mamba-2.8b-hf"
+
 
 class LightGCN(nn.Module):
     def __init__(self, users: int, items: int, dim: int, layers: int = 2):
@@ -29,14 +31,17 @@ class LightGCN(nn.Module):
 
 
 class MambaTextEncoder:
-    """Frozen product-text encoder backed by state-spaces/mamba-2.8b."""
+    """Frozen product-text encoder backed by the official HF Mamba 2.8B checkpoint."""
     def __init__(self, device: str, cache_dir: str, max_tokens: int = 48):
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         self.device, self.max_tokens = device, max_tokens
-        self.tokenizer = AutoTokenizer.from_pretrained("state-spaces/mamba-2.8b", cache_dir=cache_dir)
+        # The original mamba-2.8b repository has no complete HF tokenizer files.
+        # Its official -hf companion keeps the same checkpoint and adds GPT-NeoX
+        # tokenizer/config assets required by AutoTokenizer and Transformers.
+        self.tokenizer = AutoTokenizer.from_pretrained(MAMBA_MODEL_ID, cache_dir=cache_dir)
         self.model = AutoModelForCausalLM.from_pretrained(
-            "state-spaces/mamba-2.8b", cache_dir=cache_dir,
+            MAMBA_MODEL_ID, cache_dir=cache_dir,
             torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32,
         ).to(device).eval()
         for p in self.model.parameters():

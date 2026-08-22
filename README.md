@@ -1,14 +1,16 @@
 # Mamba + Bipartite-Graph Recommender Demo
 
 This is a small, reproducible recommendation-system baseline for the
-`McAuley-Lab/Amazon-Reviews-2023` dataset.  It combines three signals:
+`McAuley-Lab/Amazon-Reviews-2023` dataset. It combines three signals:
 
 1. a LightGCN-style user--item bipartite graph,
-2. product-text vectors produced by `state-spaces/mamba-2.8b`, and
+2. product-text vectors produced by `state-spaces/mamba-2.8b-hf`, and
 3. a short interaction-history encoder.
 
 The final score is a learned fusion of graph and Mamba/text-history scores.
-The 2.8B model is loaded frozen by default; training it in full is not a
+`state-spaces/mamba-2.8b-hf` is the official Transformers-compatible companion
+to `state-spaces/mamba-2.8b`; it retains the checkpoint and provides the
+required tokenizer/config files. The 2.8B model is loaded frozen by default; training it in full is not a
 practical demo workload.  The trainable recommender head stays compact.
 
 ## Setup
