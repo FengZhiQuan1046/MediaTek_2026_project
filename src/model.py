@@ -89,6 +89,10 @@ class HybridRecommender(nn.Module):
         alpha = torch.sigmoid(self.mix)
         return alpha * graph_score + (1 - alpha) * text_score
 
+    def forward(self, users: torch.Tensor, candidates: torch.Tensor, edges: torch.Tensor, histories: torch.Tensor) -> torch.Tensor:
+        """DDP-compatible entry point for candidate ranking."""
+        return self.score(users, candidates, edges, histories)
+
 
 def load_or_encode_text(
     texts: list[str], artifact: str, device: str, skip_mamba: bool, cache_dir: str

@@ -68,6 +68,19 @@ description become the item text encoded by Mamba. Every run writes a timestampe
 curve PNG under `fig_outputs/`, and up to five held-out recommendation examples
 as JSON under `json_outputs/`.
 
+## GPU selection and multi-GPU training
+
+```bash
+bash run.sh          # single GPU: CUDA 0
+bash run.sh 3        # single GPU: CUDA 3
+bash run.sh 0,1      # two GPUs with DistributedDataParallel
+bash run.sh 0,2,3    # three GPUs with DistributedDataParallel
+```
+
+For multi-GPU runs, `run.sh` sets `CUDA_VISIBLE_DEVICES`, then launches one
+NCCL process per selected GPU with PyTorch `torchrun`. Only rank 0 loads Mamba
+to create item vectors and writes logs, figures, and JSON outputs.
+
 By default, Mamba item vectors are cached under the `--cache-dir` directory.
 Use `--skip-mamba` during CPU-only graph development; this deliberately replaces
 the Mamba vectors with a trainable item vector, so it is not the target model.
