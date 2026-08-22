@@ -21,13 +21,13 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-For the configured NVIDIA L40S environment, the requirements install
-`torch==2.7.1+cu128`. This CUDA 12.8 wheel is compatible with a driver reporting
-CUDA API 12.9. If a different Torch build is already installed, replace it with:
+For the configured four-RTX-3090 environment, the requirements install
+`torch==2.7.0+cu118`. If a different Torch build is already installed, replace
+it with:
 
 ```bash
 pip uninstall -y torch torchvision torchaudio
-pip install torch==2.7.1+cu128 --index-url https://download.pytorch.org/whl/cu128
+pip install torch==2.7.0+cu118 --index-url https://download.pytorch.org/whl/cu118
 ```
 
 Verify the installation before training:
