@@ -14,6 +14,7 @@ import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.nn import functional as F
+from tqdm.auto import tqdm
 
 from src.data import build_data, edge_index, load_amazon, synthetic_events
 from src.model import HybridRecommender, load_or_encode_text
@@ -196,7 +197,16 @@ def main():
             required_users = batches_per_rank * args.batch_size
             repeats = math.ceil(required_users / len(local_users))
             local_users = (local_users * repeats)[:required_users]
-        for start in range(0, len(local_users), args.batch_size):
+        batch_starts = range(0, len(local_users), args.batch_size)
+        progress = tqdm(
+            batch_starts,
+            total=math.ceil(len(local_users) / args.batch_size),
+            disable=not is_main_process,
+            dynamic_ncols=True,
+            desc=f"Epoch {epoch}/{args.epochs} | BPR ranking",
+            unit="step",
+        )
+        for step, start in enumerate(progress, start=1):
             users = torch.tensor(local_users[start:start + args.batch_size], device=args.device)
             positive = torch.tensor([random.choice(data.train_by_user[int(u)]) for u in users.tolist()], device=args.device)
             negative = torch.randint(data.num_items, positive.shape, device=args.device)
@@ -208,6 +218,10 @@ def main():
             scores = model(users, candidates, edges, padded_histories(data, users, args.device))
             loss = F.softplus(-(scores[:, 0] - scores[:, 1])).mean()
             optimizer.zero_grad(); loss.backward(); optimizer.step(); losses.append(loss.item())
+            if is_main_process:
+                progress.set_postfix_str(
+                    f"step={step}/{progress.total} | backward+optimizer | loss={loss.item():.5f}"
+                )
         loss_stats = torch.tensor([sum(losses), len(losses)], dtype=torch.float64, device=args.device)
         if args.distributed:
             dist.all_reduce(loss_stats, op=dist.ReduceOp.SUM)
