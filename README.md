@@ -23,6 +23,9 @@ pip install -r requirements.txt
 The project therefore pins `datasets==3.6.0`; do not upgrade `datasets` to 4.x,
 which rejects these scripts.
 
+The Mamba tokenizer also requires `protobuf`, which is installed through the
+project requirements.
+
 For a first smoke test (no network or GPU required):
 
 ```powershell
