@@ -188,8 +188,8 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
   {Full-catalog Top-$K$ ranking\\Recall/NDCG and throughput};
 \node[box,minimum width=46mm] (reason) at (4.7,-8.65)
   {Post-hoc Mamba reason\\grounded in history};
-\node[box,minimum width=47mm,draw=red!70!black,fill=red!4] (objective) at (-4.7,-6.65)
-  {Joint training objective\\REINFORCE + CE + specialization};
+% \node[box,minimum width=47mm,draw=red!70!black,fill=red!4] (objective) at (-4.7,-6.65)
+%   {Joint training objective\\REINFORCE + CE + specialization};
 
 % Inference path.
 \draw[arrow] (data)--(semantic);
@@ -204,9 +204,9 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
 \draw[arrow] (catalog)--(reason);
 
 % Training-only cooperative feedback.
-\draw[feedback] (objective.north) to[bend right=16] (long.west);
-\draw[feedback] (objective.north east) to[bend right=12] (coord.west);
-\draw[feedback] (objective.north east) to[bend left=25] (short.west);
+% \draw[feedback] (objective.north) to[bend right=16] (long.west);
+% \draw[feedback] (objective.north east) to[bend right=12] (coord.west);
+% \draw[feedback] (objective.north east) to[bend left=25] (short.west);
 
 % Explicit hierarchy labels.
 \node[level] at (-6.65,-1.55) {Shared representation};
