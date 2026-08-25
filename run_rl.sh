@@ -8,6 +8,7 @@ SEED="25252"
 BATCH_SIZE="4"
 CANDIDATES_PER_STEP="64"
 EPOCHS="3"
+VALIDATE_EVERY_STEPS="500"
 CUDA_IDS="${1:-0}"
 
 if [[ $# -gt 1 || ! "$CUDA_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
@@ -28,6 +29,7 @@ TRAIN_ARGS=(
   --batch-size "$BATCH_SIZE"
   --candidates-per-step "$CANDIDATES_PER_STEP"
   --epochs "$EPOCHS"
+  --validate-every-steps "$VALIDATE_EVERY_STEPS"
   --subset raw_review_All_Beauty
   --device cuda
 )
