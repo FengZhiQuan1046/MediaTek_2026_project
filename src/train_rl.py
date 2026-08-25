@@ -78,7 +78,7 @@ def state_prompts(data, histories: list[list[int]]) -> list[str]:
 class MambaRLPolicy(nn.Module):
     def __init__(self, cache_dir: str, item_vectors: torch.Tensor, device: str):
         super().__init__()
-        from peft import LoraConfig, TaskType, get_peft_model
+        from peft import LoraConfig, get_peft_model
         from transformers import AutoModel, AutoTokenizer
 
         show_progress = os.environ.get("RANK", "0") == "0"
@@ -92,7 +92,6 @@ class MambaRLPolicy(nn.Module):
             progress.update(1)
         self.mamba.config.use_cache = False
         lora = LoraConfig(
-            task_type=TaskType.FEATURE_EXTRACTION,
             r=8,
             lora_alpha=16,
             lora_dropout=0.05,
