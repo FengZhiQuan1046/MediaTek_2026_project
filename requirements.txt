@@ -13,3 +13,5 @@ tqdm>=4.66
 matplotlib>=3.8
 # Required by Transformers when loading/converting the Mamba tokenizer.
 protobuf>=3.20.3,<6
+# LoRA adapters used only by the independent REINFORCE/Mamba RL trainer.
+peft==0.17.1
