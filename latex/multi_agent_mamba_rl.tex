@@ -66,9 +66,6 @@ Sequential recommendation is naturally connected to reinforcement learning becau
 Training follows a deliberately staged procedure: supervised specialist warm-up, frozen-specialist coordinator warm-up, and joint REINFORCE optimization. The implementation supports MovieLens, Amazon Reviews 2023, and local Yelp 2019/2023 snapshots; performs chronological leave-two-out splitting; evaluates every user against the complete item catalog; records ranking and throughput metrics; and generates a grounded natural-language reason after recommendation. The architecture separates expensive semantic encoding, high-frequency policy learning, catalog ranking, and explanation generation. This separation makes the system suitable as a reproducible research baseline for studying multi-agent specialization, selective state dynamics, parameter-efficient policy learning, and high-throughput recommendation.
 \end{abstract}
 
-\tableofcontents
-\newpage
-
 \section{Introduction}
 
 Recommender systems have traditionally been formulated as rating prediction, click prediction, or next-item ranking problems. These formulations are effective when the objective is immediate relevance, but they do not fully represent the interactive nature of recommendation. A recommendation changes what the user sees, the resulting response changes the observable user state, and that new state influences subsequent recommendations. Reinforcement learning (RL) offers a natural language for this process by representing the recommender as a policy, the user as an environment, and engagement or satisfaction as a reward \cite{RLSURVEY}.
@@ -193,7 +190,7 @@ Argument & Interactions & Item text\\
 Argument & Interactions & Item text\\
 \midrule
 \endhead
-movielens-100k/1m/20m/25m/32m/latest-small & ratings & title and genres\\
+movielens & ratings & title and genres\\
 amazon-\textless category\textgreater & Amazon Reviews 2023 & title, category, features, description\\
 amazon:\textless exact-config\textgreater & exact HF config & review/meta join by \texttt{parent\_asin}\\
 yelp19, yelp23 & local Yelp JSON/table & name, categories, location, attributes\\
