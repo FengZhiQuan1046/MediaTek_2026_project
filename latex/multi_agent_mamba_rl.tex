@@ -1,0 +1,723 @@
+% !TeX program = xelatex
+% Compile twice with XeLaTeX to obtain the table of contents and references.
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[left=2.5cm,right=2.5cm,top=2.2cm,bottom=2.2cm]{geometry}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setmonofont{DejaVu Sans Mono}
+\setCJKmainfont{Noto Serif CJK TC}
+\setCJKsansfont{Noto Sans CJK TC}
+\setCJKmonofont{Noto Sans Mono CJK TC}
+
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs,longtable,tabularx,array,multirow}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,shapes.geometric}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+
+\definecolor{agentblue}{RGB}{43,108,176}
+\definecolor{agentgreen}{RGB}{47,133,90}
+\definecolor{agentorange}{RGB}{194,101,26}
+\definecolor{codegray}{RGB}{247,247,247}
+\definecolor{commentgreen}{RGB}{45,120,70}
+
+\lstdefinestyle{projectcode}{
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{agentblue}\bfseries,
+  commentstyle=\color{commentgreen},
+  stringstyle=\color{agentorange},
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{black!20},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false
+}
+\lstset{style=projectcode}
+
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.35em}
+\setlist{itemsep=0.2em,topsep=0.35em}
+\renewcommand{\arraystretch}{1.18}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Multi-Agent Mamba-RL Pipeline}
+\fancyhead[R]{MediaTek\_2026\_project}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{15pt}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\softmax}{\operatorname{softmax}}
+\newcommand{\sigmoid}{\operatorname{sigmoid}}
+\newcommand{\Project}{\texttt{MediaTek\_2026\_project}}
+
+\title{\textbf{Multi-Agent Mamba-RL 推薦系統：\\架構、訓練方法與評估 Pipeline 技術說明}}
+\author{\Project}
+\date{2026 年 8 月}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+本文完整說明 \Project{} 中獨立實作的 Multi-Agent Mamba-RL 推薦系統。系統先以凍結的
+Mamba-2.8B 對商品文字進行一次性語意編碼，再以共享投影層、長期偏好 agent、短期意圖
+agent，以及 coordinator agent 進行高吞吐量的序列推薦。三個 agent 使用互不共享的低秩
+調適（LoRA）參數；長短期 agent 採用 Mamba 式 selective state-space recurrence，
+coordinator 則動態融合兩種時間尺度的使用者狀態。訓練依序包含 specialist 監督式暖身、
+coordinator 暖身與三 agent 聯合 REINFORCE 微調。系統支援 MovieLens、Amazon Reviews
+2023 與 Yelp 2019/2023，使用時間序列切分及完整商品目錄評估，並在推薦完成後利用
+Mamba 生成可讀的推薦原因。本文同時整理資料介面、數學定義、loss、gradient、吞吐量設計、
+輸出產物、限制與可延伸研究方向。
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{系統目標與設計原則}
+
+此 pipeline 的目的不是將既有的 \texttt{src/train.py} 或 \texttt{src/train\_rl.py}
+直接改寫，而是在相同專案中建立完全獨立的實驗路徑。新系統遵循下列原則：
+
+\begin{enumerate}
+  \item \textbf{多時間尺度分工：}長期 agent 建模穩定偏好，短期 agent 建模最近意圖，
+        coordinator 依使用者狀態動態融合兩者。
+  \item \textbf{每個 agent 擁有自己的 LoRA：}三組 LoRA 參數互不共享，能形成可辨識的
+        specialist 與協調策略。
+  \item \textbf{利用 Mamba 而不重複支付 2.8B 模型成本：}大型 Mamba 只負責一次性商品
+        文字編碼；高頻率的 RL update 則在快取向量上使用線性時間 selective recurrence。
+  \item \textbf{分階段穩定訓練：}先建立 specialist 能力，再學習融合，最後以 joint RL
+        對最終策略微調。
+  \item \textbf{公平離線評估：}每位使用者依時間切分 train/validation/test，評估時對完整
+        catalog 排名並遮蔽已互動商品。
+  \item \textbf{可解釋輸出：}排序與原因生成分離；先完成高效推薦，再以商品文字、歷史和
+        agent 權重作為 grounded prompt 生成原因。
+\end{enumerate}
+
+\section{專案檔案與隔離性}
+
+新增 pipeline 由表~\ref{tab:files} 所列檔案構成。舊的模型、資料與 launcher 不會 import
+這些新模組，因此新實驗不改變舊流程的控制流、參數或輸出位置。
+
+\begin{table}[H]
+\centering
+\caption{Multi-Agent Mamba-RL 相關檔案}
+\label{tab:files}
+\begin{tabularx}{\textwidth}{>{\ttfamily}p{0.34\textwidth}X}
+\toprule
+檔案 & 職責 \\
+\midrule
+run\_mamba\_rl.sh & 統一資料集、GPU、cache 與訓練參數入口。\\
+src/data\_mamba\_rl.py & MovieLens、Amazon、Yelp 及 synthetic 資料適配器。\\
+src/model\_mamba\_rl.py & LoRA、selective-state specialist 與 coordinator 架構。\\
+src/train\_mamba\_rl.py & 三階段訓練、REINFORCE、完整目錄評估、理由生成及輸出。\\
+tests/test\_mamba\_rl.py & 資料映射、agent 參數隔離、stage 凍結與模型 shape 測試。\\
+outputs\_mamba\_rl/ & 依 dataset/run ID 隔離的 checkpoint、metrics、曲線和推薦結果。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{端到端 Pipeline}
+
+圖~\ref{fig:pipeline} 顯示完整資料流。昂貴的文字模型位於離線預計算階段，而訓練與
+full-catalog ranking 僅操作快取向量，這是系統吞吐量的主要來源。
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=9mm and 11mm,
+  box/.style={draw,rounded corners,align=center,minimum height=10mm,minimum width=29mm,fill=black!3},
+  agent/.style={box,minimum width=35mm},
+  arrow/.style={-{Latex[length=2.3mm]},thick}
+]
+\node[box] (raw) {互動與商品 metadata\\MovieLens/Amazon/Yelp};
+\node[box,right=of raw] (split) {時間排序與切分\\train/valid/test};
+\node[box,right=of split] (text) {Frozen Mamba-2.8B\\商品文字編碼};
+\node[box,right=of text] (cache) {Item vector cache\\$E\in\R^{N\times d_m}$};
+
+\node[agent,below=14mm of split,draw=agentblue,fill=agentblue!7] (long) {Long-term Agent\\慢時間尺度 LoRA-SSM};
+\node[agent,right=of long,draw=agentgreen,fill=agentgreen!7] (short) {Short-term Agent\\近期 window LoRA-SSM};
+\node[agent,right=of short,draw=agentorange,fill=agentorange!8] (coord) {Coordinator Agent\\LoRA 動態融合};
+\node[box,right=of coord] (rank) {Full-catalog ranking\\Recall/NDCG};
+\node[box,below=of rank] (reason) {Mamba 原因生成\\recommendations.json};
+
+\draw[arrow] (raw)--(split);
+\draw[arrow] (split)--(text);
+\draw[arrow] (text)--(cache);
+\draw[arrow] (cache.south) |- (long.north);
+\draw[arrow] (cache.south) |- (short.north);
+\draw[arrow] (long)--(coord);
+\draw[arrow] (short)--(coord);
+\draw[arrow] (coord)--(rank);
+\draw[arrow] (rank)--(reason);
+\end{tikzpicture}}
+\caption{Multi-Agent Mamba-RL 端到端資料流。}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{離線與線上計算的分離}
+
+對每件商品 $i$，先將 title、genre、category、feature、description 或 business metadata
+組成文字 $t_i$，並以凍結 Mamba 得到：
+\begin{equation}
+  \bm e_i^{\text{text}}
+  = \operatorname{MeanPool}\!\left(
+      \operatorname{Mamba}_{\text{frozen}}(t_i)
+    \right) \in \R^{d_m}.
+\end{equation}
+所有向量組成矩陣 $E_{\text{text}}\in\R^{N\times d_m}$ 並寫入 cache。文字或 catalog
+不變時，之後的 run 直接載入 cache，不再執行 2.8B 模型。
+
+推薦模型使用共享投影：
+\begin{equation}
+  \bm e_i = \operatorname{norm}\!\left(W_p\bm e_i^{\text{text}}\right),
+  \qquad W_p\in\R^{d\times d_m},
+\end{equation}
+將大型語意向量壓縮到預設 $d=128$。$W_p$ 是三個 agent 共用的 retrieval bridge，
+而 agent-specific adaptation 由各自 LoRA 完成。
+
+\section{資料處理與時間切分}
+
+\subsection{統一事件格式}
+
+所有 loader 最後都正規化為：
+\begin{equation}
+  (u, i, \tau, t_i),
+\end{equation}
+其中 $u$ 是使用者 ID、$i$ 是商品 ID、$\tau$ 是 timestamp，$t_i$ 是商品文字。
+ID 會映射為連續整數。預設只保留至少五筆正向互動的使用者；MovieLens 和 Yelp
+預設把 rating/stars $\geq 4$ 視為正向 implicit feedback。
+
+\subsection{支援資料集}
+
+\begin{longtable}{p{0.24\textwidth}p{0.28\textwidth}p{0.40\textwidth}}
+\caption{資料集介面與商品文字來源}\label{tab:data}\\
+\toprule
+資料集參數 & 互動來源 & 商品文字 \\
+\midrule
+\endfirsthead
+\toprule
+資料集參數 & 互動來源 & 商品文字 \\
+\midrule
+\endhead
+movielens-100k/1m/20m/25m/32m/latest-small & rating 與 timestamp & 電影 title 與 genres；未指定路徑時從 GroupLens 下載。\\
+amazon-<category> & Amazon Reviews 2023 review & metadata 的 title、subtitle、main category、features、description。\\
+amazon:<exact-config> & 指定 Hugging Face raw review config & 與對應 raw meta config 以 parent\_asin join。\\
+yelp19, yelp23 & Yelp review JSON 或正規化表格 & business name、categories、city、state 與部分 attributes。\\
+synthetic & 固定的微型互動序列 & 簡短商品名稱；僅用於 smoke test。\\
+\bottomrule
+\end{longtable}
+
+Yelp 原始 snapshot 受其資料授權約束，因此 launcher 不主動下載，必須以
+\texttt{DATA\_PATH} 指向本機目錄、CSV、JSONL 或 Parquet。常見 Yelp JSON 檔名為
+\texttt{yelp\_academic\_dataset\_review.json} 與
+\texttt{yelp\_academic\_dataset\_business.json}。
+
+\subsection{Chronological split}
+
+對使用者 $u$ 的互動依時間排序：
+\begin{equation}
+  \mathcal H_u=(i_1,i_2,\ldots,i_{T_u}).
+\end{equation}
+使用 leave-two-out：
+\begin{align}
+  \mathcal H_u^{\text{train}} &= (i_1,\ldots,i_{T_u-2}),\\
+  i_u^{\text{valid}} &= i_{T_u-1},\\
+  i_u^{\text{test}} &= i_{T_u}.
+\end{align}
+Validation 只能觀察 training history；test 可以觀察 training history 加 validation item。
+這能避免未來資訊進入過去 state。
+
+\subsection{RL transition}
+
+training history 被展開為 prefix-to-next-item transition：
+\begin{equation}
+  \left((i_1,\ldots,i_k),i_{k+1}\right),\quad
+  k=1,\ldots,T_u-3.
+\end{equation}
+若 transition 數量超過 \texttt{MAX\_TRANSITIONS}，使用 reservoir sampling 保留固定上限，
+避免 MovieLens-20M 或大型 Amazon/Yelp 資料在記憶體中建立過大的 transition list。
+
+\section{Multi-Agent 模型架構}
+
+\subsection{Agent 定義}
+
+系統由三個合作 agent 組成：
+\begin{description}[style=nextline]
+  \item[Long-term Agent] 最多讀取 \texttt{max-history} 筆互動，使用較慢的初始衰減
+        time scale（0.08），建模跨較長時間仍穩定的偏好。
+  \item[Short-term Agent] 只讀取最後 \texttt{short-window} 筆互動（預設 10），使用較快
+        time scale（0.5），快速回應近期 session intent。
+  \item[Coordinator Agent] 觀察長短期 state，產生每位使用者專屬的 mixing weights，並
+        融合 specialist scores 與自己的 coordinator score。
+\end{description}
+
+此處的「每個 agent 擁有自己的 LoRA」是指每個 agent 都有互不共享的低秩矩陣；系統
+不會在 GPU 中複製三份 Mamba-2.8B。這項選擇使研究上的 agent specialization 與工程上的
+吞吐量能同時成立。
+
+\subsection{LoRA 參數化}
+
+對輸入 $\bm x\in\R^{d_{in}}$，agent-specific LoRA update 定義為：
+\begin{equation}
+  \operatorname{LoRA}_{j}(\bm x)
+  = \frac{\alpha}{r}B_j A_j\operatorname{Dropout}(\bm x),
+\end{equation}
+其中 $A_j\in\R^{r\times d_{in}}$、$B_j\in\R^{d_{out}\times r}$，預設 $r=8$、
+$\alpha=16$、dropout $=0.05$。$A_j$ 使用 Kaiming initialization，$B_j$ 初始化為零，
+因此訓練開始時 adapter 不會立即破壞 base path。
+
+長期與短期 agent 分別擁有 candidate、delta、gate、output 四組 LoRA；coordinator 擁有
+state、mix、score 三組 LoRA。任一 agent 的參數更新不會直接覆寫另一 agent 的 adapter。
+
+\subsection{Mamba 式 selective state update}
+
+對時間 $t$ 的投影商品向量 $\bm x_t$，specialist $j\in\{L,S\}$ 計算：
+\begin{align}
+  \bm\delta_t^{(j)}
+    &= \operatorname{softplus}\!\left(
+         \bm b_{\delta}^{(j)}+\operatorname{LoRA}_{\delta}^{(j)}(\bm x_t)
+       \right),\\
+  \bm a_t^{(j)} &= \exp\!\left(-\bm\delta_t^{(j)}\right),\\
+  \tilde{\bm h}_t^{(j)}
+    &= \tanh\!\left(
+         \bm x_t+\operatorname{LoRA}_{\text{candidate}}^{(j)}(\bm x_t)
+       \right),\\
+  \bm h_t^{(j)}
+    &= \bm a_t^{(j)}\odot\bm h_{t-1}^{(j)}
+       +(1-\bm a_t^{(j)})\odot\tilde{\bm h}_t^{(j)},\\
+  \bm g_t^{(j)}
+    &= \sigmoid\!\left(\operatorname{LoRA}_{\text{gate}}^{(j)}(\bm x_t)\right),\\
+  \bm o_t^{(j)}
+    &= \bm g_t^{(j)}\odot\bm h_t^{(j)}
+       +(1-\bm g_t^{(j)})\odot\bm x_t.
+\end{align}
+最後再加上 output LoRA 並做 $\ell_2$ normalization。此 recurrence 對序列長度 $T$
+的時間複雜度是 $\mathcal O(Td)$，不需要 Transformer 的 $T\times T$ attention matrix。
+
+$\bm\delta_t$ 是 input-sensitive forgetting rate：較小值保留更多舊 state，較大值快速採納
+新商品資訊。long/short agents 不同的初始 time scale 加上不同 observation window，為
+specialization 提供結構性 inductive bias，而不只依靠 loss 強迫兩者不同。
+
+\subsection{Specialist policy scores}
+
+對候選商品向量 $\bm e_i$：
+\begin{equation}
+  z_i^{(j)} = \exp(\tau_j)\,
+  \left\langle \bm s_u^{(j)},\bm e_i\right\rangle,
+\end{equation}
+其中 $\tau_j$ 是可訓練 log-temperature，程式限制 $\exp(\tau_j)\leq 20$。normalized
+state 與 item vector 使內積接近 cosine similarity。
+
+\subsection{Coordinator 動態融合}
+
+Coordinator 將兩個 specialist states 串接：
+\begin{align}
+  \bm q_u &= [\bm s_u^{(L)};\bm s_u^{(S)}],\\
+  [w_L,w_S] &= \softmax\!\left(\operatorname{LoRA}_{\text{mix}}(\bm q_u)\right),\\
+  \bm s_u^{(C)} &= \operatorname{norm}\!\left(
+      w_L\bm s_u^{(L)}+w_S\bm s_u^{(S)}
+      +\operatorname{LoRA}_{\text{state}}(\bm q_u)
+    \right).
+\end{align}
+最終候選分數為：
+\begin{equation}
+  z_i^{\text{final}}
+  =z_i^{(C)}+w_L z_i^{(L)}+w_S z_i^{(S)}.
+\end{equation}
+因此 coordinator 不只是固定平均：不同使用者與不同時間點可以得到不同的長短期權重。
+
+\section{三階段訓練方法}
+
+直接從隨機狀態同時以稀疏 reward 更新三個 agent，容易造成 coordinator 過早偏向單一
+specialist，或兩個 specialist 收斂成相同策略。因此 pipeline 採用三階段訓練。
+
+\subsection{Stage 1：Specialist supervised warm-up}
+
+更新 long agent、short agent 與共享 item projection，凍結 coordinator。每個 transition
+建立包含一個真實下一商品和 $K-1$ 個隨機負樣本的 slate：
+\begin{equation}
+  \mathcal C=\{i^+,i_1^-,\ldots,i_{K-1}^-\}, \qquad K=64.
+\end{equation}
+正樣本固定在 index 0，loss 為：
+\begin{equation}
+  \mathcal L_{\text{specialist}}
+  =\operatorname{CE}(\bm z^{(L)},0)
+  +\operatorname{CE}(\bm z^{(S)},0).
+\end{equation}
+兩個 agent 觀察不同 history window、使用不同 time scale，因此即使 target 相同，也會從
+不同訊號形成 state。
+
+\subsection{Stage 2：Coordinator warm-up}
+
+凍結兩個 specialist 與 item projection，只更新 coordinator：
+\begin{equation}
+  \mathcal L_{\text{coord}}
+  =\operatorname{CE}(\bm z^{\text{final}},0).
+\end{equation}
+這使 coordinator 在穩定的 specialist representation 上先學會融合，避免 specialist 和
+融合規則同時漂移。
+
+\subsection{Stage 3：Joint multi-agent REINFORCE}
+
+解除三個 agent 及共享 projection 的凍結。每個 policy 在 sampled slate 上形成：
+\begin{equation}
+  \pi_j(a\mid s)=\softmax(\bm z^{(j)})_a,
+  \qquad j\in\{L,S,C\}.
+\end{equation}
+各 agent 依自身 distribution 抽取 action。Reward 定義為：
+\begin{equation}
+  r_j=\begin{cases}
+    1, & a_j=0,\\
+    -0.05, & a_j\neq 0.
+  \end{cases}
+\end{equation}
+每個 agent 維護自己的 exponential moving-average baseline：
+\begin{equation}
+  b_j\leftarrow0.95b_j+0.05\overline r_j,
+  \qquad A_j=r_j-b_j.
+\end{equation}
+Policy-gradient 項為：
+\begin{equation}
+  \mathcal L_{\text{PG}}
+  =-\sum_{j\in\{L,S,C\}}
+   \mathbb E\left[A_j\log\pi_j(a_j\mid s_j)\right]
+   -\beta\sum_j\mathbb E\left[H(\pi_j)\right],
+\end{equation}
+預設 entropy coefficient $\beta=0.01$。Advantage 在反向傳播前 detach；gradient 透過
+\texttt{log\_prob} 回到 logits 與 LoRA，不穿過離散的 \texttt{sample()}。
+
+為穩定 sampled-policy training，joint stage 保留少量 supervised anchor：
+\begin{equation}
+  \mathcal L_{\text{sup}}
+  =\frac{1}{3}\sum_{j\in\{L,S,C\}}\operatorname{CE}(\bm z^{(j)},0).
+\end{equation}
+為降低 long/short collapse，加入 specialization regularizer：
+\begin{equation}
+  \mathcal L_{\text{spec}}
+  =\operatorname{cos}^2\!\left(\bm s_u^{(L)},\bm s_u^{(S)}\right).
+\end{equation}
+完整 joint loss：
+\begin{equation}
+  \boxed{
+  \mathcal L_{\text{joint}}
+  =\mathcal L_{\text{PG}}
+  +\lambda_{\text{sup}}\mathcal L_{\text{sup}}
+  +\lambda_{\text{spec}}\mathcal L_{\text{spec}}
+  }
+\end{equation}
+預設 $\lambda_{\text{sup}}=0.1$、$\lambda_{\text{spec}}=0.01$。
+
+\subsection{Optimizer、AMP 與梯度穩定化}
+
+三個 stage 各自建立 AdamW optimizer，預設 learning rates 為：
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Stage & Learning rate & 可更新部分 \\
+\midrule
+Specialists & $2\times10^{-4}$ & long、short、item projection \\
+Coordinator & $2\times10^{-4}$ & coordinator \\
+Joint RL & $5\times10^{-5}$ & 三 agent 與 item projection \\
+\bottomrule
+\end{tabular}
+\end{center}
+CUDA 模式使用 FP16 autocast 與 GradScaler，並在 optimizer step 前將 global gradient norm
+裁剪到 1.0。較小的 joint learning rate 可減少 RL 對已建立 retrieval space 的破壞。
+
+\section{Gradient 與 Credit Assignment}
+
+Coordinator loss 的計算圖同時依賴 long/short states 與 scores。Joint stage 中，其 gradient
+會沿融合權重及 states 回傳至 specialist LoRA：
+\begin{equation}
+  \frac{\partial\mathcal L_C}{\partial\theta_L}
+  =\frac{\partial\mathcal L_C}{\partial z^{\text{final}}}
+   \frac{\partial z^{\text{final}}}{\partial \bm s^{(L)}}
+   \frac{\partial \bm s^{(L)}}{\partial\theta_L},
+\end{equation}
+short agent 同理。此外，每個 specialist 還有自己的 sampled action、reward 與 policy loss，
+所以不完全依賴 coordinator 的間接梯度。
+
+目前 credit assignment 使用 agent-local next-item reward 加共享最終結構，屬於實用且容易
+重現的合作式設計，但不是 COMA/QMIX 式 counterfactual critic。若用真正互動 simulator，
+可進一步估計：
+\begin{equation}
+  A_j^{\text{cf}}
+  =Q(s,\bm a)-Q(s,\bm a_{-j},a_j^{\text{baseline}}),
+\end{equation}
+更精確量化每個 agent 對長期 reward 的邊際貢獻。
+
+\section{完整商品目錄推薦與評估}
+
+\subsection{Full-catalog scoring}
+
+Evaluation 不使用 64-item sampled slate。模型先一次計算全部商品投影：
+\begin{equation}
+  E=W_pE_{\text{text}}\in\R^{N\times d},
+\end{equation}
+再以矩陣乘法取得每個使用者對所有商品的分數：
+\begin{equation}
+  \bm z_u=E\bm s_u.
+\end{equation}
+實作不建立 $B\times N\times d$ 展開張量，而使用 $B\times d$ 與 $d\times N$ 的 GEMM，
+因此 catalog ranking 的主要運算可由 GPU 高效執行。
+
+\subsection{Seen-item masking}
+
+對 evaluation history 中已互動的非 target 商品，令：
+\begin{equation}
+  z_{u,i}=-\infty,
+\end{equation}
+避免將已知商品當成新推薦。Validation history 是 train；test history 是 train 加 valid。
+
+\subsection{Metrics}
+
+真實 target rank 定義為：
+\begin{equation}
+  \operatorname{rank}_u
+  =\sum_{i=1}^{N}\mathbb I[z_{u,i}\geq z_{u,i^+}].
+\end{equation}
+系統回報：
+\begin{align}
+  \operatorname{Recall@K}
+    &=\frac{1}{|U|}\sum_u\mathbb I[\operatorname{rank}_u\leq K],\\
+  \operatorname{NDCG@K}
+    &=\frac{1}{|U|}\sum_u
+      \frac{\mathbb I[\operatorname{rank}_u\leq K]}
+           {\log_2(\operatorname{rank}_u+1)},
+\end{align}
+其中 $K\in\{5,10\}$。另外記錄 users/s 與 user--item scores/s，分別量化端到端使用者
+吞吐量與 catalog scoring 吞吐量。
+
+\section{吞吐量與記憶體設計}
+
+\begin{enumerate}
+  \item \textbf{商品文字只編碼一次：}Mamba-2.8B 向量以 dataset、item count 與文字
+        fingerprint 命名，cache hit 時完全略過大型模型。
+  \item \textbf{共享 base semantics：}三 agent 共用商品向量與 projection，不複製三份
+        2.8B weights 或三份 catalog embeddings。
+  \item \textbf{線性 history update：}specialist recurrence 的時間與序列長度成線性，
+        memory 不需要 $T^2$ attention map。
+  \item \textbf{限制 history：}預設最多 100 筆，short agent 最多 10 筆，能控制 latency。
+  \item \textbf{候選訓練、完整推論：}訓練只對 64-item slate 計算 policy；evaluation 才以
+        GEMM 對完整 catalog scoring。
+  \item \textbf{Mixed precision：}Mamba cache 與 CUDA 訓練使用 FP16；GradScaler 防止小
+        gradient underflow。
+  \item \textbf{Reservoir transition cap：}預設最多 500,000 transitions，避免大資料集
+        的 Python object memory 無上限成長。
+  \item \textbf{按需載入 reason generator：}只有排序、評估與 checkpoint 完成後，才將
+        policy 移到 CPU、清理 CUDA cache，再載入生成模型。
+\end{enumerate}
+
+\section{推薦原因生成}
+
+推薦原因不參與排序，避免生成 latency 進入 full-catalog scoring。對抽樣 test users，
+先取得 Top-1 item、最近十筆商品文字，以及 coordinator 學到的 $w_L,w_S$，再建立：
+
+\begin{lstlisting}[language={},caption={原因生成 prompt 的概念格式}]
+Explain this recommendation in one concise sentence using only the supplied history.
+Long-term agent weight=<wL>; short-term agent weight=<wS>.
+History: <recent item texts>.
+Recommended item: <recommended item text>. Reason:
+\end{lstlisting}
+
+Mamba 以 greedy decoding（\texttt{do\_sample=False}）產生最多 40 個新 token。輸出原因與
+agent weights 一併寫入 \texttt{recommendations.json}。這是 post-hoc grounded explanation；
+目前 reason quality 不回傳成 RL reward，也不保證因果忠實性。若要研究 reasoning-aware
+recommendation，可加入 item consistency、history grounding 或人工偏好的 reward。
+
+\section{執行方式與參數}
+
+\subsection{Launcher}
+
+\begin{lstlisting}[language=bash]
+# MovieLens
+bash run_mamba_rl.sh movielens-1m 0
+bash run_mamba_rl.sh movielens-20m 0
+
+# Amazon Reviews 2023
+bash run_mamba_rl.sh amazon-all-beauty 0
+bash run_mamba_rl.sh amazon-movies-and-tv 0
+
+# Yelp licensed local snapshots
+bash run_mamba_rl.sh yelp19 0 /data/yelp-2019
+bash run_mamba_rl.sh yelp23 0 /data/yelp-2023
+\end{lstlisting}
+
+Launcher 的三個位置參數依序為 \texttt{DATASET}、\texttt{CUDA\_ID}、
+\texttt{DATA\_PATH}。MovieLens 可省略路徑；Amazon 由 Hugging Face cache 載入；Yelp
+必須提供路徑。
+
+\subsection{常用環境變數}
+
+\begin{table}[H]
+\centering
+\caption{\texttt{run\_mamba\_rl.sh} 可覆寫設定}
+\begin{tabular}{lll}
+\toprule
+變數 & 預設值 & 用途 \\
+\midrule
+CACHE\_DIR & /workspace/P78123011/cache & HF、資料與 Mamba vector cache。\\
+BATCH\_SIZE & 128 & 三階段訓練 batch size。\\
+EVAL\_BATCH\_SIZE & 128 & Full-catalog evaluation batch。\\
+SPECIALIST\_EPOCHS & 1 & Stage 1 epoch 數。\\
+COORDINATOR\_EPOCHS & 1 & Stage 2 epoch 數。\\
+RL\_EPOCHS & 3 & Joint REINFORCE epoch 數。\\
+MAX\_TRANSITIONS & 500000 & Prefix transitions 上限。\\
+SEED & 25252 & Python、NumPy 與 PyTorch seed。\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+例如：
+\begin{lstlisting}[language=bash]
+BATCH_SIZE=256 RL_EPOCHS=5 MAX_TRANSITIONS=1000000 \
+  bash run_mamba_rl.sh movielens-20m 0
+\end{lstlisting}
+
+\subsection{無網路 CPU smoke test}
+
+\begin{lstlisting}[language=bash]
+python -m src.train_mamba_rl \
+  --dataset synthetic \
+  --device cpu \
+  --skip-mamba \
+  --no-generate-reasons \
+  --max-transitions 32 \
+  --batch-size 8
+\end{lstlisting}
+\texttt{--skip-mamba} 會以固定 seed 的 random vectors 取代商品語意，只能用於測試控制流，
+不可當成研究結果。
+
+\section{輸出產物與重現性}
+
+每次 run 寫入：
+\begin{lstlisting}[language={}]
+outputs_mamba_rl/<dataset>/<YYYYMMDD_HHMMSS>/
+|-- train.log
+|-- multi_agent_lora.pt
+|-- loss.png
+|-- metrics.json
+`-- recommendations.json
+\end{lstlisting}
+
+\texttt{multi\_agent\_lora.pt} 包含模型 state dict、完整 CLI config、validation/test
+metrics 與 item-vector artifact path。大型 item feature buffer 不重複寫進 checkpoint，重載時
+應先依 artifact path 取得相同的 cached item matrix，再載入 state dict。
+
+\texttt{recommendations.json} 包含 user index、歷史 item indices、held-out target、Top-10、
+long/short agent weights、Top-1 商品文字與生成原因。\texttt{metrics.json} 分別保存 validation
+與 test 的排名和吞吐量指標。
+
+\section{目前限制與解讀注意事項}
+
+\begin{enumerate}
+  \item \textbf{離線 next-item reward：}命中 held-out item 的 $+1$ reward 並不是實際線上
+        使用者回饋；未命中的 $-0.05$ 也不代表使用者確實不喜歡該商品。
+  \item \textbf{不是完整長期 MDP：}Amazon/MovieLens/Yelp 靜態 log 無法觀察「如果推薦
+        另一商品，未來狀態如何變化」，因此目前較接近 cooperative contextual-bandit/
+        sequential-ranking formulation。
+  \item \textbf{負樣本偏差：}隨機負樣本可能沒有被原 logging policy 曝光，且負樣本間
+        可能重複；尚未使用 propensity score 或 off-policy correction。
+  \item \textbf{Local reward credit：}每個 specialist 依自身 action 得到 reward，尚未使用
+        centralized critic 或 counterfactual advantage。
+  \item \textbf{訓練--評估落差：}訓練使用 64-item slate，測試使用完整 catalog；較難的
+        full-catalog negatives 未必充分出現在訓練中。
+  \item \textbf{原因是 post-hoc：}生成內容不影響排序，不能直接視為模型決策的因果證明。
+  \item \textbf{Mamba 定位：}大型預訓練 Mamba 負責文字 semantics；高頻訓練使用
+        Mamba-inspired diagonal selective SSM，而不是三份完整 2.8B Mamba adapters。
+\end{enumerate}
+
+因此 Recall/NDCG 的改善應解讀為離線下一商品排序改善，而不是已證明長期使用者滿意度或
+線上商業指標改善。
+
+\section{建議的實驗矩陣}
+
+要證明 multi-agent 與 Mamba-specific 設計的價值，建議至少進行表~\ref{tab:ablation}
+所列 ablation。
+
+\begin{table}[H]
+\centering
+\caption{建議 ablation 與欲驗證假設}
+\label{tab:ablation}
+\begin{tabularx}{\textwidth}{p{0.36\textwidth}X}
+\toprule
+比較 & 驗證問題 \\
+\midrule
+單 agent vs. long+short+coordinator & Multi-agent 分工是否真的改善排名與穩定性？\\
+相同 window vs. 100/10 windows & 結構性時間尺度分工是否必要？\\
+固定 0.5/0.5 vs. learned coordinator & 動態融合是否優於簡單平均？\\
+無 Stage 1/2、直接 joint RL & 分階段訓練是否降低 variance 與 collapse？\\
+無 specialization loss & LoRA agents 是否學成高度相同的 states？\\
+無 supervised anchor & Pure REINFORCE 是否較不穩定？\\
+Mamba text vector vs. random/ID embedding & 商品語意對 cold/sparse item 的貢獻？\\
+Selective recurrence vs. GRU/Transformer & 效果、history scaling、latency 與 memory 的差異？\\
+Sampled vs. hard negatives & Full-catalog ranking gap 是否縮小？\\
+有／無 reason generation & 排名 throughput 與後處理解釋成本的區隔。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+除 Recall/NDCG 外，建議報告 catalog coverage、novelty、intra-list diversity、不同 history
+長度區間的品質、agent weight 分布、state cosine similarity、training transitions/s、
+evaluation users/s、scores/s、peak GPU memory 與 reason latency。
+
+\section{可延伸研究方向}
+
+\subsection{Reward-adaptive Mamba dynamics}
+
+目前 $\bm\delta_t$ 只由商品向量決定。可將真實 feedback、dwell time 或 uncertainty 加入：
+\begin{equation}
+  \bm\delta_t=f_{\theta}(\bm x_t,r_{t-1},\sigma_{t-1}),
+\end{equation}
+使高價值互動保留更久、誤點更快遺忘，形成真正 reward-conditioned state dynamics。
+
+\subsection{Offline RL 與保守估計}
+
+對 logged recommendation 加入 behavior policy propensity，或使用 Conservative Q-Learning：
+\begin{equation}
+  \mathcal L_{\text{CQL}}
+  =\log\sum_a\exp Q(s,a)-Q(s,a_{\text{logged}}),
+\end{equation}
+降低對 out-of-distribution 商品的過度估值。
+
+\subsection{Centralized critic 與長期 simulator}
+
+在 KuaiSim、RL4RS 或可控制環境中，使用 centralized training/decentralized execution，讓
+critic 觀察所有 agent actions，並以 session watch time、retention、diversity 等多步 reward
+取代單步 hit reward。
+
+\subsection{Reasoning-aware recommendation}
+
+可讓 policy 同時輸出 item 與 reasoning trajectory，設計：
+\begin{equation}
+  r=\lambda_1r_{\text{rank}}
+   +\lambda_2r_{\text{grounding}}
+   +\lambda_3r_{\text{consistency}}
+   +\lambda_4r_{\text{diversity}},
+\end{equation}
+並以 group-relative policy optimization 降低多條生成 trajectory 的 gradient variance。
+
+\section{總結}
+
+Multi-Agent Mamba-RL pipeline 將大型 Mamba 的文字理解、Mamba 式線性 selective state、
+agent-specific LoRA 與 policy gradient 結合。系統的核心並非簡單複製三個大型模型，而是：
+（一）一次性建立可重用的商品語意空間；（二）以長短期 selective-state agents 建模不同
+時間尺度；（三）由 coordinator 學習每位使用者的動態融合；（四）利用分階段訓練建立
+穩定分工，最後再聯合 RL 更新；（五）使用 GEMM 完成完整目錄排序，並將理由生成隔離為
+後處理。此設計可作為高吞吐量 multi-agent recommendation 的可重現基線，也保留進一步
+研究 reward-adaptive dynamics、offline RL、centralized critic 與 reasoning reward 的空間。
+
+\end{document}

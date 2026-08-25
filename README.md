@@ -110,3 +110,50 @@ implicit-feedback evaluation, not a claim of production performance.
 - `src/data.py`: Amazon loader, input schema normalisation, chronological split.
 - `src/model.py`: graph propagation, Mamba text encoder, and fused ranker.
 - `src/train.py`: end-to-end command-line training and testing.
+
+## multi-agent Mamba-RL pipeline
+
+`run_mamba_rl.sh` launches an isolated three-agent recommender without changing
+the original `run.sh` or `run_rl.sh` paths. A frozen Mamba 2.8B pass first
+caches item-text vectors. Long-term, short-term, and coordinator agents then
+train disjoint LoRA parameters over those vectors. This avoids three 2.8B
+forward passes per RL step while retaining linear history encoding and
+matrix-multiply full-catalog ranking.
+
+Training uses supervised specialist warm-up, coordinator warm-up, and joint
+REINFORCE fine-tuning. Outputs contain Recall/NDCG@5/10, throughput, learned
+agent weights, Top-K recommendations, and Mamba-generated reasons.
+
+```bash
+# MovieLens downloads from the official GroupLens archive if DATA_PATH is omitted.
+bash run_mamba_rl.sh movielens-1m 0
+bash run_mamba_rl.sh movielens-20m 0
+
+# Amazon Reviews 2023 categories.
+bash run_mamba_rl.sh amazon-all-beauty 0
+bash run_mamba_rl.sh amazon-movies-and-tv 0
+
+# Yelp snapshots are license-gated and must already exist locally.
+bash run_mamba_rl.sh yelp19 0 /data/yelp-2019
+bash run_mamba_rl.sh yelp23 0 /data/yelp-2023
+```
+
+Yelp directories may contain `yelp_academic_dataset_review.json` and
+`yelp_academic_dataset_business.json`. Normalized CSV, JSONL, and Parquet are
+also accepted. MovieLens supports `100k`, `1m`, `20m`, `25m`, `32m`, and
+`latest-small` variants using the complete names shown by `--help`.
+
+Outputs go to `outputs_mamba_rl/<dataset>/<run_id>/`, separate from legacy
+artifacts. Launcher settings can be overridden with environment variables:
+
+```bash
+BATCH_SIZE=256 RL_EPOCHS=5 MAX_TRANSITIONS=1000000 \
+  bash run_mamba_rl.sh movielens-20m 0
+```
+
+Network-free CPU smoke test (not a research configuration):
+
+```bash
+python -m src.train_mamba_rl --dataset synthetic --device cpu --skip-mamba \
+  --no-generate-reasons --max-transitions 32 --batch-size 8
+```
