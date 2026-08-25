@@ -27,7 +27,7 @@ it with:
 
 ```bash
 pip uninstall -y torch torchvision torchaudio
-pip install torch==2.7.1+cu128 --index-url https://download.pytorch.org/whl/cu128
+pip install torch==2.7.1+cu128 torchvision==0.22.1+cu128 torchaudio==2.7.1+cu128 --index-url https://download.pytorch.org/whl/cu128
 ```
 
 If pip reports that an old `triton` package has no `RECORD` or `METADATA` file,
