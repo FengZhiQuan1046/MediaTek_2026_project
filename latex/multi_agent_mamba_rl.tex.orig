@@ -66,9 +66,6 @@ Sequential recommendation is naturally connected to reinforcement learning becau
 Training follows a deliberately staged procedure: supervised specialist warm-up, frozen-specialist coordinator warm-up, and joint REINFORCE optimization. The implementation supports MovieLens, Amazon Reviews 2023, and local Yelp 2019/2023 snapshots; performs chronological leave-two-out splitting; evaluates every user against the complete item catalog; records ranking and throughput metrics; and generates a grounded natural-language reason after recommendation. The architecture separates expensive semantic encoding, high-frequency policy learning, catalog ranking, and explanation generation. This separation makes the system suitable as a reproducible research baseline for studying multi-agent specialization, selective state dynamics, parameter-efficient policy learning, and high-throughput recommendation.
 \end{abstract}
 
-\tableofcontents
-\newpage
-
 \section{Introduction}
 
 Recommender systems have traditionally been formulated as rating prediction, click prediction, or next-item ranking problems. These formulations are effective when the objective is immediate relevance, but they do not fully represent the interactive nature of recommendation. A recommendation changes what the user sees, the resulting response changes the observable user state, and that new state influences subsequent recommendations. Reinforcement learning (RL) offers a natural language for this process by representing the recommender as a policy, the user as an environment, and engagement or satisfaction as a reward \cite{RLSURVEY}.
@@ -149,35 +146,83 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
 
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
+\resizebox{0.92\textwidth}{!}{%
 \begin{tikzpicture}[
-  node distance=9mm and 11mm,
-  box/.style={draw,rounded corners,align=center,minimum height=10mm,minimum width=29mm,fill=black!3},
-  agent/.style={box,minimum width=35mm},
-  arrow/.style={-{Latex[length=2.3mm]},thick}
+  box/.style={draw,rounded corners=2pt,align=center,minimum height=10mm,
+              minimum width=39mm,fill=black!3,font=\small},
+  shared/.style={box,minimum width=92mm,fill=black!6},
+  agent/.style={box,minimum width=48mm,minimum height=14mm},
+  coordinator/.style={box,minimum width=64mm,minimum height=14mm,
+                      draw=agentorange,very thick,fill=agentorange!10},
+  arrow/.style={-{Latex[length=2.3mm]},thick},
+  feedback/.style={-{Latex[length=2.3mm]},thick,dashed,draw=red!70!black},
+  level/.style={font=\footnotesize\bfseries,text=black!55,anchor=east}
 ]
-\node[box] (raw) {Interactions and metadata\\MovieLens/Amazon/Yelp};
-\node[box,right=of raw] (split) {Chronological split\\train/valid/test};
-\node[box,right=of split] (text) {Frozen Mamba-2.8B\\item-text encoding};
-\node[box,right=of text] (cache) {Vector cache\\$E\in\R^{N\times d_m}$};
-\node[agent,below=14mm of split,draw=agentblue,fill=agentblue!7] (long) {Long-term agent\\slow LoRA SSM};
-\node[agent,right=of long,draw=agentgreen,fill=agentgreen!7] (short) {Short-term agent\\recent-window LoRA SSM};
-\node[agent,right=of short,draw=agentorange,fill=agentorange!8] (coord) {Coordinator\\LoRA dynamic fusion};
-\node[box,right=of coord] (rank) {Full-catalog ranking\\Recall/NDCG};
-\node[box,below=of rank] (reason) {Mamba explanation\\recommendations.json};
-\draw[arrow] (raw)--(split);
-\draw[arrow] (split)--(text);
-\draw[arrow] (text)--(cache);
-\draw[arrow] (cache.south) |- (long.north);
-\draw[arrow] (cache.south) |- (short.north);
-\draw[arrow] (long)--(coord);
-\draw[arrow] (short)--(coord);
+% Shared observation and representation layer.
+\node[box,minimum width=66mm] (data) at (0,0)
+  {Interaction history and item metadata\\MovieLens, Amazon, or Yelp};
+\node[shared] (semantic) at (0,-1.55)
+  {\textbf{Shared Mamba semantic layer}\\
+   chronological user state $s_t$ + cached frozen Mamba-2.8B item matrix
+   $E\in\R^{N\times d_m}$};
+
+% Parallel specialist level.
+\node[agent,draw=agentblue,very thick,fill=agentblue!8] (long) at (-3.25,-3.45)
+  {\textbf{Long-term specialist $\pi_L$}\\
+   full history $\rightarrow$ slow LoRA selective SSM\\
+   stable preference $\bm s_u^{(L)}$, logits $\bm z^{(L)}$};
+\node[agent,draw=agentgreen,very thick,fill=agentgreen!8] (short) at (3.25,-3.45)
+  {\textbf{Short-term specialist $\pi_S$}\\
+   recent window $\rightarrow$ fast LoRA selective SSM\\
+   current intent $\bm s_u^{(S)}$, logits $\bm z^{(S)}$};
+
+% Higher-level coordination and the deployed action.
+\node[coordinator] (coord) at (0,-5.45)
+  {\textbf{Higher-level coordinator $\pi_C$}\\
+   agent-specific LoRA + state-dependent weights $(w_L,w_S)$\\
+   cooperative fusion of specialist states and logits};
+\node[box,minimum width=64mm,fill=agentorange!5] (rank) at (0,-7.15)
+  {Joint recommendation policy\\
+   $\bm z^{\mathrm{final}}=\bm z^{(C)}+w_L\bm z^{(L)}+w_S\bm z^{(S)}$};
+\node[box] (catalog) at (0,-8.65)
+  {Full-catalog Top-$K$ ranking\\Recall/NDCG and throughput};
+\node[box,minimum width=46mm] (reason) at (4.7,-8.65)
+  {Post-hoc Mamba reason\\grounded in history};
+\node[box,minimum width=47mm,draw=red!70!black,fill=red!4] (objective) at (-4.7,-6.65)
+  {Joint training objective\\REINFORCE + CE + specialization};
+
+% Inference path.
+\draw[arrow] (data)--(semantic);
+\draw[arrow] (semantic.south) -- ++(0,-0.35) -| (long.north);
+\draw[arrow] (semantic.south) -- ++(0,-0.35) -| (short.north);
+\draw[arrow] (long.south) -- ++(0,-0.35) -| node[pos=0.72,above left,font=\scriptsize]
+  {$\bm s^{(L)},\bm z^{(L)}$} (coord.north);
+\draw[arrow] (short.south) -- ++(0,-0.35) -| node[pos=0.72,above right,font=\scriptsize]
+  {$\bm s^{(S)},\bm z^{(S)}$} (coord.north);
 \draw[arrow] (coord)--(rank);
-\draw[arrow] (rank)--(reason);
+\draw[arrow] (rank)--(catalog);
+\draw[arrow] (catalog)--(reason);
+
+% Training-only cooperative feedback.
+\draw[feedback] (objective.north) to[bend right=16] (long.west);
+\draw[feedback] (objective.north east) to[bend right=12] (coord.west);
+\draw[feedback] (objective.north east) to[bend left=25] (short.west);
+
+% Explicit hierarchy labels.
+\node[level] at (-6.65,-1.55) {Shared representation};
+\node[level] at (-6.65,-3.45) {Specialist agents};
+\node[level] at (-6.65,-5.45) {Coordination};
+\node[level] at (-6.65,-8.65) {Decision and output};
 \end{tikzpicture}}
-\caption{End-to-end Multi-Agent Mamba-RL pipeline.}
+\caption{Hierarchical cooperative Multi-Agent Mamba-RL architecture. Solid arrows
+show the inference path; dashed red arrows show training-only policy feedback.}
 \label{fig:pipeline}
 \end{figure}
+
+The hierarchy assigns complementary responsibilities rather than making three
+agents vote independently. The two specialist policies extract preferences at
+different time scales, and the higher-level coordinator decides their
+state-dependent contribution to one deployed recommendation policy. During joint
 
 \subsection{Data and Chronological Splitting}
 
@@ -193,7 +238,7 @@ Argument & Interactions & Item text\\
 Argument & Interactions & Item text\\
 \midrule
 \endhead
-movielens-100k/1m/20m/25m/32m/latest-small & ratings & title and genres\\
+movielens & ratings & title and genres\\
 amazon-\textless category\textgreater & Amazon Reviews 2023 & title, category, features, description\\
 amazon:\textless exact-config\textgreater & exact HF config & review/meta join by \texttt{parent\_asin}\\
 yelp19, yelp23 & local Yelp JSON/table & name, categories, location, attributes\\
@@ -360,12 +405,12 @@ This GEMM avoids a $B\times N\times d$ expansion. Seen non-target items receive 
 
 \begin{align}
   \operatorname{rank}_u
-  &=\sum_{i=1}^N\mathbb I[z_{u,i}\geq z_{u,i^+}],\\
+  &=\sum_{i=1}^N\mathbb{I}[z_{u,i}\geq z_{u,i^+}],\\
   \operatorname{Recall@K}
-  &=\frac1{|\mathcal U|}\sum_u\mathbb I[\operatorname{rank}_u\leq K],\\
+  &=\frac1{|\mathcal U|}\sum_u\mathbb{I}[\operatorname{rank}_u\leq K],\\
   \operatorname{NDCG@K}
   &=\frac1{|\mathcal U|}\sum_u
-  \frac{\mathbb I[\operatorname{rank}_u\leq K]}
+  \frac{\mathbb{I}[\operatorname{rank}_u\leq K]}
        {\log_2(\operatorname{rank}_u+1)}.
 \end{align}
 The code reports $K=5,10$, users/s, and scores/s.
@@ -478,4 +523,3 @@ The pipeline combines Mamba item semantics, linear selective-state modeling, age
 \end{thebibliography}
 
 \end{document}
-
