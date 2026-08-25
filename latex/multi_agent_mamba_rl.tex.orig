@@ -360,12 +360,12 @@ This GEMM avoids a $B\times N\times d$ expansion. Seen non-target items receive 
 
 \begin{align}
   \operatorname{rank}_u
-  &=\sum_{i=1}^N\mathbb{I}[z_{u,i}\geq z_{u,i^+}],\\
+  &=\sum_{i=1}^N\mathbb I[z_{u,i}\geq z_{u,i^+}],\\
   \operatorname{Recall@K}
-  &=\frac1{|\mathcal U|}\sum_u\mathbb{I}[\operatorname{rank}_u\leq K],\\
+  &=\frac1{|\mathcal U|}\sum_u\mathbb I[\operatorname{rank}_u\leq K],\\
   \operatorname{NDCG@K}
   &=\frac1{|\mathcal U|}\sum_u
-  \frac{\mathbb{I}[\operatorname{rank}_u\leq K]}
+  \frac{\mathbb I[\operatorname{rank}_u\leq K]}
        {\log_2(\operatorname{rank}_u+1)}.
 \end{align}
 The code reports $K=5,10$, users/s, and scores/s.
@@ -478,3 +478,4 @@ The pipeline combines Mamba item semantics, linear selective-state modeling, age
 \end{thebibliography}
 
 \end{document}
+
