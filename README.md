@@ -21,13 +21,20 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-For the configured four-RTX-3090 environment, the requirements install
-`torch==2.7.0+cu118`. If a different Torch build is already installed, replace
+For an NVIDIA RTX PRO 6000 Blackwell environment, the requirements install
+`torch==2.7.1+cu128`. If a different Torch build is already installed, replace
 it with:
 
 ```bash
 pip uninstall -y torch torchvision torchaudio
-pip install torch==2.7.0+cu118 --index-url https://download.pytorch.org/whl/cu118
+pip install torch==2.7.1+cu128 --index-url https://download.pytorch.org/whl/cu128
+```
+
+If pip reports that an old `triton` package has no `RECORD` or `METADATA` file,
+repair that environment without attempting the broken uninstall:
+
+```bash
+bash repair_pro6000_env.sh
 ```
 
 Verify the installation before training:
