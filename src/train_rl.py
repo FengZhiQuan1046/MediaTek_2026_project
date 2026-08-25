@@ -96,7 +96,10 @@ class MambaRLPolicy(nn.Module):
             r=8,
             lora_alpha=16,
             lora_dropout=0.05,
-            target_modules=["in_proj", "x_proj", "dt_proj", "out_proj"],
+            # PEFT bypasses LoRA wrappers for Mamba's fused out_proj/conv1d
+            # kernel path.  Keep only projections whose forward path invokes
+            # the adapter: in_proj, x_proj, and dt_proj.
+            target_modules=["in_proj", "x_proj", "dt_proj"],
         )
         self.mamba = get_peft_model(self.mamba, lora)
         # Static base-Mamba item vectors; do not broadcast this large buffer each DDP step.
