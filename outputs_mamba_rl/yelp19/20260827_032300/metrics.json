@@ -1,0 +1,124 @@
+{
+  "valid": {
+    "recall@5": 0.09858686001775674,
+    "recall@10": 0.1429786919206866,
+    "ndcg@5": 0.06602334390557281,
+    "ndcg@10": 0.08032680637351716,
+    "users_per_second": 9458.240772501606,
+    "scores_per_second": 191642874.53242752
+  },
+  "test": {
+    "recall@5": 0.06939923054158034,
+    "recall@10": 0.09684817993489198,
+    "ndcg@5": 0.04656033383279413,
+    "ndcg@10": 0.05544664437123818,
+    "users_per_second": 9633.500301667069,
+    "scores_per_second": 195193983.11237815
+  },
+  "training": {
+    "monitor_metric": "recall@10",
+    "best_score": 0.1429786919206866,
+    "best_step": 0,
+    "best_stage": "resume",
+    "global_steps": 6000,
+    "stopped_early": true,
+    "target_recall_at_10": 0.0,
+    "target_achieved": true,
+    "experiment_note": "YELP19 SWEEP RUN 3/3. Fixed method, dataset normalization, leave-two-out split, Mamba item artifact and training-only catalog calibration are identical to Runs 1-2. This run branches from Run-2 best validation checkpoint. Hyperparameters only: batch=768, candidates=1024, extra epochs=0/2/10, lrs=1e-4/1e-4/1e-5, supervised=1.25, specialization=0.005, entropy=0.0005, popularity_alpha=0.2, transition_beta=5.0, seed=25253. Run-2 validation refinement reconfirmed these prior weights (Recall@10=0.142978692); held-out test was not used for configuration selection.",
+    "catalog_prior": {
+      "popularity_alpha": 0.2,
+      "transition_beta": 5.0,
+      "source": "train_histories_only"
+    },
+    "validation_history": [
+      {
+        "global_step": 0,
+        "stage": "resume",
+        "epoch": 0,
+        "recall@5": 0.09858686001775674,
+        "recall@10": 0.1429786919206866,
+        "ndcg@5": 0.06602334390557281,
+        "ndcg@10": 0.08032680637351716,
+        "users_per_second": 9310.534733122522,
+        "scores_per_second": 188650054.76252854
+      },
+      {
+        "global_step": 1000,
+        "stage": "coordinator",
+        "epoch": 1,
+        "recall@5": 0.09817993489197988,
+        "recall@10": 0.14260875998816216,
+        "ndcg@5": 0.06587705876072965,
+        "ndcg@10": 0.08022320132948443,
+        "users_per_second": 9166.466171563214,
+        "scores_per_second": 185730937.56821385
+      },
+      {
+        "global_step": 2000,
+        "stage": "coordinator",
+        "epoch": 2,
+        "recall@5": 0.09840189405149452,
+        "recall@10": 0.14253477360165728,
+        "ndcg@5": 0.06598657071502224,
+        "ndcg@10": 0.08022559779252693,
+        "users_per_second": 9181.329675659548,
+        "scores_per_second": 186032101.88821375
+      },
+      {
+        "global_step": 3000,
+        "stage": "joint",
+        "epoch": 1,
+        "recall@5": 0.098105948505475,
+        "recall@10": 0.14197987570287068,
+        "ndcg@5": 0.06575877788540314,
+        "ndcg@10": 0.0799122192549896,
+        "users_per_second": 9439.266669004539,
+        "scores_per_second": 191258421.24736995
+      },
+      {
+        "global_step": 4000,
+        "stage": "joint",
+        "epoch": 2,
+        "recall@5": 0.09825392127848476,
+        "recall@10": 0.14220183486238533,
+        "ndcg@5": 0.06604692342543116,
+        "ndcg@10": 0.08023278266588377,
+        "users_per_second": 9429.88176995688,
+        "scores_per_second": 191068264.4228663
+      },
+      {
+        "global_step": 5000,
+        "stage": "joint",
+        "epoch": 3,
+        "recall@5": 0.09851287363125184,
+        "recall@10": 0.14283071914767684,
+        "ndcg@5": 0.06587736470419192,
+        "ndcg@10": 0.08017856547662441,
+        "users_per_second": 9475.771645704579,
+        "scores_per_second": 191998085.0852662
+      },
+      {
+        "global_step": 6000,
+        "stage": "joint",
+        "epoch": 4,
+        "recall@5": 0.09836490085824208,
+        "recall@10": 0.14212784847588045,
+        "ndcg@5": 0.06600300184048362,
+        "ndcg@10": 0.08012544413789838,
+        "users_per_second": 9442.409950720748,
+        "scores_per_second": 191322110.4215038
+      },
+      {
+        "global_step": 6000,
+        "stage": "final",
+        "epoch": 0,
+        "recall@5": 0.09836490085824208,
+        "recall@10": 0.14212784847588045,
+        "ndcg@5": 0.06600300184048362,
+        "ndcg@10": 0.08012544413789838,
+        "users_per_second": 9438.253238328392,
+        "scores_per_second": 191237887.11500987
+      }
+    ]
+  }
+}

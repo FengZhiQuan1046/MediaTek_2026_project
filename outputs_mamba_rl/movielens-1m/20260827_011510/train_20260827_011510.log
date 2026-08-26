@@ -1,0 +1,89 @@
+2026-08-27 01:15:10,453 | INFO | run_id=20260827_011510 dataset=movielens-1m device=cuda
+2026-08-27 01:15:10,453 | INFO | EXPERIMENT_NOTE MOVIELENS SWEEP RUN 2/3. Fixed method and split identical to Run 1; common specialist initialization identical. Hyperparameters only: batch=512, policy candidates=512, extra epochs=1/3/16, lrs=2e-4/2e-4/7.5e-5, supervised=0.75, entropy=0.0025, popularity_alpha=-0.5, transition_beta=2.0. Prior coefficients were selected exclusively by Run-1 validation grid (best validation Recall@10=0.217931720); no Run-1 test metric was used for selection.
+2026-08-27 01:15:10,453 | INFO | EXPERIMENT_CONFIG {"batch_size": 512, "cache_dir": "/workspace/P78123011/cache", "candidates": 512, "coordinator_epochs": 3, "coordinator_lr": 0.0002, "data_path": null, "dataset": "movielens-1m", "device": "cuda", "dim": 128, "early_stopping_patience": 4, "entropy_coef": 0.0025, "eval_batch_size": 1024, "experiment_note": "MOVIELENS SWEEP RUN 2/3. Fixed method and split identical to Run 1; common specialist initialization identical. Hyperparameters only: batch=512, policy candidates=512, extra epochs=1/3/16, lrs=2e-4/2e-4/7.5e-5, supervised=0.75, entropy=0.0025, popularity_alpha=-0.5, transition_beta=2.0. Prior coefficients were selected exclusively by Run-1 validation grid (best validation Recall@10=0.217931720); no Run-1 test metric was used for selection.", "full_catalog_supervised": true, "generate_reasons": false, "item_vector_artifact": "/workspace/P78123011/cache/mamba_multi_agent/movielens-1m_3533_d3193a313f17.pt", "joint_lr": 7.5e-05, "lora_alpha": 16.0, "lora_dropout": 0.05, "lora_rank": 8, "lr_patience": 1, "max_events": null, "max_history": 100, "max_transitions": 500000, "min_rating": 4.0, "min_user_events": 5, "monitor_metric": "recall@10", "output_dir": "/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl", "popularity_alpha": -0.5, "reason_count": 0, "reason_max_new_tokens": 40, "resume_checkpoint": "/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt", "rl_epochs": 16, "seed": 25252, "short_window": 10, "skip_mamba": false, "specialist_epochs": 1, "specialist_lr": 0.0002, "specialization_coef": 0.01, "supervised_coef": 0.75, "target_recall_at_10": 0.15, "transition_beta": 2.0, "validate_every_steps": 1000}
+2026-08-27 01:15:11,224 | INFO | users=6034 items=3533 train_interactions=563204
+2026-08-27 01:15:12,761 | INFO | CATALOG_PRIORS popularity_alpha=-0.500000 transition_beta=2.000000 source=train_histories_only enabled=True
+2026-08-27 01:15:12,770 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/movielens-1m_3533_d3193a313f17.pt fingerprint=d3193a313f17
+2026-08-27 01:15:12,779 | INFO | RESUME_CHECKPOINT path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt
+2026-08-27 01:15:12,779 | INFO | agent_parameters={'long': 8321, 'short': 8321, 'coordinator': 7185, 'shared_projection': 327680}
+2026-08-27 01:15:13,300 | INFO | training_transitions=500000
+2026-08-27 01:15:13,300 | INFO | schedule specialist_epochs=1 coordinator_epochs=3 rl_epochs=16 validate_every_steps=1000 monitor=recall@10 early_stopping_patience=4
+2026-08-27 01:15:14,220 | INFO | VALID_STEP step=0 stage=resume epoch=0 recall@10=0.197050 recall@10=0.197050 improved=True
+2026-08-27 01:15:14,222 | INFO | BEST_CHECKPOINT step=0 stage=resume recall@10=0.197050 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:16:23,398 | INFO | stage=specialists epoch=1 loss=12.983388 steps=977 transitions/s=7287.03
+2026-08-27 01:16:24,904 | INFO | VALID_STEP step=1000 stage=coordinator epoch=1 recall@10=0.205005 recall@10=0.205005 improved=True
+2026-08-27 01:16:24,907 | INFO | BEST_CHECKPOINT step=1000 stage=coordinator recall@10=0.205005 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:16:24,907 | INFO | LEARNING_RATE step=1000 stage=coordinator lr=0.0002
+2026-08-27 01:16:52,189 | INFO | stage=coordinator epoch=1 loss=6.365111 steps=977 transitions/s=17888.13
+2026-08-27 01:16:54,342 | INFO | VALID_STEP step=2000 stage=coordinator epoch=2 recall@10=0.207988 recall@10=0.207988 improved=True
+2026-08-27 01:16:54,348 | INFO | BEST_CHECKPOINT step=2000 stage=coordinator recall@10=0.207988 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:16:54,348 | INFO | LEARNING_RATE step=2000 stage=coordinator lr=0.0002
+2026-08-27 01:17:21,027 | INFO | stage=coordinator epoch=2 loss=6.349544 steps=977 transitions/s=17857.04
+2026-08-27 01:17:23,865 | INFO | VALID_STEP step=3000 stage=coordinator epoch=3 recall@10=0.208320 recall@10=0.208320 improved=True
+2026-08-27 01:17:23,867 | INFO | BEST_CHECKPOINT step=3000 stage=coordinator recall@10=0.208320 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:17:23,867 | INFO | LEARNING_RATE step=3000 stage=coordinator lr=0.0002
+2026-08-27 01:17:49,834 | INFO | stage=coordinator epoch=3 loss=6.338995 steps=977 transitions/s=17876.22
+2026-08-27 01:17:58,296 | INFO | VALID_STEP step=4000 stage=joint epoch=1 recall@10=0.205336 recall@10=0.205336 improved=False
+2026-08-27 01:17:58,296 | INFO | LEARNING_RATE step=4000 stage=joint lr=7.5e-05
+2026-08-27 01:19:09,404 | INFO | stage=joint epoch=1 loss=4.585916 steps=977 transitions/s=6350.68
+2026-08-27 01:19:19,438 | INFO | VALID_STEP step=5000 stage=joint epoch=2 recall@10=0.206662 recall@10=0.206662 improved=False
+2026-08-27 01:19:19,438 | INFO | LEARNING_RATE step=5000 stage=joint lr=7.5e-05
+2026-08-27 01:20:28,489 | INFO | stage=joint epoch=2 loss=4.544024 steps=977 transitions/s=6389.72
+2026-08-27 01:20:40,489 | INFO | VALID_STEP step=6000 stage=joint epoch=3 recall@10=0.212131 recall@10=0.212131 improved=True
+2026-08-27 01:20:40,543 | INFO | BEST_CHECKPOINT step=6000 stage=joint recall@10=0.212131 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:20:40,544 | INFO | LEARNING_RATE step=6000 stage=joint lr=7.5e-05
+2026-08-27 01:21:47,126 | INFO | stage=joint epoch=3 loss=4.501088 steps=977 transitions/s=6426.11
+2026-08-27 01:22:00,747 | INFO | VALID_STEP step=7000 stage=joint epoch=4 recall@10=0.215280 recall@10=0.215280 improved=True
+2026-08-27 01:22:00,801 | INFO | BEST_CHECKPOINT step=7000 stage=joint recall@10=0.215280 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:22:00,801 | INFO | LEARNING_RATE step=7000 stage=joint lr=7.5e-05
+2026-08-27 01:23:05,591 | INFO | stage=joint epoch=4 loss=4.462407 steps=977 transitions/s=6440.42
+2026-08-27 01:23:21,100 | INFO | VALID_STEP step=8000 stage=joint epoch=5 recall@10=0.215280 recall@10=0.215280 improved=False
+2026-08-27 01:23:21,100 | INFO | LEARNING_RATE step=8000 stage=joint lr=7.5e-05
+2026-08-27 01:24:24,355 | INFO | stage=joint epoch=5 loss=4.428009 steps=977 transitions/s=6415.77
+2026-08-27 01:24:41,595 | INFO | VALID_STEP step=9000 stage=joint epoch=6 recall@10=0.218595 recall@10=0.218595 improved=True
+2026-08-27 01:24:41,600 | INFO | BEST_CHECKPOINT step=9000 stage=joint recall@10=0.218595 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:24:41,600 | INFO | LEARNING_RATE step=9000 stage=joint lr=7.5e-05
+2026-08-27 01:25:42,999 | INFO | stage=joint epoch=6 loss=4.395014 steps=977 transitions/s=6425.71
+2026-08-27 01:26:02,036 | INFO | VALID_STEP step=10000 stage=joint epoch=7 recall@10=0.220086 recall@10=0.220086 improved=True
+2026-08-27 01:26:02,042 | INFO | BEST_CHECKPOINT step=10000 stage=joint recall@10=0.220086 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:26:02,042 | INFO | LEARNING_RATE step=10000 stage=joint lr=7.5e-05
+2026-08-27 01:27:01,267 | INFO | stage=joint epoch=7 loss=4.365171 steps=977 transitions/s=6456.72
+2026-08-27 01:27:22,131 | INFO | VALID_STEP step=11000 stage=joint epoch=8 recall@10=0.220252 recall@10=0.220252 improved=True
+2026-08-27 01:27:22,186 | INFO | BEST_CHECKPOINT step=11000 stage=joint recall@10=0.220252 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:27:22,186 | INFO | LEARNING_RATE step=11000 stage=joint lr=7.5e-05
+2026-08-27 01:28:19,547 | INFO | stage=joint epoch=8 loss=4.338250 steps=977 transitions/s=6455.54
+2026-08-27 01:28:42,193 | INFO | VALID_STEP step=12000 stage=joint epoch=9 recall@10=0.221081 recall@10=0.221081 improved=True
+2026-08-27 01:28:42,198 | INFO | BEST_CHECKPOINT step=12000 stage=joint recall@10=0.221081 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:28:42,198 | INFO | LEARNING_RATE step=12000 stage=joint lr=7.5e-05
+2026-08-27 01:29:37,773 | INFO | stage=joint epoch=9 loss=4.313386 steps=977 transitions/s=6460.01
+2026-08-27 01:30:02,270 | INFO | VALID_STEP step=13000 stage=joint epoch=10 recall@10=0.223235 recall@10=0.223235 improved=True
+2026-08-27 01:30:02,326 | INFO | BEST_CHECKPOINT step=13000 stage=joint recall@10=0.223235 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:30:02,326 | INFO | LEARNING_RATE step=13000 stage=joint lr=7.5e-05
+2026-08-27 01:30:56,082 | INFO | stage=joint epoch=10 loss=4.289492 steps=977 transitions/s=6453.04
+2026-08-27 01:31:22,427 | INFO | VALID_STEP step=14000 stage=joint epoch=11 recall@10=0.221412 recall@10=0.221412 improved=False
+2026-08-27 01:31:22,427 | INFO | LEARNING_RATE step=14000 stage=joint lr=7.5e-05
+2026-08-27 01:32:14,509 | INFO | stage=joint epoch=11 loss=4.264326 steps=977 transitions/s=6443.27
+2026-08-27 01:32:42,704 | INFO | VALID_STEP step=15000 stage=joint epoch=12 recall@10=0.223401 recall@10=0.223401 improved=True
+2026-08-27 01:32:42,758 | INFO | BEST_CHECKPOINT step=15000 stage=joint recall@10=0.223401 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:32:42,758 | INFO | LEARNING_RATE step=15000 stage=joint lr=7.5e-05
+2026-08-27 01:33:33,204 | INFO | stage=joint epoch=12 loss=4.246774 steps=977 transitions/s=6421.29
+2026-08-27 01:34:03,339 | INFO | VALID_STEP step=16000 stage=joint epoch=13 recall@10=0.226715 recall@10=0.226715 improved=True
+2026-08-27 01:34:03,393 | INFO | BEST_CHECKPOINT step=16000 stage=joint recall@10=0.226715 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:34:03,393 | INFO | LEARNING_RATE step=16000 stage=joint lr=7.5e-05
+2026-08-27 01:34:52,141 | INFO | stage=joint epoch=13 loss=4.225664 steps=977 transitions/s=6401.55
+2026-08-27 01:35:24,177 | INFO | VALID_STEP step=17000 stage=joint epoch=14 recall@10=0.226550 recall@10=0.226550 improved=False
+2026-08-27 01:35:24,177 | INFO | LEARNING_RATE step=17000 stage=joint lr=7.5e-05
+2026-08-27 01:36:11,295 | INFO | stage=joint epoch=14 loss=4.211179 steps=977 transitions/s=6383.75
+2026-08-27 01:36:44,785 | INFO | VALID_STEP step=18000 stage=joint epoch=15 recall@10=0.228041 recall@10=0.228041 improved=True
+2026-08-27 01:36:44,790 | INFO | BEST_CHECKPOINT step=18000 stage=joint recall@10=0.228041 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510/best_validation.pt
+2026-08-27 01:36:44,790 | INFO | LEARNING_RATE step=18000 stage=joint lr=7.5e-05
+2026-08-27 01:37:29,103 | INFO | stage=joint epoch=15 loss=4.193845 steps=977 transitions/s=6495.03
+2026-08-27 01:38:04,536 | INFO | VALID_STEP step=19000 stage=joint epoch=16 recall@10=0.227544 recall@10=0.227544 improved=False
+2026-08-27 01:38:04,536 | INFO | LEARNING_RATE step=19000 stage=joint lr=7.5e-05
+2026-08-27 01:38:47,044 | INFO | stage=joint epoch=16 loss=4.178382 steps=977 transitions/s=6483.79
+2026-08-27 01:38:47,758 | INFO | VALID_STEP step=19540 stage=final epoch=0 recall@10=0.227378 recall@10=0.227378 improved=False
+2026-08-27 01:38:47,758 | INFO | RESTORE_BEST step=18000 stage=joint recall@10=0.228041
+2026-08-27 01:38:49,180 | INFO | VALID_BEST {"ndcg@10": 0.12994122528895505, "ndcg@5": 0.10862244759958865, "recall@10": 0.22804110043089162, "recall@5": 0.16208153795160757, "scores_per_second": 29967993.136697203, "users_per_second": 8482.307709226494}
+2026-08-27 01:38:49,181 | INFO | TEST_FINAL {"ndcg@10": 0.12475993453883398, "ndcg@5": 0.10257322913888356, "recall@10": 0.21793172025190588, "recall@5": 0.14898906198210143, "scores_per_second": 30034754.24720655, "users_per_second": 8501.204145826932}
+2026-08-27 01:38:49,181 | INFO | TARGET_RESULT metric=recall@10 target=>0.150000 actual=0.217932 achieved=True
+2026-08-27 01:38:49,523 | INFO | outputs=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260827_011510

@@ -1,0 +1,268 @@
+{
+  "selection_split": "valid",
+  "test_metrics_used": false,
+  "checkpoint": "/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/yelp19/20260827_030443/best_validation.pt",
+  "item_vector_artifact": "/workspace/P78123011/cache/mamba_multi_agent/yelp19_20262_c7bd07bf1de3.pt",
+  "best": {
+    "popularity_alpha": 0.2,
+    "transition_beta": 5.0,
+    "recall@5": 0.09858686001775674,
+    "recall@10": 0.1429786919206866,
+    "ndcg@5": 0.06602334390557281,
+    "ndcg@10": 0.08032680637351716,
+    "users_per_second": 9596.27814021957,
+    "scores_per_second": 194439787.67712894
+  },
+  "results": [
+    {
+      "popularity_alpha": 0.2,
+      "transition_beta": 5.0,
+      "recall@5": 0.09858686001775674,
+      "recall@10": 0.1429786919206866,
+      "ndcg@5": 0.06602334390557281,
+      "ndcg@10": 0.08032680637351716,
+      "users_per_second": 9596.27814021957,
+      "scores_per_second": 194439787.67712894
+    },
+    {
+      "popularity_alpha": 0.4,
+      "transition_beta": 7.0,
+      "recall@5": 0.09877182598401894,
+      "recall@10": 0.14275673276117196,
+      "ndcg@5": 0.06600215231112808,
+      "ndcg@10": 0.08020455225503949,
+      "users_per_second": 9591.638251034763,
+      "scores_per_second": 194345774.24246636
+    },
+    {
+      "popularity_alpha": 0.4,
+      "transition_beta": 8.0,
+      "recall@5": 0.09851287363125184,
+      "recall@10": 0.14264575318141462,
+      "ndcg@5": 0.065883547147021,
+      "ndcg@10": 0.08013268778683272,
+      "users_per_second": 9595.416405615222,
+      "scores_per_second": 194422327.21057564
+    },
+    {
+      "popularity_alpha": 0.4,
+      "transition_beta": 6.0,
+      "recall@5": 0.09877182598401894,
+      "recall@10": 0.1424607872151524,
+      "ndcg@5": 0.0661206052796521,
+      "ndcg@10": 0.08022633894338661,
+      "users_per_second": 9595.115548985985,
+      "scores_per_second": 194416231.25355405
+    },
+    {
+      "popularity_alpha": 0.3,
+      "transition_beta": 5.0,
+      "recall@5": 0.09851287363125184,
+      "recall@10": 0.1424607872151524,
+      "ndcg@5": 0.06598906984128837,
+      "ndcg@10": 0.08017002079182738,
+      "users_per_second": 9584.029887986224,
+      "scores_per_second": 194191613.59037688
+    },
+    {
+      "popularity_alpha": 0.2,
+      "transition_beta": 6.0,
+      "recall@5": 0.09795797573246523,
+      "recall@10": 0.14238680082864752,
+      "ndcg@5": 0.06564723397543107,
+      "ndcg@10": 0.07998879084963882,
+      "users_per_second": 9590.484850035396,
+      "scores_per_second": 194322404.0314172
+    },
+    {
+      "popularity_alpha": 0.2,
+      "transition_beta": 7.0,
+      "recall@5": 0.09769902337969813,
+      "recall@10": 0.14231281444214264,
+      "ndcg@5": 0.06540425467963895,
+      "ndcg@10": 0.07980069361977692,
+      "users_per_second": 9604.224435927445,
+      "scores_per_second": 194600795.52076188
+    },
+    {
+      "popularity_alpha": 0.1,
+      "transition_beta": 5.0,
+      "recall@5": 0.09766203018644569,
+      "recall@10": 0.1422758212488902,
+      "ndcg@5": 0.06552562398930278,
+      "ndcg@10": 0.07991778388394516,
+      "users_per_second": 9595.646302587618,
+      "scores_per_second": 194426985.38303033
+    },
+    {
+      "popularity_alpha": 0.3,
+      "transition_beta": 7.0,
+      "recall@5": 0.09832790766498964,
+      "recall@10": 0.14212784847588045,
+      "ndcg@5": 0.06581001791173659,
+      "ndcg@10": 0.07996054435136156,
+      "users_per_second": 9582.082732761197,
+      "scores_per_second": 194152160.33120736
+    },
+    {
+      "popularity_alpha": 0.3,
+      "transition_beta": 6.0,
+      "recall@5": 0.09843888724474696,
+      "recall@10": 0.14205386208937557,
+      "ndcg@5": 0.06595891366593405,
+      "ndcg@10": 0.08006751152776903,
+      "users_per_second": 9586.830330728824,
+      "scores_per_second": 194248356.16122743
+    },
+    {
+      "popularity_alpha": 0.2,
+      "transition_beta": 8.0,
+      "recall@5": 0.09762503699319325,
+      "recall@10": 0.1420168688961231,
+      "ndcg@5": 0.06526305902000713,
+      "ndcg@10": 0.07958052778568589,
+      "users_per_second": 9583.686297968274,
+      "scores_per_second": 194184651.76943317
+    },
+    {
+      "popularity_alpha": 0.1,
+      "transition_beta": 6.0,
+      "recall@5": 0.0972181118674164,
+      "recall@10": 0.14194288250961823,
+      "ndcg@5": 0.06518932967963534,
+      "ndcg@10": 0.07962152089335997,
+      "users_per_second": 9599.328670468813,
+      "scores_per_second": 194501597.5210391
+    },
+    {
+      "popularity_alpha": 0.2,
+      "transition_beta": 4.0,
+      "recall@5": 0.098105948505475,
+      "recall@10": 0.1419058893163658,
+      "ndcg@5": 0.06577344143944543,
+      "ndcg@10": 0.07986447782197553,
+      "users_per_second": 9586.667020911587,
+      "scores_per_second": 194245047.1777106
+    },
+    {
+      "popularity_alpha": 0.3,
+      "transition_beta": 8.0,
+      "recall@5": 0.09803196211897011,
+      "recall@10": 0.1418319029298609,
+      "ndcg@5": 0.0656192457933474,
+      "ndcg@10": 0.07977432716383176,
+      "users_per_second": 9592.487919819023,
+      "scores_per_second": 194362990.23137304
+    },
+    {
+      "popularity_alpha": 0.1,
+      "transition_beta": 4.0,
+      "recall@5": 0.09777300976620301,
+      "recall@10": 0.14179490973660847,
+      "ndcg@5": 0.06557889583019788,
+      "ndcg@10": 0.07979605768728129,
+      "users_per_second": 9596.3917714485,
+      "scores_per_second": 194442090.0730895
+    },
+    {
+      "popularity_alpha": 0.4,
+      "transition_beta": 5.0,
+      "recall@5": 0.09817993489197988,
+      "recall@10": 0.141757916543356,
+      "ndcg@5": 0.06579148137876359,
+      "ndcg@10": 0.07982836499232518,
+      "users_per_second": 9594.192166346527,
+      "scores_per_second": 194397521.67451334
+    },
+    {
+      "popularity_alpha": 0.1,
+      "transition_beta": 7.0,
+      "recall@5": 0.09699615270790174,
+      "recall@10": 0.141757916543356,
+      "ndcg@5": 0.06493611948205791,
+      "ndcg@10": 0.07937623072249116,
+      "users_per_second": 9598.005593628477,
+      "scores_per_second": 194474789.3381002
+    },
+    {
+      "popularity_alpha": 0.1,
+      "transition_beta": 8.0,
+      "recall@5": 0.0967741935483871,
+      "recall@10": 0.1416469369635987,
+      "ndcg@5": 0.06469468119300376,
+      "ndcg@10": 0.07916262665596471,
+      "users_per_second": 9604.280547663799,
+      "scores_per_second": 194601932.4567639
+    },
+    {
+      "popularity_alpha": 0.0,
+      "transition_beta": 5.0,
+      "recall@5": 0.0969591595146493,
+      "recall@10": 0.14124001183782184,
+      "ndcg@5": 0.06495851960962572,
+      "ndcg@10": 0.07923380649100398,
+      "users_per_second": 9595.511384585387,
+      "scores_per_second": 194424251.6744691
+    },
+    {
+      "popularity_alpha": 0.0,
+      "transition_beta": 4.0,
+      "recall@5": 0.09692216632139686,
+      "recall@10": 0.1412030186445694,
+      "ndcg@5": 0.065034719852697,
+      "ndcg@10": 0.07932603687321374,
+      "users_per_second": 9342.143483142157,
+      "scores_per_second": 189290511.25542638
+    },
+    {
+      "popularity_alpha": 0.0,
+      "transition_beta": 6.0,
+      "recall@5": 0.09647824800236757,
+      "recall@10": 0.14112903225806453,
+      "ndcg@5": 0.06467392826334334,
+      "ndcg@10": 0.07906418518400574,
+      "users_per_second": 9597.113185502018,
+      "scores_per_second": 194456707.36464188
+    },
+    {
+      "popularity_alpha": 0.0,
+      "transition_beta": 7.0,
+      "recall@5": 0.0963302752293578,
+      "recall@10": 0.14098105948505474,
+      "ndcg@5": 0.06443235062042896,
+      "ndcg@10": 0.07881523963790492,
+      "users_per_second": 9593.413777407974,
+      "scores_per_second": 194381749.95784038
+    },
+    {
+      "popularity_alpha": 0.0,
+      "transition_beta": 8.0,
+      "recall@5": 0.09614530926309559,
+      "recall@10": 0.14087007990529743,
+      "ndcg@5": 0.06424839653958933,
+      "ndcg@10": 0.07864988651032911,
+      "users_per_second": 9586.243920290268,
+      "scores_per_second": 194236474.3129214
+    },
+    {
+      "popularity_alpha": 0.3,
+      "transition_beta": 4.0,
+      "recall@5": 0.09714412548091152,
+      "recall@10": 0.13916839301568512,
+      "ndcg@5": 0.0652322505274691,
+      "ndcg@10": 0.07878200638819884,
+      "users_per_second": 9579.00411950137,
+      "scores_per_second": 194089781.46933675
+    },
+    {
+      "popularity_alpha": 0.4,
+      "transition_beta": 4.0,
+      "recall@5": 0.09559041136430897,
+      "recall@10": 0.1355060668836934,
+      "ndcg@5": 0.06442220057916204,
+      "ndcg@10": 0.07728608813854533,
+      "users_per_second": 9601.66587625357,
+      "scores_per_second": 194548953.9846498
+    }
+  ]
+}
