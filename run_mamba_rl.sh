@@ -22,6 +22,11 @@ EARLY_STOPPING_PATIENCE="${EARLY_STOPPING_PATIENCE:-12}"
 LR_PATIENCE="${LR_PATIENCE:-3}"
 MAX_TRANSITIONS="${MAX_TRANSITIONS:-500000}"
 SEED="${SEED:-25252}"
+POPULARITY_ALPHA="${POPULARITY_ALPHA:-0.0}"
+TRANSITION_BETA="${TRANSITION_BETA:-0.0}"
+TARGET_RECALL_AT_10="${TARGET_RECALL_AT_10:-0.15}"
+EXPERIMENT_NOTE="${EXPERIMENT_NOTE:-}"
+RESUME_CHECKPOINT="${RESUME_CHECKPOINT:-}"
 
 if [[ $# -gt 3 || ! "$CUDA_ID" =~ ^[0-9]+$ ]]; then
   echo "Usage: bash run_mamba_rl.sh DATASET [CUDA_ID] [DATA_PATH]" >&2
@@ -60,9 +65,17 @@ ARGS=(
   --lr-patience "$LR_PATIENCE"
   --max-transitions "$MAX_TRANSITIONS"
   --seed "$SEED"
+  --popularity-alpha "$POPULARITY_ALPHA"
+  --transition-beta "$TRANSITION_BETA"
+  --target-recall-at-10 "$TARGET_RECALL_AT_10"
+  --experiment-note "$EXPERIMENT_NOTE"
   --device cuda
   --generate-reasons
 )
+if [[ -n "$RESUME_CHECKPOINT" ]]; then
+  ARGS+=(--resume-checkpoint "$RESUME_CHECKPOINT")
+fi
+
 if [[ -n "$DATA_PATH" ]]; then
   ARGS+=(--data-path "$DATA_PATH")
 fi

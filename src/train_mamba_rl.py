@@ -49,6 +49,13 @@ class TrainingMonitor:
     history: list[dict[str, object]] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class CatalogPriors:
+    """Training-only catalog statistics used to complement semantic policy scores."""
+    popularity: torch.Tensor
+    transitions: dict[int, dict[int, float]]
+
+
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -120,6 +127,25 @@ def candidate_slates(targets: torch.Tensor, num_items: int, count: int) -> torch
     return torch.cat((targets.unsqueeze(1), negatives), dim=1)
 
 
+def build_catalog_priors(data, device: str) -> CatalogPriors:
+    """Build popularity and first-order transition priors from training histories only."""
+    popularity = torch.zeros(data.num_items, dtype=torch.float32)
+    transition_counts: dict[int, dict[int, int]] = {}
+    for history in data.train_by_user.values():
+        for item in history:
+            popularity[item] += 1
+        for previous, following in zip(history, history[1:]):
+            row = transition_counts.setdefault(previous, {})
+            row[following] = row.get(following, 0) + 1
+    popularity = torch.log1p(popularity)
+    popularity = (popularity - popularity.mean()) / popularity.std().clamp_min(1e-6)
+    transitions = {
+        previous: {following: math.log1p(count) for following, count in row.items()}
+        for previous, row in transition_counts.items()
+    }
+    return CatalogPriors(popularity.to(device), transitions)
+
+
 def amp_context(device: str):
     return torch.autocast(device_type="cuda", dtype=torch.float16) if device.startswith("cuda") else nullcontext()
 
@@ -173,7 +199,8 @@ def record_validation(model, metrics, stage, epoch, monitor, logger) -> bool:
 def train_stage(model, data, transitions, stage, epochs, batch_size, candidates, max_history,
                 learning_rate, entropy_coef, supervised_coef, specialization_coef, device, logger,
                 monitor, validate_every_steps, eval_batch_size, early_stopping_patience,
-                lr_patience, full_catalog_supervised):
+                lr_patience, full_catalog_supervised, catalog_priors, popularity_alpha,
+                transition_beta):
     if epochs == 0:
         return []
     model.set_stage(stage)
@@ -260,7 +287,9 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
             if validate_every_steps > 0 and monitor.global_step % validate_every_steps == 0:
                 validation_started = time.perf_counter()
                 valid_metrics, _ = evaluate(
-                    model, data, "valid", eval_batch_size, max_history, device
+                    model, data, "valid", eval_batch_size, max_history, device,
+                    priors=catalog_priors, popularity_alpha=popularity_alpha,
+                    transition_beta=transition_beta,
                 )
                 validation_seconds += time.perf_counter() - validation_started
                 record_validation(model, valid_metrics, stage, epoch, monitor, logger)
@@ -300,7 +329,11 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
 
 
 @torch.inference_mode()
-def evaluate(model, data, split, batch_size, max_history, device, sample_count=0):
+def evaluate(
+    model, data, split, batch_size, max_history, device, sample_count=0,
+    priors: CatalogPriors | None = None, popularity_alpha: float = 0.0,
+    transition_beta: float = 0.0,
+):
     model.eval()
     targets, users = (data.valid_target if split == "valid" else data.test_target), sorted(data.test_target)
     totals = {"recall@5": 0.0, "recall@10": 0.0, "ndcg@5": 0.0, "ndcg@10": 0.0}
@@ -317,7 +350,17 @@ def evaluate(model, data, split, batch_size, max_history, device, sample_count=0
             output = model.full_catalog_scores(histories, lengths, projected_items)
         scores = output["coordinator"].float()
         gold = torch.tensor([targets[user] for user in batch_users], device=device)
+        if priors is not None:
+            scores += popularity_alpha * priors.popularity.unsqueeze(0)
         for row, history in enumerate(raw_histories):
+            if priors is not None and transition_beta != 0.0:
+                transition_row = priors.transitions.get(history[-1], {})
+                if transition_row:
+                    item_ids = list(transition_row)
+                    values = torch.tensor(
+                        list(transition_row.values()), device=device, dtype=scores.dtype
+                    )
+                    scores[row, item_ids] += transition_beta * values
             seen = set(history) - {int(gold[row])}
             if seen:
                 scores[row, list(seen)] = -torch.inf
@@ -424,6 +467,8 @@ def parse_args():
     parser.add_argument("--supervised-coef", type=float, default=0.1)
     parser.add_argument("--specialization-coef", type=float, default=0.01)
     parser.add_argument("--full-catalog-supervised", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--popularity-alpha", type=float, default=0.0)
+    parser.add_argument("--transition-beta", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=25252)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--skip-mamba", action="store_true")
@@ -463,6 +508,16 @@ def main():
     )
     logger.info("users=%d items=%d train_interactions=%d",
                 data.num_users, data.num_items, sum(map(len, data.train_by_user.values())))
+    catalog_priors = (
+        build_catalog_priors(data, args.device)
+        if args.popularity_alpha != 0.0 or args.transition_beta != 0.0
+        else None
+    )
+    logger.info(
+        "CATALOG_PRIORS popularity_alpha=%.6f transition_beta=%.6f "
+        "source=train_histories_only enabled=%s",
+        args.popularity_alpha, args.transition_beta, catalog_priors is not None,
+    )
 
     fingerprint = hashlib.sha1("\n".join(data.item_texts).encode("utf-8")).hexdigest()[:12]
     artifact = (
@@ -508,7 +563,9 @@ def main():
     )
     if args.resume_checkpoint:
         resumed_metrics, _ = evaluate(
-            model, data, "valid", args.eval_batch_size, args.max_history, args.device
+            model, data, "valid", args.eval_batch_size, args.max_history, args.device,
+            priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+            transition_beta=args.transition_beta,
         )
         record_validation(model, resumed_metrics, "resume", 0, monitor, logger)
     common = dict(
@@ -519,6 +576,8 @@ def main():
         validate_every_steps=args.validate_every_steps, eval_batch_size=args.eval_batch_size,
         early_stopping_patience=args.early_stopping_patience, lr_patience=args.lr_patience,
         full_catalog_supervised=args.full_catalog_supervised,
+        catalog_priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+        transition_beta=args.transition_beta,
     )
     losses = {
         "specialists": train_stage(stage="specialists", epochs=args.specialist_epochs,
@@ -530,7 +589,9 @@ def main():
     }
 
     final_current_metrics, _ = evaluate(
-        model, data, "valid", args.eval_batch_size, args.max_history, args.device
+        model, data, "valid", args.eval_batch_size, args.max_history, args.device,
+        priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+        transition_beta=args.transition_beta,
     )
     record_validation(model, final_current_metrics, "final", 0, monitor, logger)
     if monitor.best_state is None:
@@ -541,10 +602,14 @@ def main():
         monitor.best_step, monitor.best_stage, monitor.metric_name, monitor.best_score,
     )
     valid_metrics, _ = evaluate(
-        model, data, "valid", args.eval_batch_size, args.max_history, args.device
+        model, data, "valid", args.eval_batch_size, args.max_history, args.device,
+        priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+        transition_beta=args.transition_beta,
     )
     test_metrics, samples = evaluate(
-        model, data, "test", args.eval_batch_size, args.max_history, args.device, args.reason_count
+        model, data, "test", args.eval_batch_size, args.max_history, args.device, args.reason_count,
+        priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+        transition_beta=args.transition_beta,
     )
     logger.info("VALID_BEST %s", json.dumps(valid_metrics, sort_keys=True))
     logger.info("TEST_FINAL %s", json.dumps(test_metrics, sort_keys=True))
@@ -563,6 +628,11 @@ def main():
         "target_recall_at_10": args.target_recall_at_10,
         "target_achieved": target_achieved,
         "experiment_note": args.experiment_note,
+        "catalog_prior": {
+            "popularity_alpha": args.popularity_alpha,
+            "transition_beta": args.transition_beta,
+            "source": "train_histories_only",
+        },
         "validation_history": monitor.history,
     }
     checkpoint = {
