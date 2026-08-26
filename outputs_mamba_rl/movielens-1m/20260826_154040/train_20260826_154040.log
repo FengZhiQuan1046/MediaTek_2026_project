@@ -1,0 +1,24 @@
+2026-08-26 15:40:40,544 | INFO | run_id=20260826_154040 dataset=movielens-1m device=cuda
+2026-08-26 15:40:41,358 | INFO | users=6034 items=3533 train_interactions=563204
+2026-08-26 15:40:41,481 | INFO | agent_parameters={'long': 8321, 'short': 8321, 'coordinator': 7185, 'shared_projection': 327680}
+2026-08-26 15:40:42,001 | INFO | training_transitions=500000
+2026-08-26 15:40:42,001 | INFO | schedule specialist_epochs=3 coordinator_epochs=2 rl_epochs=20 validate_every_steps=1000 monitor=ndcg@10 early_stopping_patience=12
+2026-08-26 15:41:43,988 | INFO | VALID_STEP step=1000 stage=specialists epoch=1 ndcg@10=0.034093 recall@10=0.063639 improved=True
+2026-08-26 15:41:43,990 | INFO | BEST_CHECKPOINT step=1000 stage=specialists ndcg@10=0.034093 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt
+2026-08-26 15:42:46,011 | INFO | VALID_STEP step=2000 stage=specialists epoch=1 ndcg@10=0.038605 recall@10=0.074909 improved=True
+2026-08-26 15:42:46,014 | INFO | BEST_CHECKPOINT step=2000 stage=specialists ndcg@10=0.038605 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt
+2026-08-26 15:43:54,873 | INFO | VALID_STEP step=3000 stage=specialists epoch=1 ndcg@10=0.037336 recall@10=0.073417 improved=False
+2026-08-26 15:44:56,409 | INFO | stage=specialists epoch=1 loss=6.794527 steps=3907 transitions/s=1994.96
+2026-08-26 15:45:03,757 | INFO | VALID_STEP step=4000 stage=specialists epoch=2 ndcg@10=0.041187 recall@10=0.082698 improved=True
+2026-08-26 15:45:03,762 | INFO | BEST_CHECKPOINT step=4000 stage=specialists ndcg@10=0.041187 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt
+2026-08-26 15:46:11,677 | INFO | VALID_STEP step=5000 stage=specialists epoch=2 ndcg@10=0.044634 recall@10=0.088830 improved=True
+2026-08-26 15:46:11,679 | INFO | BEST_CHECKPOINT step=5000 stage=specialists ndcg@10=0.044634 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt
+2026-08-26 15:47:21,049 | INFO | VALID_STEP step=6000 stage=specialists epoch=2 ndcg@10=0.051290 recall@10=0.100265 improved=True
+2026-08-26 15:47:21,054 | INFO | BEST_CHECKPOINT step=6000 stage=specialists ndcg@10=0.051290 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt
+2026-08-26 15:48:30,122 | INFO | VALID_STEP step=7000 stage=specialists epoch=2 ndcg@10=0.054458 recall@10=0.108220 improved=True
+2026-08-26 15:48:30,127 | INFO | BEST_CHECKPOINT step=7000 stage=specialists ndcg@10=0.054458 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt
+2026-08-26 15:49:24,577 | INFO | stage=specialists epoch=2 loss=5.875936 steps=3907 transitions/s=1896.85
+2026-08-26 15:49:38,366 | INFO | VALID_STEP step=8000 stage=specialists epoch=3 ndcg@10=0.059046 recall@10=0.117832 improved=True
+2026-08-26 15:49:38,371 | INFO | BEST_CHECKPOINT step=8000 stage=specialists ndcg@10=0.059046 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt
+2026-08-26 15:50:46,737 | INFO | VALID_STEP step=9000 stage=specialists epoch=3 ndcg@10=0.062518 recall@10=0.124130 improved=True
+2026-08-26 15:50:46,739 | INFO | BEST_CHECKPOINT step=9000 stage=specialists ndcg@10=0.062518 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/movielens-1m/20260826_154040/best_validation.pt

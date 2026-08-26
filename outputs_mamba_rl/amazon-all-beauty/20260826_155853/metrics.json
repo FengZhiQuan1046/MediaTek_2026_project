@@ -1,0 +1,64 @@
+{
+  "valid": {
+    "recall@5": 0.10617283950617284,
+    "recall@10": 0.11481481481481481,
+    "ndcg@5": 0.09505698033321051,
+    "ndcg@10": 0.09785693280490829,
+    "users_per_second": 9533.278524298905,
+    "scores_per_second": 66561350.65665495
+  },
+  "test": {
+    "recall@5": 0.12407407407407407,
+    "recall@10": 0.1382716049382716,
+    "ndcg@5": 0.11563323574301637,
+    "ndcg@10": 0.12024243084000952,
+    "users_per_second": 9350.151537023541,
+    "scores_per_second": 65282758.03149837
+  },
+  "training": {
+    "monitor_metric": "recall@10",
+    "best_score": 0.11481481481481481,
+    "best_step": 2000,
+    "best_stage": "joint",
+    "global_steps": 2000,
+    "stopped_early": false,
+    "target_recall_at_10": 0.15,
+    "target_achieved": false,
+    "experiment_note": "ROUND 2 OBJECTIVE ALIGNMENT: same Amazon All Beauty 5-core split, Mamba vectors, seed, 128-dim model and LoRA rank 8 as round 1. Changes: full-catalog CE for specialist/coordinator warm-up; sampled-slate REINFORCE plus full-catalog CE anchor during joint training; supervised_coef 0.1->0.5; candidates 64->256. Goal: reduce sampled-training/full-catalog-evaluation mismatch.",
+    "validation_history": [
+      {
+        "global_step": 1000,
+        "stage": "joint",
+        "epoch": 8,
+        "recall@5": 0.10246913580246914,
+        "recall@10": 0.1117283950617284,
+        "ndcg@5": 0.09236367308063272,
+        "ndcg@10": 0.09531811549339765,
+        "users_per_second": 10728.461977557226,
+        "scores_per_second": 74906121.52730456
+      },
+      {
+        "global_step": 2000,
+        "stage": "joint",
+        "epoch": 20,
+        "recall@5": 0.10617283950617284,
+        "recall@10": 0.11481481481481481,
+        "ndcg@5": 0.09505698033321051,
+        "ndcg@10": 0.09785693280490829,
+        "users_per_second": 9477.316904692983,
+        "scores_per_second": 66170626.628566414
+      },
+      {
+        "global_step": 2000,
+        "stage": "final",
+        "epoch": 0,
+        "recall@5": 0.10617283950617284,
+        "recall@10": 0.11481481481481481,
+        "ndcg@5": 0.09505698033321051,
+        "ndcg@10": 0.09785693280490829,
+        "users_per_second": 9542.956308912584,
+        "scores_per_second": 66628920.94882766
+      }
+    ]
+  }
+}

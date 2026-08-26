@@ -1,0 +1,86 @@
+{
+  "valid": {
+    "recall@5": 0.10308641975308643,
+    "recall@10": 0.1191358024691358,
+    "ndcg@5": 0.09285592797361775,
+    "ndcg@10": 0.09804980990327435,
+    "users_per_second": 9554.980169238075,
+    "scores_per_second": 66712871.54162024
+  },
+  "test": {
+    "recall@5": 0.12283950617283951,
+    "recall@10": 0.1339506172839506,
+    "ndcg@5": 0.11439866607571826,
+    "ndcg@10": 0.11803887273058479,
+    "users_per_second": 9534.935531058129,
+    "scores_per_second": 66572919.87784786
+  },
+  "training": {
+    "monitor_metric": "recall@10",
+    "best_score": 0.1191358024691358,
+    "best_step": 3200,
+    "best_stage": "final",
+    "global_steps": 3200,
+    "stopped_early": false,
+    "target_recall_at_10": 0.15,
+    "target_achieved": false,
+    "experiment_note": "ROUND 3 CONTINUED JOINT OPTIMIZATION: resume round-2 best checkpoint (test Recall@10=0.138272) and record resumed validation as protected step-0 baseline. Changes from round 2: skip repeated warm-up; joint epochs 20->40 max; candidates 256->512; full-catalog supervised_coef 0.5->1.0; joint_lr 5e-5->1e-4 with plateau scheduler; entropy_coef 0.01->0.001 to reduce excessive exploration. Same Amazon 5-core split, Mamba vectors, model size and seed.",
+    "validation_history": [
+      {
+        "global_step": 0,
+        "stage": "resume",
+        "epoch": 0,
+        "recall@5": 0.10617283950617284,
+        "recall@10": 0.11481481481481481,
+        "ndcg@5": 0.09505698033321051,
+        "ndcg@10": 0.09785693280490829,
+        "users_per_second": 7489.523201163382,
+        "scores_per_second": 52291850.99052273
+      },
+      {
+        "global_step": 1000,
+        "stage": "joint",
+        "epoch": 13,
+        "recall@5": 0.09753086419753086,
+        "recall@10": 0.1111111111111111,
+        "ndcg@5": 0.08710613015257282,
+        "ndcg@10": 0.09146664642993314,
+        "users_per_second": 9532.505408021012,
+        "scores_per_second": 66555952.75880271
+      },
+      {
+        "global_step": 2000,
+        "stage": "joint",
+        "epoch": 25,
+        "recall@5": 0.10061728395061728,
+        "recall@10": 0.11604938271604938,
+        "ndcg@5": 0.09047525723775228,
+        "ndcg@10": 0.09535696329893889,
+        "users_per_second": 9498.263718013704,
+        "scores_per_second": 66316877.27917168
+      },
+      {
+        "global_step": 3000,
+        "stage": "joint",
+        "epoch": 38,
+        "recall@5": 0.10308641975308643,
+        "recall@10": 0.11851851851851852,
+        "ndcg@5": 0.09179795877433118,
+        "ndcg@10": 0.09678037284333028,
+        "users_per_second": 9453.888267108678,
+        "scores_per_second": 66007047.88095279
+      },
+      {
+        "global_step": 3200,
+        "stage": "final",
+        "epoch": 0,
+        "recall@5": 0.10308641975308643,
+        "recall@10": 0.1191358024691358,
+        "ndcg@5": 0.09285592797361775,
+        "ndcg@10": 0.09804980990327435,
+        "users_per_second": 9459.379464985093,
+        "scores_per_second": 66045387.424525924
+      }
+    ]
+  }
+}

@@ -102,7 +102,8 @@ class MambaRLPolicy(nn.Module):
         )
         self.mamba = get_peft_model(self.mamba, lora)
         # Static base-Mamba item vectors; do not broadcast this large buffer each DDP step.
-        self.register_buffer("item_vectors", item_vectors.to(dtype=torch.float16), persistent=False)
+        item_dtype = torch.float16 if device.startswith("cuda") else torch.float32
+        self.register_buffer("item_vectors", item_vectors.to(dtype=item_dtype), persistent=False)
         self.log_temperature = nn.Parameter(torch.tensor(0.0))
 
     def encode_state(self, prompts: list[str], device: str) -> torch.Tensor:
@@ -115,11 +116,13 @@ class MambaRLPolicy(nn.Module):
     def forward(self, prompts: list[str], candidate_ids: torch.Tensor, device: str) -> torch.Tensor:
         state = self.encode_state(prompts, device)
         candidates = self.item_vectors[candidate_ids]
+        state = state.to(dtype=candidates.dtype)
         return (state.unsqueeze(1) * candidates).sum(-1) * self.log_temperature.exp().clamp(max=20)
 
     @torch.inference_mode()
     def score_all(self, prompts: list[str], device: str) -> torch.Tensor:
         state = self.encode_state(prompts, device)
+        state = state.to(dtype=self.item_vectors.dtype)
         return state @ self.item_vectors.T
 
     @torch.inference_mode()

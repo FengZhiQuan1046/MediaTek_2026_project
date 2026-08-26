@@ -1,0 +1,45 @@
+2026-08-26 15:58:53,871 | INFO | run_id=20260826_155853 dataset=amazon-all-beauty device=cuda
+2026-08-26 15:58:53,871 | INFO | EXPERIMENT_NOTE ROUND 2 OBJECTIVE ALIGNMENT: same Amazon All Beauty 5-core split, Mamba vectors, seed, 128-dim model and LoRA rank 8 as round 1. Changes: full-catalog CE for specialist/coordinator warm-up; sampled-slate REINFORCE plus full-catalog CE anchor during joint training; supervised_coef 0.1->0.5; candidates 64->256. Goal: reduce sampled-training/full-catalog-evaluation mismatch.
+2026-08-26 15:58:53,871 | INFO | EXPERIMENT_CONFIG {"batch_size": 128, "cache_dir": "/workspace/P78123011/cache", "candidates": 256, "coordinator_epochs": 2, "coordinator_lr": 0.0002, "data_path": null, "dataset": "amazon-all-beauty", "device": "cuda", "dim": 128, "early_stopping_patience": 4, "entropy_coef": 0.01, "eval_batch_size": 256, "experiment_note": "ROUND 2 OBJECTIVE ALIGNMENT: same Amazon All Beauty 5-core split, Mamba vectors, seed, 128-dim model and LoRA rank 8 as round 1. Changes: full-catalog CE for specialist/coordinator warm-up; sampled-slate REINFORCE plus full-catalog CE anchor during joint training; supervised_coef 0.1->0.5; candidates 64->256. Goal: reduce sampled-training/full-catalog-evaluation mismatch.", "full_catalog_supervised": true, "generate_reasons": false, "item_vector_artifact": "/workspace/P78123011/cache/mamba_multi_agent/amazon-all-beauty_6982_051814cd0dc3.pt", "joint_lr": 5e-05, "lora_alpha": 16.0, "lora_dropout": 0.05, "lora_rank": 8, "lr_patience": 2, "max_events": null, "max_history": 100, "max_transitions": 500000, "min_rating": 4.0, "min_user_events": 5, "monitor_metric": "recall@10", "output_dir": "/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl", "reason_count": 0, "reason_max_new_tokens": 40, "rl_epochs": 20, "seed": 25252, "short_window": 10, "skip_mamba": false, "specialist_epochs": 3, "specialist_lr": 0.0002, "specialization_coef": 0.01, "supervised_coef": 0.5, "target_recall_at_10": 0.15, "validate_every_steps": 1000}
+2026-08-26 15:59:21,611 | INFO | users=1620 items=6982 train_interactions=11744
+2026-08-26 15:59:21,632 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/amazon-all-beauty_6982_051814cd0dc3.pt fingerprint=051814cd0dc3
+2026-08-26 15:59:21,745 | INFO | agent_parameters={'long': 8321, 'short': 8321, 'coordinator': 7185, 'shared_projection': 327680}
+2026-08-26 15:59:21,748 | INFO | training_transitions=10124
+2026-08-26 15:59:21,749 | INFO | schedule specialist_epochs=3 coordinator_epochs=2 rl_epochs=20 validate_every_steps=1000 monitor=recall@10 early_stopping_patience=4
+2026-08-26 15:59:27,467 | INFO | stage=specialists epoch=1 loss=17.355404 steps=80 transitions/s=1880.62
+2026-08-26 15:59:32,348 | INFO | stage=specialists epoch=2 loss=17.190280 steps=80 transitions/s=2075.24
+2026-08-26 15:59:37,359 | INFO | stage=specialists epoch=3 loss=17.141352 steps=80 transitions/s=2021.36
+2026-08-26 15:59:39,164 | INFO | stage=coordinator epoch=1 loss=8.462483 steps=80 transitions/s=5617.92
+2026-08-26 15:59:41,164 | INFO | stage=coordinator epoch=2 loss=8.447607 steps=80 transitions/s=5066.46
+2026-08-26 15:59:46,933 | INFO | stage=joint epoch=1 loss=3.932928 steps=80 transitions/s=1755.85
+2026-08-26 15:59:52,304 | INFO | stage=joint epoch=2 loss=4.092777 steps=80 transitions/s=1885.65
+2026-08-26 15:59:57,192 | INFO | stage=joint epoch=3 loss=4.087013 steps=80 transitions/s=2072.27
+2026-08-26 16:00:02,073 | INFO | stage=joint epoch=4 loss=4.086248 steps=80 transitions/s=2075.07
+2026-08-26 16:00:07,575 | INFO | stage=joint epoch=5 loss=4.078735 steps=80 transitions/s=1840.82
+2026-08-26 16:00:13,046 | INFO | stage=joint epoch=6 loss=4.084374 steps=80 transitions/s=1851.02
+2026-08-26 16:00:18,761 | INFO | stage=joint epoch=7 loss=4.075611 steps=80 transitions/s=1772.40
+2026-08-26 16:00:21,819 | INFO | VALID_STEP step=1000 stage=joint epoch=8 recall@10=0.111728 recall@10=0.111728 improved=True
+2026-08-26 16:00:21,822 | INFO | BEST_CHECKPOINT step=1000 stage=joint recall@10=0.111728 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/amazon-all-beauty/20260826_155853/best_validation.pt
+2026-08-26 16:00:21,822 | INFO | LEARNING_RATE step=1000 stage=joint lr=5e-05
+2026-08-26 16:00:24,293 | INFO | stage=joint epoch=8 loss=4.076111 steps=80 transitions/s=1882.40
+2026-08-26 16:00:29,535 | INFO | stage=joint epoch=9 loss=4.069453 steps=80 transitions/s=1932.02
+2026-08-26 16:00:34,423 | INFO | stage=joint epoch=10 loss=4.072999 steps=80 transitions/s=2072.15
+2026-08-26 16:00:39,494 | INFO | stage=joint epoch=11 loss=4.065871 steps=80 transitions/s=1997.28
+2026-08-26 16:00:45,196 | INFO | stage=joint epoch=12 loss=4.065322 steps=80 transitions/s=1776.22
+2026-08-26 16:00:50,776 | INFO | stage=joint epoch=13 loss=4.059228 steps=80 transitions/s=1815.11
+2026-08-26 16:00:55,955 | INFO | stage=joint epoch=14 loss=4.054085 steps=80 transitions/s=1955.61
+2026-08-26 16:01:01,249 | INFO | stage=joint epoch=15 loss=4.064636 steps=80 transitions/s=1913.35
+2026-08-26 16:01:06,187 | INFO | stage=joint epoch=16 loss=4.049234 steps=80 transitions/s=2050.95
+2026-08-26 16:01:11,720 | INFO | stage=joint epoch=17 loss=4.049227 steps=80 transitions/s=1830.51
+2026-08-26 16:01:17,363 | INFO | stage=joint epoch=18 loss=4.051694 steps=80 transitions/s=1794.82
+2026-08-26 16:01:23,013 | INFO | stage=joint epoch=19 loss=4.036349 steps=80 transitions/s=1792.47
+2026-08-26 16:01:28,760 | INFO | VALID_STEP step=2000 stage=joint epoch=20 recall@10=0.114815 recall@10=0.114815 improved=True
+2026-08-26 16:01:28,766 | INFO | BEST_CHECKPOINT step=2000 stage=joint recall@10=0.114815 path=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/amazon-all-beauty/20260826_155853/best_validation.pt
+2026-08-26 16:01:28,766 | INFO | LEARNING_RATE step=2000 stage=joint lr=5e-05
+2026-08-26 16:01:28,767 | INFO | stage=joint epoch=20 loss=4.044900 steps=80 transitions/s=1814.49
+2026-08-26 16:01:28,938 | INFO | VALID_STEP step=2000 stage=final epoch=0 recall@10=0.114815 recall@10=0.114815 improved=False
+2026-08-26 16:01:28,939 | INFO | RESTORE_BEST step=2000 stage=joint recall@10=0.114815
+2026-08-26 16:01:29,283 | INFO | VALID_BEST {"ndcg@10": 0.09785693280490829, "ndcg@5": 0.09505698033321051, "recall@10": 0.11481481481481481, "recall@5": 0.10617283950617284, "scores_per_second": 66561350.65665495, "users_per_second": 9533.278524298905}
+2026-08-26 16:01:29,283 | INFO | TEST_FINAL {"ndcg@10": 0.12024243084000952, "ndcg@5": 0.11563323574301637, "recall@10": 0.1382716049382716, "recall@5": 0.12407407407407407, "scores_per_second": 65282758.03149837, "users_per_second": 9350.151537023541}
+2026-08-26 16:01:29,283 | INFO | TARGET_RESULT metric=recall@10 target=>0.150000 actual=0.138272 achieved=False
+2026-08-26 16:01:29,486 | INFO | outputs=/workspace/P78123011/MediaTek_2026_project/outputs_mamba_rl/amazon-all-beauty/20260826_155853

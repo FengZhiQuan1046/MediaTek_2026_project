@@ -33,22 +33,6 @@ class Transition:
     target: int
 
 
-@dataclass
-class TrainingMonitor:
-    """Track periodic validation and retain the best deployable policy."""
-    metric_name: str
-    checkpoint_path: Path
-    global_step: int = 0
-    best_score: float = -math.inf
-    best_step: int = 0
-    best_stage: str = ""
-    best_metrics: dict[str, float] | None = None
-    best_state: dict[str, torch.Tensor] | None = None
-    checks_without_improvement: int = 0
-    stopped_early: bool = False
-    history: list[dict[str, object]] = field(default_factory=list)
-
-
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -173,7 +157,7 @@ def record_validation(model, metrics, stage, epoch, monitor, logger) -> bool:
 def train_stage(model, data, transitions, stage, epochs, batch_size, candidates, max_history,
                 learning_rate, entropy_coef, supervised_coef, specialization_coef, device, logger,
                 monitor, validate_every_steps, eval_batch_size, early_stopping_patience,
-                lr_patience, full_catalog_supervised):
+                lr_patience):
     if epochs == 0:
         return []
     model.set_stage(stage)
@@ -203,13 +187,8 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
             histories, lengths, targets = history_batch(data, batch, max_history, device)
             slates = candidate_slates(targets, data.num_items, candidates)
             with amp_context(device):
-                states = model.encode_states(histories, lengths)
-                if full_catalog_supervised and stage != "joint":
-                    output = model.logits_from_states(states, model.project_all())
-                    labels = targets
-                else:
-                    output = model.logits_from_states(states, model.project_ids(slates))
-                    labels = torch.zeros(len(batch), dtype=torch.long, device=device)
+                output = model(histories, lengths, slates)
+                labels = torch.zeros(len(batch), dtype=torch.long, device=device)
                 reward_mean = 0.0
                 if stage == "specialists":
                     loss = F.cross_entropy(output["long"], labels) + F.cross_entropy(output["short"], labels)
@@ -230,15 +209,8 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                         policy_loss -= entropy_coef * distribution.entropy().mean()
                     long_state, short_state, _ = output["states"]
                     specialization = F.cosine_similarity(long_state, short_state).square().mean()
-                    if full_catalog_supervised:
-                        full_output = model.logits_from_states(states, model.project_all())
-                        supervised = sum(
-                            F.cross_entropy(full_output[name], targets)
-                            for name in ("long", "short", "coordinator")
-                        ) / 3
-                    else:
-                        supervised = sum(F.cross_entropy(output[name], labels)
-                                         for name in ("long", "short", "coordinator")) / 3
+                    supervised = sum(F.cross_entropy(output[name], labels)
+                                     for name in ("long", "short", "coordinator")) / 3
                     loss = policy_loss + supervised_coef * supervised + specialization_coef * specialization
                     reward_mean = rewards["coordinator"].mean().item()
             optimizer.zero_grad(set_to_none=True)
@@ -423,17 +395,12 @@ def parse_args():
     parser.add_argument("--entropy-coef", type=float, default=0.01)
     parser.add_argument("--supervised-coef", type=float, default=0.1)
     parser.add_argument("--specialization-coef", type=float, default=0.01)
-    parser.add_argument("--full-catalog-supervised", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--seed", type=int, default=25252)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--skip-mamba", action="store_true")
     parser.add_argument("--generate-reasons", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--reason-count", type=int, default=20)
     parser.add_argument("--reason-max-new-tokens", type=int, default=40)
-    parser.add_argument("--item-vector-artifact", default=None)
-    parser.add_argument("--resume-checkpoint", default=None)
-    parser.add_argument("--experiment-note", default="No experiment note supplied.")
-    parser.add_argument("--target-recall-at-10", type=float, default=0.15)
     parser.add_argument("--output-dir", default=str(PROJECT_ROOT / "outputs_mamba_rl"))
     args = parser.parse_args()
     if min(args.specialist_epochs, args.coordinator_epochs, args.rl_epochs) < 0:
@@ -442,8 +409,6 @@ def parse_args():
         parser.error("validation interval and patience values cannot be negative")
     if args.candidates < 2 or args.batch_size < 1 or args.max_history < 1:
         parser.error("candidate count must be >=2 and batch/history sizes must be positive")
-    if not 0.0 <= args.target_recall_at_10 <= 1.0:
-        parser.error("--target-recall-at-10 must be in [0, 1]")
     return args
 
 
@@ -456,8 +421,6 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     logger = configure_logging(output / f"train_{run_id}.log")
     logger.info("run_id=%s dataset=%s device=%s", run_id, args.dataset, args.device)
-    logger.info("EXPERIMENT_NOTE %s", args.experiment_note)
-    logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
     data = load_recommendation_data(
         args.dataset, args.data_path, args.cache_dir, args.max_events, args.min_rating, args.min_user_events
     )
@@ -465,11 +428,7 @@ def main():
                 data.num_users, data.num_items, sum(map(len, data.train_by_user.values())))
 
     fingerprint = hashlib.sha1("\n".join(data.item_texts).encode("utf-8")).hexdigest()[:12]
-    artifact = (
-        Path(args.item_vector_artifact)
-        if args.item_vector_artifact
-        else Path(args.cache_dir) / "mamba_multi_agent" / f"{safe_dataset}_{data.num_items}_{fingerprint}.pt"
-    )
+    artifact = Path(args.cache_dir) / "mamba_multi_agent" / f"{safe_dataset}_{data.num_items}_{fingerprint}.pt"
     if args.skip_mamba:
         generator = torch.Generator().manual_seed(args.seed)
         item_features = torch.randn(data.num_items, args.dim, generator=generator)
@@ -477,22 +436,10 @@ def main():
     else:
         item_features = load_or_encode_text(data.item_texts, str(artifact), args.device, False, args.cache_dir)
         assert item_features is not None
-    if item_features.size(0) != data.num_items:
-        raise ValueError(
-            f"Item-vector rows ({item_features.size(0)}) do not match catalog size ({data.num_items}); "
-            "the explicit artifact is incompatible with this data split."
-        )
-    logger.info("ITEM_VECTOR_ARTIFACT path=%s fingerprint=%s", artifact, fingerprint)
     item_features = item_features.to(dtype=torch.float16 if args.device.startswith("cuda") else torch.float32)
     model = MultiAgentMambaRecommender(
         item_features, args.dim, args.lora_rank, args.lora_alpha, args.lora_dropout, args.short_window
     ).to(args.device)
-    if args.resume_checkpoint:
-        resume_path = Path(args.resume_checkpoint)
-        resume_payload = torch.load(resume_path, map_location="cpu", weights_only=True)
-        resume_state = resume_payload.get("model", resume_payload)
-        model.load_state_dict(resume_state)
-        logger.info("RESUME_CHECKPOINT path=%s", resume_path)
     logger.info("agent_parameters=%s", model.agent_parameter_counts())
     transitions = build_transitions(data, args.max_transitions, args.seed)
     logger.info("training_transitions=%d", len(transitions))
@@ -506,11 +453,6 @@ def main():
         metric_name=args.monitor_metric,
         checkpoint_path=output / "best_validation.pt",
     )
-    if args.resume_checkpoint:
-        resumed_metrics, _ = evaluate(
-            model, data, "valid", args.eval_batch_size, args.max_history, args.device
-        )
-        record_validation(model, resumed_metrics, "resume", 0, monitor, logger)
     common = dict(
         model=model, data=data, transitions=transitions, batch_size=args.batch_size,
         candidates=args.candidates, max_history=args.max_history, entropy_coef=args.entropy_coef,
@@ -518,7 +460,6 @@ def main():
         device=args.device, logger=logger, monitor=monitor,
         validate_every_steps=args.validate_every_steps, eval_batch_size=args.eval_batch_size,
         early_stopping_patience=args.early_stopping_patience, lr_patience=args.lr_patience,
-        full_catalog_supervised=args.full_catalog_supervised,
     )
     losses = {
         "specialists": train_stage(stage="specialists", epochs=args.specialist_epochs,
@@ -548,11 +489,6 @@ def main():
     )
     logger.info("VALID_BEST %s", json.dumps(valid_metrics, sort_keys=True))
     logger.info("TEST_FINAL %s", json.dumps(test_metrics, sort_keys=True))
-    target_achieved = test_metrics["recall@10"] > args.target_recall_at_10
-    logger.info(
-        "TARGET_RESULT metric=recall@10 target=>%.6f actual=%.6f achieved=%s",
-        args.target_recall_at_10, test_metrics["recall@10"], target_achieved,
-    )
     training_summary = {
         "monitor_metric": monitor.metric_name,
         "best_score": monitor.best_score,
@@ -560,9 +496,6 @@ def main():
         "best_stage": monitor.best_stage,
         "global_steps": monitor.global_step,
         "stopped_early": monitor.stopped_early,
-        "target_recall_at_10": args.target_recall_at_10,
-        "target_achieved": target_achieved,
-        "experiment_note": args.experiment_note,
         "validation_history": monitor.history,
     }
     checkpoint = {
