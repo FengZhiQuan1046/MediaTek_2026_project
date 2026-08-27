@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Run from anywhere: bash /workspace/P78123011/MediaTek_2026_project/run_amazons_full_rl.sh
-# Each invocation below uses the same architecture/hyperparameters. Only the
-# validation/test sample sizes change with dataset size. Periodic test is
-# monitoring-only; the final test evaluates every eligible user.
+# Every subset uses the same model architecture. Training-only hyperparameters
+# scale with catalog size; every validation and test evaluates all eligible users.
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,36 +12,19 @@ CACHE_DIR="${CACHE_DIR:-/workspace/P78123011/cache}"
 COMMON_ENV=(
   "PYTHON_BIN=$PYTHON_BIN"
   "CACHE_DIR=$CACHE_DIR"
-  "BATCH_SIZE=256"
+  "BATCH_SIZE=128"
   "EVAL_BATCH_SIZE=64"
-  "MAX_TRANSITIONS=500000"
-  "MIN_TRANSITIONS_PER_USER=2"
-  "SPECIALIST_EPOCHS=5"
-  "COORDINATOR_EPOCHS=3"
-  "RL_EPOCHS=12"
   "MONITOR_METRIC=ndcg@10"
-  "EARLY_STOPPING_PATIENCE=4"
+  "EARLY_STOPPING_PATIENCE=6"
   "LR_PATIENCE=2"
-  "CANDIDATES=256"
   "DIM=128"
-  "ID_BUCKETS=262144"
   "LORA_RANK=8"
   "LORA_ALPHA=16.0"
   "LORA_DROPOUT=0.05"
-  "SHORT_WINDOW=3"
+  "SHORT_WINDOW=10"
   "MAX_HISTORY=100"
-  "SPECIALIST_LR=2e-4"
-  "COORDINATOR_LR=2e-4"
-  "JOINT_LR=5e-5"
-  "ENTROPY_COEF=0.001"
-  "RL_COEF=0.05"
-  "SUPERVISED_COEF=1.0"
-  "HARD_NEGATIVE_COEF=0.5"
-  "SPECIALIZATION_COEF=0.001"
-  "POPULARITY_ALPHA=0.0"
-  "TRANSITION_BETA=0.0"
   "MAMBA_ENCODE_BATCH_SIZE=32"
-  "MAMBA_MAX_TOKENS=32"
+  "MAMBA_MAX_TOKENS=16"
   "GENERATE_REASONS=0"
   "SAVE_MODEL_WEIGHTS=0"
 )
@@ -51,9 +33,19 @@ run_subset() {
   local subset_name="$1"
   local dataset="$2"
   local validate_every_steps="$3"
-  local validation_user_limit="$4"
-  local periodic_test_user_limit="$5"
-  local run_seed="$6"
+  local max_transitions="$4"
+  local candidates="$5"
+  local specialist_epochs="$6"
+  local coordinator_epochs="$7"
+  local rl_epochs="$8"
+  local specialist_lr="$9"
+  local coordinator_lr="${10}"
+  local joint_lr="${11}"
+  local entropy_coef="${12}"
+  local supervised_coef="${13}"
+  local specialization_coef="${14}"
+  local popularity_alpha="${15}"
+  local transition_beta="${16}"
   local timestamp run_dir
 
   timestamp="$(date '+%Y%m%d_%H%M%S')"
@@ -63,21 +55,34 @@ run_subset() {
     --output-run-dir "$run_dir" \
     --score-file "$run_dir/${subset_name}_scores.json" \
     --validate-every-steps "$validate_every_steps" \
-    --validation-user-limit "$validation_user_limit" \
-    --periodic-test-user-limit "$periodic_test_user_limit" \
-    --seed "$run_seed" \
+    --validation-user-limit 0 \
+    --periodic-test-user-limit 0 \
+    --max-transitions "$max_transitions" \
+    --candidates "$candidates" \
+    --specialist-epochs "$specialist_epochs" \
+    --coordinator-epochs "$coordinator_epochs" \
+    --rl-epochs "$rl_epochs" \
+    --specialist-lr "$specialist_lr" \
+    --coordinator-lr "$coordinator_lr" \
+    --joint-lr "$joint_lr" \
+    --entropy-coef "$entropy_coef" \
+    --supervised-coef "$supervised_coef" \
+    --specialization-coef "$specialization_coef" \
+    --popularity-alpha "$popularity_alpha" \
+    --transition-beta "$transition_beta" \
     --experiment-note "amazons_full subset=$subset_name; common architecture; periodic validation/test"
 }
 
 # One command per requested subset. Set REPEATS=5 to repeat the whole suite five times.
 REPEATS="${REPEATS:-1}"
 for ((run_number = 1; run_number <= REPEATS; run_number++)); do
-  run_seed=$((25251 + run_number))
-  run_subset "Beauty" "amazon-all-beauty" 0 0 0 "$run_seed"
-  run_subset "Sports" "amazon-sports-and-outdoors" 0 20000 10000 "$run_seed"
-  run_subset "Games" "amazon-games" 0 15000 7500 "$run_seed"
-  run_subset "Books" "amazon-books" 0 30000 15000 "$run_seed"
-  run_subset "Toys" "amazon-toys" 0 25000 12500 "$run_seed"
-  run_subset "Video_Games" "amazon-video-games" 0 15000 7500 "$run_seed"
-  run_subset "Clothing" "amazon-clothing-shoes-and-jewelry" 0 30000 15000 "$run_seed"
+  # name dataset validation_steps max_samples candidates specialist coord joint
+  # specialist_lr coord_lr joint_lr entropy supervised specialization popularity transition
+  run_subset "Beauty" "amazon-all-beauty" 250 500000 64 3 2 20 2e-4 2e-4 5e-5 0.01 0.1 0.01 -0.25 4.0
+  run_subset "Sports" "amazon-sports-and-outdoors" 8000 1000000 256 3 2 12 2e-5 1e-4 2e-5 0.003 0.5 0.005 0.35 0.5
+  run_subset "Games" "amazon-games" 4000 1000000 128 3 2 15 5e-5 1e-4 2e-5 0.005 0.4 0.005 0.20 0.5
+  run_subset "Books" "amazon-books" 12000 2000000 256 3 2 12 2e-5 1e-4 2e-5 0.003 0.5 0.005 0.35 0.5
+  run_subset "Toys" "amazon-toys" 6000 1500000 192 3 2 15 3e-5 1e-4 2e-5 0.004 0.5 0.005 0.30 0.5
+  run_subset "Video_Games" "amazon-video-games" 4000 1000000 128 3 2 15 5e-5 1e-4 2e-5 0.005 0.4 0.005 0.20 0.5
+  run_subset "Clothing" "amazon-clothing-shoes-and-jewelry" 12000 2000000 256 3 2 12 2e-5 1e-4 2e-5 0.003 0.5 0.005 0.35 0.5
 done

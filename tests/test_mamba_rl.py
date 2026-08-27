@@ -9,10 +9,7 @@ if HAS_TORCH:
     import torch
     from src.data_mamba_rl import amazon_item_group, amazon_subset, load_movielens, load_recommendation_data
     from src.model_mamba_rl import MultiAgentMambaRecommender
-    from src.train_mamba_rl import (
-        build_transitions, candidate_slates, evaluate,
-        hard_negative_ranking_loss, history_batch,
-    )
+    from src.train_mamba_rl import build_transitions, candidate_slates, evaluate, history_batch
 
 
 @unittest.skipUnless(HAS_TORCH, "requires torch")
@@ -26,21 +23,6 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertEqual(output["coordinator"].shape, (2, 3))
         self.assertEqual(model.full_catalog_scores(histories, lengths)["coordinator"].shape, (2, 12))
         self.assertTrue(set(model.long_agent.parameters()).isdisjoint(set(model.short_agent.parameters())))
-        self.assertAlmostEqual(float(output["score_mix"].sum()), 1.0, places=6)
-
-    def test_cold_items_use_semantics_and_warm_items_receive_id_signal(self):
-        counts = torch.tensor([3.0, 0.0, 2.0])
-        model = MultiAgentMambaRecommender(
-            torch.randn(3, 6), dim=4, lora_rank=2, item_counts=counts, id_buckets=3,
-        )
-        cold_before = model.project_ids(torch.tensor([1])).detach().clone()
-        warm_before = model.project_ids(torch.tensor([0])).detach().clone()
-        with torch.no_grad():
-            model.item_id_embedding.weight.add_(10.0 * torch.randn_like(model.item_id_embedding.weight))
-        cold_after = model.project_ids(torch.tensor([1])).detach()
-        warm_after = model.project_ids(torch.tensor([0])).detach()
-        self.assertTrue(torch.allclose(cold_before, cold_after))
-        self.assertFalse(torch.allclose(warm_before, warm_after))
 
     def test_each_training_stage_selects_expected_parameters(self):
         model = MultiAgentMambaRecommender(torch.randn(8, 6), dim=4, lora_rank=2)
@@ -58,22 +40,12 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertEqual(histories.size(0), 4)
         self.assertTrue(torch.all(lengths >= 1))
         self.assertTrue(torch.equal(slates[:, 0], targets))
-        self.assertEqual(len({transition.user for transition in transitions}), 10)
 
-    def test_mixed_candidate_slates_and_hard_negative_loss(self):
-        targets = torch.tensor([0, 1, 2, 3])
-        weights = torch.arange(1, 11, dtype=torch.float32)
-        slates = candidate_slates(targets, 10, 8, sampling_weights=weights)
-        self.assertEqual(slates.shape, (4, 8))
-        self.assertTrue(torch.equal(slates[:, 0], targets))
-        self.assertFalse(torch.any(slates[:, 1:] == targets.unsqueeze(1)))
-        good = torch.tensor([[5.0, 1.0, 0.0]])
-        bad = torch.tensor([[0.0, 5.0, 1.0]])
-        labels = torch.zeros(1, dtype=torch.long)
-        self.assertLess(
-            hard_negative_ranking_loss(good, labels),
-            hard_negative_ranking_loss(bad, labels),
-        )
+    def test_transition_budget_prioritises_user_coverage(self):
+        data = load_recommendation_data("synthetic", None, "/tmp", min_user_events=5)
+        eligible_users = {user for user, history in data.train_by_user.items() if len(history) > 1}
+        transitions = build_transitions(data, maximum=len(eligible_users), seed=7)
+        self.assertEqual({row.user for row in transitions}, eligible_users)
 
     def test_amazon_category_config_name(self):
         self.assertEqual(amazon_subset("amazon-all-beauty"), "raw_review_All_Beauty")

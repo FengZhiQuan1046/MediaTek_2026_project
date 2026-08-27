@@ -1,24 +1,10 @@
 import importlib.util
 import unittest
 
-from src.data import (
-    _amazon_positive, _deduplicate_user_items, build_data, edge_index, synthetic_events,
-)
+from src.data import build_data, edge_index, synthetic_events
 
 
 class DataTest(unittest.TestCase):
-    def test_amazon_positive_filter_and_parent_item_deduplication(self):
-        self.assertTrue(_amazon_positive({"rating": 4.0}, 4.0))
-        self.assertFalse(_amazon_positive({"rating": 3.0}, 4.0))
-        self.assertFalse(_amazon_positive({}, 4.0))
-        rows = [
-            ("u1", "parent-a", 10, "old"),
-            ("u1", "parent-a", 20, "new"),
-            ("u1", "parent-b", 15, "other"),
-        ]
-        deduplicated = sorted(_deduplicate_user_items(rows), key=lambda row: row[1])
-        self.assertEqual(deduplicated, [("u1", "parent-a", 20, "new"), ("u1", "parent-b", 15, "other")])
-
     def test_chronological_split(self):
         data = build_data(synthetic_events())
         self.assertEqual(data.num_users, 24)

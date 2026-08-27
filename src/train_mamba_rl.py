@@ -55,8 +55,6 @@ class CatalogPriors:
     """Training-only catalog statistics used to complement semantic policy scores."""
     popularity: torch.Tensor
     transitions: dict[int, dict[int, float]]
-    sampling_weights: torch.Tensor
-    item_counts: torch.Tensor
 
 
 def seed_everything(seed: int) -> None:
@@ -89,7 +87,7 @@ def load_recommendation_data_cached(args, logger):
         "max_events": args.max_events,
         "min_rating": args.min_rating,
         "min_user_events": args.min_user_events,
-        "schema_version": 2,
+        "schema_version": 1,
     }
     digest = hashlib.sha1(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:12]
     safe_dataset = args.dataset.replace(":", "_").replace("/", "_")
@@ -114,38 +112,48 @@ def load_recommendation_data_cached(args, logger):
 
 
 def build_transitions(data, maximum: int | None, seed: int) -> list[Transition]:
-    """Build a deterministic user-balanced sample of prefix/next-item pairs."""
+    """Bound training samples while maximising eligible-user coverage."""
     rng = random.Random(seed)
-    by_user: dict[int, list[int]] = {}
-    for user, history in data.train_by_user.items():
-        ends = list(range(1, len(history)))
-        rng.shuffle(ends)
-        if ends:
-            by_user[user] = ends
-    if not by_user:
-        raise RuntimeError("No train prefixes exist; load more interactions or lower --min-user-events.")
-
-    total = sum(map(len, by_user.values()))
+    eligible = [
+        (user, len(history) - 1)
+        for user, history in data.train_by_user.items()
+        if len(history) > 1
+    ]
+    total = sum(count for _, count in eligible)
     budget = total if maximum is None or maximum <= 0 else min(maximum, total)
-    users = list(by_user)
-    rng.shuffle(users)
+    rng.shuffle(eligible)
+
+    # Give as many users as possible one randomly selected prefix before
+    # spending the remaining budget on additional interactions.
+    selected_ends: dict[int, int] = {}
     result: list[Transition] = []
-    round_index = 0
-    while len(result) < budget:
-        added = False
-        rng.shuffle(users)
-        for user in users:
-            ends = by_user[user]
-            if round_index >= len(ends):
-                continue
-            end = ends[round_index]
-            result.append(Transition(user, end, data.train_by_user[user][end]))
-            added = True
-            if len(result) == budget:
-                break
-        if not added:
-            break
-        round_index += 1
+    for user, count in eligible[:budget]:
+        end = rng.randint(1, count)
+        selected_ends[user] = end
+        result.append(Transition(user, end, data.train_by_user[user][end]))
+
+    remaining_budget = budget - len(result)
+    reservoir: list[Transition] = []
+    seen_remaining = 0
+    if remaining_budget > 0:
+        for user, count in eligible:
+            selected = selected_ends.get(user)
+            history = data.train_by_user[user]
+            for end in range(1, count + 1):
+                if end == selected:
+                    continue
+                transition = Transition(user, end, history[end])
+                seen_remaining += 1
+                if len(reservoir) < remaining_budget:
+                    reservoir.append(transition)
+                else:
+                    replacement = rng.randrange(seen_remaining)
+                    if replacement < remaining_budget:
+                        reservoir[replacement] = transition
+        result.extend(reservoir)
+    if not result:
+        raise RuntimeError("No train prefixes exist; load more interactions or lower --min-user-events.")
+    rng.shuffle(result)
     return result
 
 
@@ -172,69 +180,39 @@ def evaluation_history_batch(data, users: list[int], split: str, max_history: in
     return padded, lengths, histories
 
 
-def candidate_slates(
-    targets: torch.Tensor, num_items: int, count: int,
-    sampling_weights: torch.Tensor | None = None,
-) -> torch.Tensor:
-    """Mix in-batch, popularity-aware, and uniform negatives."""
-    batch_size = targets.size(0)
-    negative_count = count - 1
-    parts = []
-    in_batch_count = min(negative_count // 2, max(batch_size - 1, 0))
-    if in_batch_count:
-        offsets = torch.arange(1, in_batch_count + 1, device=targets.device)
-        rows = torch.arange(batch_size, device=targets.device).unsqueeze(1)
-        parts.append(targets[(rows + offsets) % batch_size])
-    remaining = negative_count - in_batch_count
-    popular_count = remaining // 2 if sampling_weights is not None else 0
-    if popular_count:
-        popular = torch.multinomial(
-            sampling_weights, batch_size * popular_count, replacement=True
-        ).view(batch_size, popular_count)
-        parts.append(popular)
-    uniform_count = remaining - popular_count
-    if uniform_count:
-        parts.append(torch.randint(num_items, (batch_size, uniform_count), device=targets.device))
-    negatives = torch.cat(parts, dim=1)
+def candidate_slates(targets: torch.Tensor, num_items: int, count: int) -> torch.Tensor:
+    negatives = torch.randint(num_items, (targets.size(0), count - 1), device=targets.device)
     while torch.any(negatives == targets.unsqueeze(1)):
         clashes = negatives == targets.unsqueeze(1)
         negatives[clashes] = torch.randint(num_items, (int(clashes.sum()),), device=targets.device)
     return torch.cat((targets.unsqueeze(1), negatives), dim=1)
 
 
-def build_catalog_priors(data, device: str, include_transitions: bool = True) -> CatalogPriors:
+def build_catalog_priors(data, device: str) -> CatalogPriors:
     """Build popularity and first-order transition priors from training histories only."""
     popularity = torch.zeros(data.num_items, dtype=torch.float32)
     transition_counts: dict[int, dict[int, int]] = {}
     for history in data.train_by_user.values():
         for item in history:
             popularity[item] += 1
-        if include_transitions:
-            for previous, following in zip(history, history[1:]):
-                row = transition_counts.setdefault(previous, {})
-                row[following] = row.get(following, 0) + 1
-    item_counts = popularity.clone()
-    sampling_weights = (item_counts + 1.0).pow(0.75)
-    popularity = torch.log1p(item_counts)
-    popularity = (popularity - popularity.mean()) / popularity.std(unbiased=False).clamp_min(1e-6)
+        for previous, following in zip(history, history[1:]):
+            row = transition_counts.setdefault(previous, {})
+            row[following] = row.get(following, 0) + 1
+    popularity = torch.log1p(popularity)
+    popularity = (popularity - popularity.mean()) / popularity.std().clamp_min(1e-6)
     transitions = {
         previous: {following: math.log1p(count) for following, count in row.items()}
         for previous, row in transition_counts.items()
     }
-    return CatalogPriors(
-        popularity.to(device), transitions,
-        sampling_weights.to(device), item_counts,
-    )
+    return CatalogPriors(popularity.to(device), transitions)
 
 
 def amp_context(device: str):
     return torch.autocast(device_type="cuda", dtype=torch.float16) if device.startswith("cuda") else nullcontext()
 
 
-def record_validation(
-    model, metrics, stage, epoch, monitor, logger, *, count_for_patience: bool = True,
-) -> bool:
-    """Record validation and retain the best model in memory, optionally on disk."""
+def record_validation(model, metrics, stage, epoch, monitor, logger) -> bool:
+    """Record a validation check and atomically persist a newly best model."""
     score = float(metrics[monitor.metric_name])
     monitor.history.append({
         "global_step": monitor.global_step,
@@ -278,10 +256,10 @@ def record_validation(
         else:
             logger.info(
                 "BEST_MODEL_IN_MEMORY step=%d stage=%s %s=%.6f",
-                monitor.best_step, monitor.best_stage,
-                monitor.metric_name, monitor.best_score,
+                monitor.best_step, monitor.best_stage, monitor.metric_name,
+                monitor.best_score,
             )
-    elif stage == "joint" and count_for_patience:
+    elif stage == "joint":
         monitor.checks_without_improvement += 1
     return improved
 
@@ -303,46 +281,24 @@ def log_metric_block(logger, label, metrics, stage, epoch, step) -> None:
     )
 
 
-def hard_negative_ranking_loss(logits: torch.Tensor, labels: torch.Tensor, count: int = 16):
-    """Pair every positive against the highest-scoring mistakes in its slate."""
-    positives = logits.gather(1, labels.unsqueeze(1))
-    negatives = logits.clone()
-    negatives.scatter_(1, labels.unsqueeze(1), -torch.inf)
-    hard = negatives.topk(k=min(count, max(logits.size(1) - 1, 1)), dim=1).values
-    return F.softplus(hard - positives).mean()
-
-
 def train_stage(model, data, transitions, stage, epochs, batch_size, candidates, max_history,
                 learning_rate, entropy_coef, supervised_coef, specialization_coef, device, logger,
                 monitor, validate_every_steps, eval_batch_size, early_stopping_patience,
                 lr_patience, full_catalog_supervised, catalog_priors, popularity_alpha,
-                transition_beta, validation_user_limit, periodic_test_user_limit,
-                rl_coef, hard_negative_coef):
+                transition_beta, validation_user_limit, periodic_test_user_limit):
     if epochs == 0:
         return []
     model.set_stage(stage)
-    sparse_parameters = [
-        parameter for parameter in model.item_id_embedding.parameters()
-        if parameter.requires_grad
-    ]
-    sparse_ids = {id(parameter) for parameter in sparse_parameters}
-    trainable = [
-        parameter for parameter in model.parameters()
-        if parameter.requires_grad and id(parameter) not in sparse_ids
-    ]
+    trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
     optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-5)
-    sparse_optimizer = (
-        torch.optim.SparseAdam(sparse_parameters, lr=learning_rate)
-        if sparse_parameters else None
-    )
     scheduler = None
-    if stage in {"coordinator", "joint"}:
+    if stage in {"coordinator", "joint"} and validate_every_steps > 0:
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="max", factor=0.5, patience=lr_patience, min_lr=1e-6
         )
     scaler = torch.amp.GradScaler("cuda", enabled=device.startswith("cuda"))
-    baseline = 0.0
-    epoch_losses = []
+    baselines = {"long": 0.0, "short": 0.0, "coordinator": 0.0}
+    step_losses = []
     for epoch in range(1, epochs + 1):
         random.shuffle(transitions)
         model.train()
@@ -357,10 +313,7 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
         for start in progress:
             batch = transitions[start:start + batch_size]
             histories, lengths, targets = history_batch(data, batch, max_history, device)
-            slates = candidate_slates(
-                targets, data.num_items, candidates,
-                sampling_weights=catalog_priors.sampling_weights,
-            )
+            slates = candidate_slates(targets, data.num_items, candidates)
             with amp_context(device):
                 states = model.encode_states(histories, lengths)
                 if full_catalog_supervised and stage != "joint":
@@ -371,35 +324,22 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                     labels = torch.zeros(len(batch), dtype=torch.long, device=device)
                 reward_mean = 0.0
                 if stage == "specialists":
-                    loss = (
-                        F.cross_entropy(output["long"], labels)
-                        + F.cross_entropy(output["short"], labels)
-                        + hard_negative_coef * (
-                            hard_negative_ranking_loss(output["long"], labels)
-                            + hard_negative_ranking_loss(output["short"], labels)
-                        )
-                    )
+                    loss = F.cross_entropy(output["long"], labels) + F.cross_entropy(output["short"], labels)
                 elif stage == "coordinator":
-                    loss = (
-                        F.cross_entropy(output["coordinator"], labels)
-                        + hard_negative_coef
-                        * hard_negative_ranking_loss(output["coordinator"], labels)
-                    )
+                    loss = F.cross_entropy(output["coordinator"], labels)
                 else:
-                    distribution = Categorical(logits=output["coordinator"])
-                    action = distribution.sample()
-                    target_ranks = 1 + (
-                        output["coordinator"][:, 1:] >= output["coordinator"][:, :1]
-                    ).sum(1)
-                    target_ndcg = 1.0 / torch.log2(target_ranks.float() + 1.0)
-                    rewards = torch.where(
-                        action == 0, target_ndcg,
-                        torch.full_like(target_ndcg, -0.05),
-                    )
-                    baseline = 0.95 * baseline + 0.05 * rewards.mean().item()
-                    advantage = rewards - baseline
-                    policy_loss = -(advantage.detach() * distribution.log_prob(action)).mean()
-                    policy_loss -= entropy_coef * distribution.entropy().mean()
+                    distributions = {name: Categorical(logits=output[name])
+                                     for name in ("long", "short", "coordinator")}
+                    actions = {name: distribution.sample() for name, distribution in distributions.items()}
+                    rewards = {name: torch.where(action == 0, torch.ones_like(action, dtype=torch.float),
+                                                 torch.full_like(action, -0.05, dtype=torch.float))
+                               for name, action in actions.items()}
+                    policy_loss = 0.0
+                    for name, distribution in distributions.items():
+                        baselines[name] = 0.95 * baselines[name] + 0.05 * rewards[name].mean().item()
+                        advantage = rewards[name] - baselines[name]
+                        policy_loss -= (advantage.detach() * distribution.log_prob(actions[name])).mean()
+                        policy_loss -= entropy_coef * distribution.entropy().mean()
                     long_state, short_state, _ = output["states"]
                     specialization = F.cosine_similarity(long_state, short_state).square().mean()
                     if full_catalog_supervised:
@@ -411,32 +351,20 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                     else:
                         supervised = sum(F.cross_entropy(output[name], labels)
                                          for name in ("long", "short", "coordinator")) / 3
-                    hard_ranking = sum(
-                        hard_negative_ranking_loss(output[name], labels)
-                        for name in ("long", "short", "coordinator")
-                    ) / 3
-                    loss = (
-                        supervised_coef * supervised
-                        + hard_negative_coef * hard_ranking
-                        + rl_coef * policy_loss
-                        + specialization_coef * specialization
-                    )
-                    reward_mean = rewards.mean().item()
+                    loss = policy_loss + supervised_coef * supervised + specialization_coef * specialization
+                    reward_mean = rewards["coordinator"].mean().item()
             optimizer.zero_grad(set_to_none=True)
-            if sparse_optimizer is not None:
-                sparse_optimizer.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             scaler.step(optimizer)
-            if sparse_optimizer is not None:
-                scaler.step(sparse_optimizer)
             scaler.update()
 
             monitor.global_step += 1
             completed_steps += 1
             completed_examples += len(batch)
             total += loss.item()
+            step_losses.append(loss.item())
             progress.set_postfix(
                 loss=f"{loss.item():.4f}", reward=f"{reward_mean:.3f}",
                 step=monitor.global_step,
@@ -464,14 +392,28 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                         stage, epoch, monitor.global_step,
                     )
                 validation_seconds += time.perf_counter() - validation_started
-                record_validation(
-                    model, valid_metrics, stage, epoch, monitor, logger,
-                    count_for_patience=False,
-                )
+                record_validation(model, valid_metrics, stage, epoch, monitor, logger)
+                if scheduler is not None:
+                    scheduler.step(valid_metrics[monitor.metric_name])
+                    logger.info(
+                        "LEARNING_RATE step=%d stage=%s lr=%.8g",
+                        monitor.global_step, stage, optimizer.param_groups[0]["lr"],
+                    )
                 model.train()
+                if (
+                    stage == "joint"
+                    and early_stopping_patience > 0
+                    and monitor.checks_without_improvement >= early_stopping_patience
+                ):
+                    monitor.stopped_early = True
+                    logger.info(
+                        "EARLY_STOP step=%d checks_without_improvement=%d best_step=%d best_%s=%.6f",
+                        monitor.global_step, monitor.checks_without_improvement,
+                        monitor.best_step, monitor.metric_name, monitor.best_score,
+                    )
+                    break
 
         average = total / max(completed_steps, 1)
-        epoch_losses.append(average)
         training_seconds = max(
             time.perf_counter() - started - validation_seconds, 1e-9
         )
@@ -480,48 +422,9 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
             stage, epoch, average, completed_steps,
             completed_examples / training_seconds,
         )
-        epoch_validation_started = time.perf_counter()
-        valid_metrics, _ = evaluate(
-            model, data, "valid", eval_batch_size, max_history, device,
-            priors=catalog_priors, popularity_alpha=popularity_alpha,
-            transition_beta=transition_beta, user_limit=validation_user_limit,
-        )
-        validation_seconds += time.perf_counter() - epoch_validation_started
-        log_metric_block(
-            logger, "EPOCH VALIDATION", valid_metrics,
-            stage, epoch, monitor.global_step,
-        )
-        if periodic_test_user_limit >= 0:
-            test_metrics, _ = evaluate(
-                model, data, "test", eval_batch_size, max_history, device,
-                priors=catalog_priors, popularity_alpha=popularity_alpha,
-                transition_beta=transition_beta, user_limit=periodic_test_user_limit,
-            )
-            log_metric_block(
-                logger, "EPOCH TEST", test_metrics,
-                stage, epoch, monitor.global_step,
-            )
-        record_validation(model, valid_metrics, stage, epoch, monitor, logger)
-        if scheduler is not None:
-            scheduler.step(valid_metrics[monitor.metric_name])
-            logger.info(
-                "LEARNING_RATE step=%d stage=%s epoch=%d lr=%.8g",
-                monitor.global_step, stage, epoch, optimizer.param_groups[0]["lr"],
-            )
-        if (
-            stage == "joint"
-            and early_stopping_patience > 0
-            and monitor.checks_without_improvement >= early_stopping_patience
-        ):
-            monitor.stopped_early = True
-            logger.info(
-                "EARLY_STOP step=%d epochs_without_improvement=%d best_step=%d best_%s=%.6f",
-                monitor.global_step, monitor.checks_without_improvement,
-                monitor.best_step, monitor.metric_name, monitor.best_score,
-            )
         if monitor.stopped_early:
             break
-    return epoch_losses
+    return step_losses
 
 
 @torch.inference_mode()
@@ -635,9 +538,9 @@ def save_loss_curve(losses, path):
     offset = 0
     for stage, values in losses.items():
         xs = list(range(offset + 1, offset + len(values) + 1))
-        axis.plot(xs, values, marker="o", label=stage)
+        axis.plot(xs, values, marker="o", markersize=2, linewidth=1, label=stage)
         offset += len(values)
-    axis.set(xlabel="Stage epoch", ylabel="Loss", title="Multi-agent Mamba-RL training")
+    axis.set(xlabel="Optimizer step", ylabel="Loss", title="Multi-agent Mamba-RL training loss per step")
     axis.grid(alpha=0.3)
     axis.legend()
     figure.tight_layout()
@@ -653,7 +556,6 @@ def parse_args():
     parser.add_argument("--refresh-data-cache", action="store_true")
     parser.add_argument("--max-events", type=int, default=None)
     parser.add_argument("--max-transitions", type=int, default=500_000)
-    parser.add_argument("--min-transitions-per-user", type=int, default=1)
     parser.add_argument("--min-rating", type=float, default=4.0)
     parser.add_argument("--min-user-events", type=int, default=5)
     parser.add_argument("--specialist-epochs", type=int, default=3)
@@ -667,7 +569,6 @@ def parse_args():
     parser.add_argument("--lr-patience", type=int, default=3)
     parser.add_argument("--candidates", type=int, default=64)
     parser.add_argument("--dim", type=int, default=128)
-    parser.add_argument("--id-buckets", type=int, default=262_144)
     parser.add_argument("--lora-rank", type=int, default=8)
     parser.add_argument("--lora-alpha", type=float, default=16.0)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
@@ -677,9 +578,7 @@ def parse_args():
     parser.add_argument("--coordinator-lr", type=float, default=2e-4)
     parser.add_argument("--joint-lr", type=float, default=5e-5)
     parser.add_argument("--entropy-coef", type=float, default=0.01)
-    parser.add_argument("--rl-coef", type=float, default=0.05)
     parser.add_argument("--supervised-coef", type=float, default=0.1)
-    parser.add_argument("--hard-negative-coef", type=float, default=0.5)
     parser.add_argument("--specialization-coef", type=float, default=0.01)
     parser.add_argument("--full-catalog-supervised", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--popularity-alpha", type=float, default=0.0)
@@ -695,16 +594,16 @@ def parse_args():
         help="Users in each periodic test; 0 means all and -1 disables periodic test.",
     )
     parser.add_argument("--generate-reasons", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--save-model-weights", action=argparse.BooleanOptionalAction, default=True,
+        help="Persist checkpoints/model weights; loss.png is always written.",
+    )
     parser.add_argument("--reason-count", type=int, default=20)
     parser.add_argument("--reason-max-new-tokens", type=int, default=40)
     parser.add_argument("--item-vector-artifact", default=None)
     parser.add_argument("--resume-checkpoint", default=None)
     parser.add_argument("--experiment-note", default="No experiment note supplied.")
     parser.add_argument("--target-recall-at-10", type=float, default=0.15)
-    parser.add_argument(
-        "--save-model-weights", action=argparse.BooleanOptionalAction, default=True,
-        help="Persist checkpoints/model weights; disabling also skips the loss plot.",
-    )
     parser.add_argument("--output-dir", default=str(PROJECT_ROOT / "outputs_mamba_rl"))
     parser.add_argument(
         "--output-run-dir", default=None,
@@ -721,11 +620,8 @@ def parse_args():
         parser.error("validation interval and patience values cannot be negative")
     if (
         args.candidates < 2 or args.batch_size < 1 or args.max_history < 1
-        or args.id_buckets < 1
         or args.mamba_encode_batch_size < 1 or args.mamba_max_tokens < 1
         or args.validation_user_limit < 0 or args.periodic_test_user_limit < -1
-        or args.min_transitions_per_user < 1
-        or min(args.rl_coef, args.supervised_coef, args.hard_negative_coef) < 0
     ):
         parser.error("candidate count must be >=2 and batch/history sizes must be positive")
     if not 0.0 <= args.target_recall_at_10 <= 1.0:
@@ -744,21 +640,18 @@ def main():
     logger.info("run_id=%s dataset=%s device=%s", run_id, args.dataset, args.device)
     logger.info("EXPERIMENT_NOTE %s", args.experiment_note)
     logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
-    logger.info(
-        "ARTIFACT_POLICY model_weights=%s loss_plot=%s logs_json_examples=true",
-        args.save_model_weights, args.save_model_weights,
-    )
     data, interaction_artifact = load_recommendation_data_cached(args, logger)
     logger.info("users=%d items=%d train_interactions=%d",
                 data.num_users, data.num_items, sum(map(len, data.train_by_user.values())))
-    catalog_priors = build_catalog_priors(
-        data, args.device, include_transitions=args.transition_beta != 0.0,
+    catalog_priors = (
+        build_catalog_priors(data, args.device)
+        if args.popularity_alpha != 0.0 or args.transition_beta != 0.0
+        else None
     )
     logger.info(
         "CATALOG_PRIORS popularity_alpha=%.6f transition_beta=%.6f "
         "source=train_histories_only enabled=%s",
-        args.popularity_alpha, args.transition_beta,
-        args.popularity_alpha != 0.0 or args.transition_beta != 0.0,
+        args.popularity_alpha, args.transition_beta, catalog_priors is not None,
     )
 
     fingerprint = hashlib.sha1("\n".join(data.item_texts).encode("utf-8")).hexdigest()[:12]
@@ -787,9 +680,7 @@ def main():
     logger.info("ITEM_VECTOR_ARTIFACT path=%s fingerprint=%s", artifact, fingerprint)
     item_features = item_features.to(dtype=torch.float16 if args.device.startswith("cuda") else torch.float32)
     model = MultiAgentMambaRecommender(
-        item_features, args.dim, args.lora_rank, args.lora_alpha, args.lora_dropout,
-        args.short_window, item_counts=catalog_priors.item_counts,
-        id_buckets=args.id_buckets,
+        item_features, args.dim, args.lora_rank, args.lora_alpha, args.lora_dropout, args.short_window
     ).to(args.device)
     if args.resume_checkpoint:
         resume_path = Path(args.resume_checkpoint)
@@ -798,18 +689,8 @@ def main():
         model.load_state_dict(resume_state)
         logger.info("RESUME_CHECKPOINT path=%s", resume_path)
     logger.info("agent_parameters=%s", model.agent_parameter_counts())
-    eligible_users = sum(len(history) > 1 for history in data.train_by_user.values())
-    transition_budget = args.max_transitions
-    if transition_budget > 0:
-        transition_budget = max(
-            transition_budget, eligible_users * args.min_transitions_per_user,
-        )
-    transitions = build_transitions(data, transition_budget, args.seed)
-    logger.info(
-        "training_transitions=%d eligible_users=%d requested_max=%d min_per_user=%d",
-        len(transitions), eligible_users, args.max_transitions,
-        args.min_transitions_per_user,
-    )
+    transitions = build_transitions(data, args.max_transitions, args.seed)
+    logger.info("training_transitions=%d", len(transitions))
     logger.info(
         "schedule specialist_epochs=%d coordinator_epochs=%d rl_epochs=%d "
         "validate_every_steps=%d validation_users=%d periodic_test_users=%d "
@@ -833,9 +714,7 @@ def main():
     common = dict(
         model=model, data=data, transitions=transitions, batch_size=args.batch_size,
         candidates=args.candidates, max_history=args.max_history, entropy_coef=args.entropy_coef,
-        rl_coef=args.rl_coef, supervised_coef=args.supervised_coef,
-        hard_negative_coef=args.hard_negative_coef,
-        specialization_coef=args.specialization_coef,
+        supervised_coef=args.supervised_coef, specialization_coef=args.specialization_coef,
         device=args.device, logger=logger, monitor=monitor,
         validate_every_steps=args.validate_every_steps, eval_batch_size=args.eval_batch_size,
         early_stopping_patience=args.early_stopping_patience, lr_patience=args.lr_patience,
@@ -863,10 +742,7 @@ def main():
         logger, "FINAL CURRENT VALIDATION", final_current_metrics,
         "final", 0, monitor.global_step,
     )
-    record_validation(
-        model, final_current_metrics, "final", 0, monitor, logger,
-        count_for_patience=False,
-    )
+    record_validation(model, final_current_metrics, "final", 0, monitor, logger)
     if monitor.best_state is None:
         raise RuntimeError("Training finished without producing a validation checkpoint.")
     model.load_state_dict(monitor.best_state)
@@ -909,7 +785,6 @@ def main():
         "target_recall_at_10": args.target_recall_at_10,
         "target_achieved": target_achieved,
         "experiment_note": args.experiment_note,
-        "model_weights_saved": args.save_model_weights,
         "catalog_prior": {
             "popularity_alpha": args.popularity_alpha,
             "transition_beta": args.transition_beta,
@@ -925,7 +800,7 @@ def main():
             "interaction_artifact": str(interaction_artifact),
         }
         torch.save(checkpoint, output / "multi_agent_lora.pt")
-        save_loss_curve(losses, output / "loss.png")
+    save_loss_curve(losses, output / "loss.png")
     if args.generate_reasons and samples:
         model.to("cpu")
         del model

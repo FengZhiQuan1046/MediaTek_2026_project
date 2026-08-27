@@ -70,9 +70,6 @@ class CoordinatorAgent(nn.Module):
         self.mix_lora = LoRAUpdate(dim * 2, 2, rank, alpha, dropout)
         self.score_lora = LoRAUpdate(dim, dim, rank, alpha, dropout)
         self.log_temperature = nn.Parameter(torch.tensor(0.0))
-        # Calibrate the coordinator and specialist scores instead of summing
-        # three independently tempered logits at fixed unit scale.
-        self.score_mix_logits = nn.Parameter(torch.tensor([2.0, 0.0, 0.0]))
 
     def forward(self, long_state: torch.Tensor, short_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         combined = torch.cat((long_state, short_state), dim=-1)
@@ -100,8 +97,6 @@ class MultiAgentMambaRecommender(nn.Module):
         lora_alpha: float = 16.0,
         lora_dropout: float = 0.05,
         short_window: int = 10,
-        item_counts: torch.Tensor | None = None,
-        id_buckets: int = 262_144,
     ):
         super().__init__()
         if item_features.ndim != 2:
@@ -109,17 +104,6 @@ class MultiAgentMambaRecommender(nn.Module):
         self.register_buffer("item_features", item_features, persistent=False)
         self.item_projection = nn.Linear(item_features.size(1), dim, bias=False)
         nn.init.xavier_uniform_(self.item_projection.weight)
-        self.id_buckets = min(item_features.size(0), id_buckets)
-        self.item_id_embedding = nn.Embedding(self.id_buckets, dim, sparse=True)
-        nn.init.normal_(self.item_id_embedding.weight, std=0.02)
-        self.id_mix_logit = nn.Parameter(torch.tensor(-1.3862944))
-        counts = (
-            torch.zeros(item_features.size(0), dtype=torch.float32)
-            if item_counts is None else item_counts.float().cpu()
-        )
-        if counts.numel() != item_features.size(0):
-            raise ValueError("item_counts must contain one value per item")
-        self.register_buffer("item_counts", counts, persistent=False)
         self.long_agent = SelectiveMambaAgent(dim, lora_rank, lora_alpha, lora_dropout, initial_timescale=0.08)
         self.short_agent = SelectiveMambaAgent(dim, lora_rank, lora_alpha, lora_dropout, initial_timescale=0.5)
         self.coordinator = CoordinatorAgent(dim, lora_rank, lora_alpha, lora_dropout)
@@ -131,17 +115,8 @@ class MultiAgentMambaRecommender(nn.Module):
 
     def project_ids(self, item_ids: torch.Tensor) -> torch.Tensor:
         features = self.item_features[item_ids]
-        semantic = F.normalize(
-            self.item_projection(features.to(self.item_projection.weight.dtype)), dim=-1
-        )
-        collaborative = F.normalize(
-            self.item_id_embedding(item_ids.remainder(self.id_buckets)), dim=-1
-        )
-        # Unseen/cold items receive a zero collaborative weight and therefore
-        # remain rankable through metadata semantics.
-        confidence = self.item_counts[item_ids] / (self.item_counts[item_ids] + 5.0)
-        id_weight = torch.sigmoid(self.id_mix_logit) * confidence.unsqueeze(-1)
-        return F.normalize(semantic + id_weight * collaborative, dim=-1)
+        projected = self.item_projection(features.to(self.item_projection.weight.dtype))
+        return F.normalize(projected, dim=-1)
 
     def project_all(self) -> torch.Tensor:
         return self.project_ids(torch.arange(self.num_items, device=self.item_features.device))
@@ -171,19 +146,13 @@ class MultiAgentMambaRecommender(nn.Module):
         long_logits = self.long_agent.logits(long_state, candidate_vectors)
         short_logits = self.short_agent.logits(short_state, candidate_vectors)
         coordinator_logits = self.coordinator.logits(coordinator_state, candidate_vectors)
-        score_mix = torch.softmax(self.coordinator.score_mix_logits, dim=0)
-        final_logits = (
-            score_mix[0] * coordinator_logits
-            + score_mix[1] * long_logits
-            + score_mix[2] * short_logits
-        )
+        final_logits = coordinator_logits + weights[:, :1] * long_logits + weights[:, 1:] * short_logits
         return {
             "long": long_logits,
             "short": short_logits,
             "coordinator": final_logits,
             "states": (long_state, short_state, coordinator_state),
             "weights": weights,
-            "score_mix": score_mix,
         }
 
     def forward(self, histories: torch.Tensor, lengths: torch.Tensor, candidates: torch.Tensor):
@@ -202,20 +171,15 @@ class MultiAgentMambaRecommender(nn.Module):
         for parameter in self.parameters():
             parameter.requires_grad_(False)
         modules = (
-            (self.long_agent, self.short_agent, self.item_projection, self.item_id_embedding)
+            (self.long_agent, self.short_agent, self.item_projection)
             if stage == "specialists"
             else (self.coordinator,)
             if stage == "coordinator"
-            else (
-                self.long_agent, self.short_agent, self.coordinator,
-                self.item_projection, self.item_id_embedding,
-            )
+            else (self.long_agent, self.short_agent, self.coordinator, self.item_projection)
         )
         for module in modules:
             for parameter in module.parameters():
                 parameter.requires_grad_(True)
-        if stage in {"specialists", "joint"}:
-            self.id_mix_logit.requires_grad_(True)
 
     def agent_parameter_counts(self) -> dict[str, int]:
         return {
@@ -223,5 +187,4 @@ class MultiAgentMambaRecommender(nn.Module):
             "short": sum(p.numel() for p in self.short_agent.parameters()),
             "coordinator": sum(p.numel() for p in self.coordinator.parameters()),
             "shared_projection": sum(p.numel() for p in self.item_projection.parameters()),
-            "item_id": sum(p.numel() for p in self.item_id_embedding.parameters()),
         }
