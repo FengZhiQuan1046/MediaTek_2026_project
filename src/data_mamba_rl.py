@@ -259,6 +259,8 @@ def load_yelp(
 
 
 def amazon_subset(name: str) -> str:
+    if name.lower() in {"amazon-games", "amazon-toys"}:
+        return "raw_review_Toys_and_Games"
     if name.startswith("amazon:"):
         subset = name.split(":", 1)[1]
         return subset if subset.startswith("raw_review_") else f"raw_review_{subset}"
@@ -270,6 +272,11 @@ def amazon_subset(name: str) -> str:
         if part
     )
     return f"raw_review_{category}"
+
+
+def amazon_item_group(name: str) -> str | None:
+    """Return the deterministic split for aliases of Amazon's combined category."""
+    return {"amazon-games": "games", "amazon-toys": "toys"}.get(name.lower())
 
 
 def load_recommendation_data(
@@ -286,7 +293,9 @@ def load_recommendation_data(
     elif name in MOVIELENS_URLS:
         events = load_movielens(name, data_path, cache_dir, max_events, min_rating)
     elif name.startswith("amazon-") or name.startswith("amazon:"):
-        events = load_amazon(amazon_subset(dataset), max_events, cache_dir)
+        events = load_amazon(
+            amazon_subset(dataset), max_events, cache_dir, item_group=amazon_item_group(dataset)
+        )
     elif name in {"yelp19", "yelp-2019", "yelp23", "yelp-2023"}:
         events = load_yelp(data_path, max_events, min_rating)
     else:

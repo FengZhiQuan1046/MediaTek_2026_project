@@ -10,6 +10,7 @@ import json
 import logging
 import math
 from pathlib import Path
+import pickle
 import random
 import time
 
@@ -76,6 +77,38 @@ def configure_logging(path: Path) -> logging.Logger:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
     return logger
+
+
+def load_recommendation_data_cached(args, logger):
+    """Cache the normalized split so repeated tuning does not rescan raw datasets."""
+    identity = {
+        "dataset": args.dataset,
+        "data_path": str(Path(args.data_path).resolve()) if args.data_path else None,
+        "max_events": args.max_events,
+        "min_rating": args.min_rating,
+        "min_user_events": args.min_user_events,
+        "schema_version": 1,
+    }
+    digest = hashlib.sha1(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:12]
+    safe_dataset = args.dataset.replace(":", "_").replace("/", "_")
+    artifact = Path(args.cache_dir) / "mamba_multi_agent_data" / f"{safe_dataset}_{digest}.pkl"
+    if artifact.exists() and not args.refresh_data_cache:
+        with artifact.open("rb") as stream:
+            data = pickle.load(stream)
+        logger.info("INTERACTION_CACHE hit path=%s", artifact)
+        return data, artifact
+
+    data = load_recommendation_data(
+        args.dataset, args.data_path, args.cache_dir, args.max_events,
+        args.min_rating, args.min_user_events,
+    )
+    artifact.parent.mkdir(parents=True, exist_ok=True)
+    temporary = artifact.with_suffix(".tmp")
+    with temporary.open("wb") as stream:
+        pickle.dump(data, stream, protocol=pickle.HIGHEST_PROTOCOL)
+    temporary.replace(artifact)
+    logger.info("INTERACTION_CACHE miss_saved path=%s", artifact)
+    return data, artifact
 
 
 def build_transitions(data, maximum: int | None, seed: int) -> list[Transition]:
@@ -200,7 +233,7 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                 learning_rate, entropy_coef, supervised_coef, specialization_coef, device, logger,
                 monitor, validate_every_steps, eval_batch_size, early_stopping_patience,
                 lr_patience, full_catalog_supervised, catalog_priors, popularity_alpha,
-                transition_beta):
+                transition_beta, validation_user_limit):
     if epochs == 0:
         return []
     model.set_stage(stage)
@@ -289,7 +322,7 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                 valid_metrics, _ = evaluate(
                     model, data, "valid", eval_batch_size, max_history, device,
                     priors=catalog_priors, popularity_alpha=popularity_alpha,
-                    transition_beta=transition_beta,
+                    transition_beta=transition_beta, user_limit=validation_user_limit,
                 )
                 validation_seconds += time.perf_counter() - validation_started
                 record_validation(model, valid_metrics, stage, epoch, monitor, logger)
@@ -332,11 +365,20 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
 def evaluate(
     model, data, split, batch_size, max_history, device, sample_count=0,
     priors: CatalogPriors | None = None, popularity_alpha: float = 0.0,
-    transition_beta: float = 0.0,
+    transition_beta: float = 0.0, user_limit: int = 0,
 ):
     model.eval()
-    targets, users = (data.valid_target if split == "valid" else data.test_target), sorted(data.test_target)
-    totals = {"recall@5": 0.0, "recall@10": 0.0, "ndcg@5": 0.0, "ndcg@10": 0.0}
+    targets = data.valid_target if split == "valid" else data.test_target
+    users = sorted(targets)
+    total_users = len(users)
+    if user_limit > 0 and total_users > user_limit:
+        # Evenly cover the stable sorted user list without relying on global RNG state.
+        users = [users[index * total_users // user_limit] for index in range(user_limit)]
+    totals = {
+        "recall@5": 0.0, "recall@10": 0.0,
+        "ndcg@5": 0.0, "ndcg@10": 0.0,
+        "hit@5": 0.0, "hit@10": 0.0,
+    }
     samples = []
     with amp_context(device):
         projected_items = model.project_all()
@@ -366,7 +408,11 @@ def evaluate(
                 scores[row, list(seen)] = -torch.inf
         ranks = (scores >= scores.gather(1, gold.unsqueeze(1))).sum(1)
         for cutoff in (5, 10):
-            totals[f"recall@{cutoff}"] += (ranks <= cutoff).sum().item()
+            hits = (ranks <= cutoff).sum().item()
+            # There is one held-out target per user, so Recall and Hit are
+            # numerically equal. Keep both names for standard reports.
+            totals[f"recall@{cutoff}"] += hits
+            totals[f"hit@{cutoff}"] += hits
             totals[f"ndcg@{cutoff}"] += torch.where(
                 ranks <= cutoff, 1 / torch.log2(ranks.float() + 1), torch.zeros_like(ranks, dtype=torch.float)
             ).sum().item()
@@ -385,7 +431,8 @@ def evaluate(
     seconds = max(time.perf_counter() - started, 1e-9)
     metrics = {name: value / len(users) for name, value in totals.items()}
     metrics.update({"users_per_second": len(users) / seconds,
-                    "scores_per_second": len(users) * data.num_items / seconds})
+                    "scores_per_second": len(users) * data.num_items / seconds,
+                    "evaluated_users": len(users), "total_users": total_users})
     return metrics, samples
 
 
@@ -440,6 +487,7 @@ def parse_args():
     parser.add_argument("--dataset", default="movielens-1m")
     parser.add_argument("--data-path", default=None)
     parser.add_argument("--cache-dir", default=str(PROJECT_ROOT / "cache"))
+    parser.add_argument("--refresh-data-cache", action="store_true")
     parser.add_argument("--max-events", type=int, default=None)
     parser.add_argument("--max-transitions", type=int, default=500_000)
     parser.add_argument("--min-rating", type=float, default=4.0)
@@ -472,6 +520,9 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=25252)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--skip-mamba", action="store_true")
+    parser.add_argument("--mamba-encode-batch-size", type=int, default=4)
+    parser.add_argument("--mamba-max-tokens", type=int, default=48)
+    parser.add_argument("--validation-user-limit", type=int, default=0)
     parser.add_argument("--generate-reasons", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--reason-count", type=int, default=20)
     parser.add_argument("--reason-max-new-tokens", type=int, default=40)
@@ -480,12 +531,24 @@ def parse_args():
     parser.add_argument("--experiment-note", default="No experiment note supplied.")
     parser.add_argument("--target-recall-at-10", type=float, default=0.15)
     parser.add_argument("--output-dir", default=str(PROJECT_ROOT / "outputs_mamba_rl"))
+    parser.add_argument(
+        "--output-run-dir", default=None,
+        help="Write directly to this directory instead of dataset/run_id nesting.",
+    )
+    parser.add_argument(
+        "--score-file", default=None,
+        help="Optional JSON path for validation/test ranking scores.",
+    )
     args = parser.parse_args()
     if min(args.specialist_epochs, args.coordinator_epochs, args.rl_epochs) < 0:
         parser.error("stage epoch counts cannot be negative")
     if min(args.validate_every_steps, args.early_stopping_patience, args.lr_patience) < 0:
         parser.error("validation interval and patience values cannot be negative")
-    if args.candidates < 2 or args.batch_size < 1 or args.max_history < 1:
+    if (
+        args.candidates < 2 or args.batch_size < 1 or args.max_history < 1
+        or args.mamba_encode_batch_size < 1 or args.mamba_max_tokens < 1
+        or args.validation_user_limit < 0
+    ):
         parser.error("candidate count must be >=2 and batch/history sizes must be positive")
     if not 0.0 <= args.target_recall_at_10 <= 1.0:
         parser.error("--target-recall-at-10 must be in [0, 1]")
@@ -497,15 +560,13 @@ def main():
     seed_everything(args.seed)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_dataset = args.dataset.replace(":", "_").replace("/", "_")
-    output = Path(args.output_dir) / safe_dataset / run_id
+    output = Path(args.output_run_dir) if args.output_run_dir else Path(args.output_dir) / safe_dataset / run_id
     output.mkdir(parents=True, exist_ok=True)
     logger = configure_logging(output / f"train_{run_id}.log")
     logger.info("run_id=%s dataset=%s device=%s", run_id, args.dataset, args.device)
     logger.info("EXPERIMENT_NOTE %s", args.experiment_note)
     logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
-    data = load_recommendation_data(
-        args.dataset, args.data_path, args.cache_dir, args.max_events, args.min_rating, args.min_user_events
-    )
+    data, interaction_artifact = load_recommendation_data_cached(args, logger)
     logger.info("users=%d items=%d train_interactions=%d",
                 data.num_users, data.num_items, sum(map(len, data.train_by_user.values())))
     catalog_priors = (
@@ -523,14 +584,19 @@ def main():
     artifact = (
         Path(args.item_vector_artifact)
         if args.item_vector_artifact
-        else Path(args.cache_dir) / "mamba_multi_agent" / f"{safe_dataset}_{data.num_items}_{fingerprint}.pt"
+        else Path(args.cache_dir) / "mamba_multi_agent" / (
+            f"{safe_dataset}_{data.num_items}_{fingerprint}_tok{args.mamba_max_tokens}.pt"
+        )
     )
     if args.skip_mamba:
         generator = torch.Generator().manual_seed(args.seed)
         item_features = torch.randn(data.num_items, args.dim, generator=generator)
         logger.warning("--skip-mamba uses random item features; it is only a smoke-test mode")
     else:
-        item_features = load_or_encode_text(data.item_texts, str(artifact), args.device, False, args.cache_dir)
+        item_features = load_or_encode_text(
+            data.item_texts, str(artifact), args.device, False, args.cache_dir,
+            batch_size=args.mamba_encode_batch_size, max_tokens=args.mamba_max_tokens,
+        )
         assert item_features is not None
     if item_features.size(0) != data.num_items:
         raise ValueError(
@@ -565,7 +631,7 @@ def main():
         resumed_metrics, _ = evaluate(
             model, data, "valid", args.eval_batch_size, args.max_history, args.device,
             priors=catalog_priors, popularity_alpha=args.popularity_alpha,
-            transition_beta=args.transition_beta,
+            transition_beta=args.transition_beta, user_limit=args.validation_user_limit,
         )
         record_validation(model, resumed_metrics, "resume", 0, monitor, logger)
     common = dict(
@@ -578,6 +644,7 @@ def main():
         full_catalog_supervised=args.full_catalog_supervised,
         catalog_priors=catalog_priors, popularity_alpha=args.popularity_alpha,
         transition_beta=args.transition_beta,
+        validation_user_limit=args.validation_user_limit,
     )
     losses = {
         "specialists": train_stage(stage="specialists", epochs=args.specialist_epochs,
@@ -591,7 +658,7 @@ def main():
     final_current_metrics, _ = evaluate(
         model, data, "valid", args.eval_batch_size, args.max_history, args.device,
         priors=catalog_priors, popularity_alpha=args.popularity_alpha,
-        transition_beta=args.transition_beta,
+        transition_beta=args.transition_beta, user_limit=args.validation_user_limit,
     )
     record_validation(model, final_current_metrics, "final", 0, monitor, logger)
     if monitor.best_state is None:
@@ -604,7 +671,7 @@ def main():
     valid_metrics, _ = evaluate(
         model, data, "valid", args.eval_batch_size, args.max_history, args.device,
         priors=catalog_priors, popularity_alpha=args.popularity_alpha,
-        transition_beta=args.transition_beta,
+        transition_beta=args.transition_beta, user_limit=args.validation_user_limit,
     )
     test_metrics, samples = evaluate(
         model, data, "test", args.eval_batch_size, args.max_history, args.device, args.reason_count,
@@ -639,6 +706,7 @@ def main():
         "model": {key: value.detach().cpu() for key, value in model.state_dict().items()},
         "config": vars(args), "valid_metrics": valid_metrics, "test_metrics": test_metrics,
         "training": training_summary, "item_vector_artifact": str(artifact),
+        "interaction_artifact": str(interaction_artifact),
     }
     torch.save(checkpoint, output / "multi_agent_lora.pt")
     save_loss_curve(losses, output / "loss.png")
@@ -656,9 +724,27 @@ def main():
     (output / "metrics.json").write_text(
         json.dumps({"valid": valid_metrics, "test": test_metrics, "training": training_summary}, indent=2), encoding="utf-8"
     )
+    if args.score_file:
+        requested_names = ("ndcg@5", "ndcg@10", "recall@5", "recall@10", "hit@5", "hit@10")
+        score_path = Path(args.score_file)
+        score_path.parent.mkdir(parents=True, exist_ok=True)
+        score_path.write_text(
+            json.dumps(
+                {
+                    "dataset": args.dataset,
+                    "run_id": run_id,
+                    "valid": {name: valid_metrics[name] for name in requested_names},
+                    "test": {name: test_metrics[name] for name in requested_names},
+                    "config": vars(args),
+                    "artifacts": str(output),
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        logger.info("scores=%s", score_path)
     logger.info("outputs=%s", output)
 
 
 if __name__ == "__main__":
     main()
-

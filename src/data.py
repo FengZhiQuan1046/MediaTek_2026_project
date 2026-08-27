@@ -44,7 +44,31 @@ def _metadata_text(row: dict) -> str:
     return " ".join(str(part).strip() for part in parts if part and str(part).strip())
 
 
-def load_amazon(subset: str, max_events: int | None, cache_dir: str | None = None) -> list[tuple[str, str, int, str]]:
+_GAME_METADATA_TERMS = (
+    "game", "gaming", "puzzle", "chess", "checkers", "domino", "dice",
+    "playing card", "board game", "tabletop", "mahjong", "bingo",
+)
+
+
+def _amazon_toys_and_games_group(row: dict) -> str:
+    """Split the combined catalog deterministically using stable metadata fields."""
+    categories = row.get("categories") or []
+    if isinstance(categories, str):
+        categories = [categories]
+    haystack = " ".join(
+        str(value).lower()
+        for value in (row.get("title"), row.get("subtitle"), row.get("main_category"), *categories)
+        if value
+    )
+    return "games" if any(term in haystack for term in _GAME_METADATA_TERMS) else "toys"
+
+
+def load_amazon(
+    subset: str,
+    max_events: int | None,
+    cache_dir: str | None = None,
+    item_group: str | None = None,
+) -> list[tuple[str, str, int, str]]:
     """Load reviews and item metadata from matching Amazon Reviews 2023 configs.
 
     The raw review configuration has names such as ``raw_review_All_Beauty``;
@@ -62,6 +86,10 @@ def load_amazon(subset: str, max_events: int | None, cache_dir: str | None = Non
 
     if not subset.startswith("raw_review_"):
         raise ValueError("--subset must start with 'raw_review_', e.g. raw_review_All_Beauty")
+    if item_group not in {None, "games", "toys"}:
+        raise ValueError(f"Unsupported Amazon item group: {item_group!r}")
+    if item_group is not None and subset != "raw_review_Toys_and_Games":
+        raise ValueError("Games/Toys item grouping is only valid for raw_review_Toys_and_Games")
     # Keep the DatasetDict form used in the official review-loading example.
     with tqdm(total=1, desc="Loading full review dataset", unit="dataset", disable=not _show_progress()) as progress:
         reviews = load_dataset(
@@ -88,11 +116,17 @@ def load_amazon(subset: str, max_events: int | None, cache_dir: str | None = Non
     item_texts = {}
     for row in tqdm(metadata, total=len(metadata), desc="Joining item metadata by parent_asin", unit="item", disable=not _show_progress()):
         parent_asin = row.get("parent_asin")
-        if parent_asin in required_items and (text := _metadata_text(row)):
+        if (
+            parent_asin in required_items
+            and (item_group is None or _amazon_toys_and_games_group(row) == item_group)
+            and (text := _metadata_text(row))
+        ):
             item_texts[str(parent_asin)] = text
 
     rows = []
     for row in tqdm(limited_reviews, total=len(limited_reviews), desc="Normalising review interactions", unit="review", disable=not _show_progress()):
+        if item_group is not None and str(row.get("parent_asin") or "") not in item_texts:
+            continue
         normal = _normalise_row(row, item_texts)
         if normal is not None:
             rows.append(normal)

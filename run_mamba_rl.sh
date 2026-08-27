@@ -11,8 +11,10 @@ DATASET="${1:-movielens-1m}"
 CUDA_ID="${2:-0}"
 DATA_PATH="${3:-}"
 CACHE_DIR="${CACHE_DIR:-/workspace/P78123011/cache}"
+PYTHON_BIN="${PYTHON_BIN:-python}"
 BATCH_SIZE="${BATCH_SIZE:-128}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-128}"
+MAX_EVENTS="${MAX_EVENTS:-}"
 SPECIALIST_EPOCHS="${SPECIALIST_EPOCHS:-3}"
 COORDINATOR_EPOCHS="${COORDINATOR_EPOCHS:-2}"
 RL_EPOCHS="${RL_EPOCHS:-20}"
@@ -27,6 +29,27 @@ TRANSITION_BETA="${TRANSITION_BETA:-0.0}"
 TARGET_RECALL_AT_10="${TARGET_RECALL_AT_10:-0.15}"
 EXPERIMENT_NOTE="${EXPERIMENT_NOTE:-}"
 RESUME_CHECKPOINT="${RESUME_CHECKPOINT:-}"
+OUTPUT_DIR="${OUTPUT_DIR:-$PWD/outputs_mamba_rl}"
+OUTPUT_RUN_DIR="${OUTPUT_RUN_DIR:-}"
+SCORE_FILE="${SCORE_FILE:-}"
+GENERATE_REASONS="${GENERATE_REASONS:-0}"
+CANDIDATES="${CANDIDATES:-64}"
+DIM="${DIM:-128}"
+LORA_RANK="${LORA_RANK:-8}"
+LORA_ALPHA="${LORA_ALPHA:-16.0}"
+LORA_DROPOUT="${LORA_DROPOUT:-0.05}"
+SHORT_WINDOW="${SHORT_WINDOW:-10}"
+MAX_HISTORY="${MAX_HISTORY:-100}"
+SPECIALIST_LR="${SPECIALIST_LR:-2e-4}"
+COORDINATOR_LR="${COORDINATOR_LR:-2e-4}"
+JOINT_LR="${JOINT_LR:-5e-5}"
+ENTROPY_COEF="${ENTROPY_COEF:-0.01}"
+SUPERVISED_COEF="${SUPERVISED_COEF:-0.1}"
+SPECIALIZATION_COEF="${SPECIALIZATION_COEF:-0.01}"
+FULL_CATALOG_SUPERVISED="${FULL_CATALOG_SUPERVISED:-0}"
+MAMBA_ENCODE_BATCH_SIZE="${MAMBA_ENCODE_BATCH_SIZE:-4}"
+MAMBA_MAX_TOKENS="${MAMBA_MAX_TOKENS:-48}"
+VALIDATION_USER_LIMIT="${VALIDATION_USER_LIMIT:-0}"
 
 if [[ $# -gt 3 || ! "$CUDA_ID" =~ ^[0-9]+$ ]]; then
   echo "Usage: bash run_mamba_rl.sh DATASET [CUDA_ID] [DATA_PATH]" >&2
@@ -64,14 +87,49 @@ ARGS=(
   --early-stopping-patience "$EARLY_STOPPING_PATIENCE"
   --lr-patience "$LR_PATIENCE"
   --max-transitions "$MAX_TRANSITIONS"
+  --candidates "$CANDIDATES"
+  --dim "$DIM"
+  --lora-rank "$LORA_RANK"
+  --lora-alpha "$LORA_ALPHA"
+  --lora-dropout "$LORA_DROPOUT"
+  --short-window "$SHORT_WINDOW"
+  --max-history "$MAX_HISTORY"
+  --specialist-lr "$SPECIALIST_LR"
+  --coordinator-lr "$COORDINATOR_LR"
+  --joint-lr "$JOINT_LR"
+  --entropy-coef "$ENTROPY_COEF"
+  --supervised-coef "$SUPERVISED_COEF"
+  --specialization-coef "$SPECIALIZATION_COEF"
+  --mamba-encode-batch-size "$MAMBA_ENCODE_BATCH_SIZE"
+  --mamba-max-tokens "$MAMBA_MAX_TOKENS"
+  --validation-user-limit "$VALIDATION_USER_LIMIT"
   --seed "$SEED"
   --popularity-alpha "$POPULARITY_ALPHA"
   --transition-beta "$TRANSITION_BETA"
   --target-recall-at-10 "$TARGET_RECALL_AT_10"
   --experiment-note "$EXPERIMENT_NOTE"
+  --output-dir "$OUTPUT_DIR"
   --device cuda
-  --generate-reasons
 )
+if [[ -n "$MAX_EVENTS" ]]; then
+  ARGS+=(--max-events "$MAX_EVENTS")
+fi
+if [[ "$GENERATE_REASONS" == "1" ]]; then
+  ARGS+=(--generate-reasons)
+else
+  ARGS+=(--no-generate-reasons)
+fi
+if [[ "$FULL_CATALOG_SUPERVISED" == "1" ]]; then
+  ARGS+=(--full-catalog-supervised)
+else
+  ARGS+=(--no-full-catalog-supervised)
+fi
+if [[ -n "$OUTPUT_RUN_DIR" ]]; then
+  ARGS+=(--output-run-dir "$OUTPUT_RUN_DIR")
+fi
+if [[ -n "$SCORE_FILE" ]]; then
+  ARGS+=(--score-file "$SCORE_FILE")
+fi
 if [[ -n "$RESUME_CHECKPOINT" ]]; then
   ARGS+=(--resume-checkpoint "$RESUME_CHECKPOINT")
 fi
@@ -80,9 +138,4 @@ if [[ -n "$DATA_PATH" ]]; then
   ARGS+=(--data-path "$DATA_PATH")
 fi
 
-python -m src.train_mamba_rl "${ARGS[@]}"
-
-
-
-
-All_Beauty、Amazon_Fashion、Appliances、Arts_Crafts_and_Sewing、Automotive、Baby_Products、Beauty_and_Personal_Care、Books、Cell_Phones_and_Accessories、Clothing_Shoes_and_Jewelry、Digital_Music、Electronics、Gift_Cards、Grocery_and_Gourmet_Food、Handmade_Products、Health_and_Household、Health_and_Personal_Care、Home_and_Kitchen、Industrial_and_Scientific、Kindle_Store、Magazine_Subscriptions、Movies_and_TV、Musical_Instruments、Office_Products、Patio_Lawn_and_Garden、Pet_Supplies、Software、Sports_and_Outdoors、Subscription_Boxes、Tools_and_Home_Improvement、Toys_and_Games、Video_Games、Unknown
+"$PYTHON_BIN" -m src.train_mamba_rl "${ARGS[@]}"

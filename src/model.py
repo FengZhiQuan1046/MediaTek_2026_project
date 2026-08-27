@@ -59,8 +59,17 @@ class MambaTextEncoder:
         for start in tqdm(range(0, len(texts), batch_size), desc="Encoding item text with Mamba", unit="batch"):
             batch = self.tokenizer(texts[start : start + batch_size], padding=True, truncation=True,
                                    max_length=self.max_tokens, return_tensors="pt").to(self.device)
-            output = self.model(**batch, output_hidden_states=True)
-            hidden = output.hidden_states[-1]
+            # The recommender only needs the backbone representation. Calling the
+            # CausalLM wrapper also materialises full-vocabulary logits that are
+            # immediately discarded; the backbone hidden state is numerically
+            # identical and substantially cheaper for large item catalogs.
+            output = self.model.backbone(
+                input_ids=batch["input_ids"],
+                attention_mask=batch["attention_mask"],
+                use_cache=False,
+                return_dict=True,
+            )
+            hidden = output.last_hidden_state
             mask = batch["attention_mask"].unsqueeze(-1)
             vectors.append(((hidden * mask).sum(1) / mask.sum(1).clamp_min(1)).cpu())
         return torch.cat(vectors)
@@ -100,7 +109,8 @@ class HybridRecommender(nn.Module):
 
 
 def load_or_encode_text(
-    texts: list[str], artifact: str, device: str, skip_mamba: bool, cache_dir: str
+    texts: list[str], artifact: str, device: str, skip_mamba: bool, cache_dir: str,
+    batch_size: int = 4, max_tokens: int = 48,
 ) -> torch.Tensor | None:
     path = Path(artifact)
     if skip_mamba:
@@ -111,7 +121,9 @@ def load_or_encode_text(
             progress.update(1)
         return vectors
     path.parent.mkdir(parents=True, exist_ok=True)
-    vectors = MambaTextEncoder(device, cache_dir).encode(texts)
+    vectors = MambaTextEncoder(device, cache_dir, max_tokens=max_tokens).encode(
+        texts, batch_size=batch_size
+    )
     with tqdm(total=1, desc="Saving Mamba item-vector cache", unit="artifact") as progress:
         torch.save(vectors, path)
         progress.update(1)

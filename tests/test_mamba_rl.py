@@ -7,9 +7,9 @@ import unittest
 HAS_TORCH = importlib.util.find_spec("torch") is not None
 if HAS_TORCH:
     import torch
-    from src.data_mamba_rl import amazon_subset, load_movielens, load_recommendation_data
+    from src.data_mamba_rl import amazon_item_group, amazon_subset, load_movielens, load_recommendation_data
     from src.model_mamba_rl import MultiAgentMambaRecommender
-    from src.train_mamba_rl import build_transitions, candidate_slates, history_batch
+    from src.train_mamba_rl import build_transitions, candidate_slates, evaluate, history_batch
 
 
 @unittest.skipUnless(HAS_TORCH, "requires torch")
@@ -44,6 +44,18 @@ class MultiAgentMambaRLTest(unittest.TestCase):
     def test_amazon_category_config_name(self):
         self.assertEqual(amazon_subset("amazon-all-beauty"), "raw_review_All_Beauty")
         self.assertEqual(amazon_subset("amazon-movies-and-tv"), "raw_review_Movies_and_TV")
+        self.assertEqual(amazon_subset("amazon-games"), "raw_review_Toys_and_Games")
+        self.assertEqual(amazon_subset("amazon-toys"), "raw_review_Toys_and_Games")
+        self.assertEqual(amazon_item_group("amazon-games"), "games")
+        self.assertEqual(amazon_item_group("amazon-toys"), "toys")
+        self.assertIsNone(amazon_item_group("amazon-toys-and-games"))
+
+    def test_evaluation_reports_hit_at_5_and_10(self):
+        data = load_recommendation_data("synthetic", None, "/tmp", min_user_events=5)
+        model = MultiAgentMambaRecommender(torch.randn(data.num_items, 8), dim=4, lora_rank=2)
+        metrics, _ = evaluate(model, data, "test", 8, 10, "cpu")
+        self.assertEqual(metrics["hit@5"], metrics["recall@5"])
+        self.assertEqual(metrics["hit@10"], metrics["recall@10"])
 
     def test_movielens_csv_adapter(self):
         with tempfile.TemporaryDirectory() as directory:
