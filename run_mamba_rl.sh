@@ -47,6 +47,7 @@ LORA_RANK="${LORA_RANK:-8}"
 LORA_ALPHA="${LORA_ALPHA:-16.0}"
 LORA_DROPOUT="${LORA_DROPOUT:-0.05}"
 SHORT_WINDOW="${SHORT_WINDOW:-10}"
+USE_GRAPH_EMBEDDINGS="${USE_GRAPH_EMBEDDINGS:-1}"
 MAX_HISTORY="${MAX_HISTORY:-100}"
 SPECIALIST_LR="${SPECIALIST_LR:-2e-4}"
 COORDINATOR_LR="${COORDINATOR_LR:-2e-4}"
@@ -121,6 +122,11 @@ ARGS=(
   --output-dir "$OUTPUT_DIR"
   --device cuda
 )
+if [[ "$USE_GRAPH_EMBEDDINGS" == "1" ]]; then
+  ARGS+=(--use-graph-embeddings)
+else
+  ARGS+=(--no-use-graph-embeddings)
+fi
 if [[ -n "$MAX_EVENTS" ]]; then
   ARGS+=(--max-events "$MAX_EVENTS")
 fi

@@ -16,17 +16,21 @@ class LightGCN(nn.Module):
         self.embedding = nn.Embedding(users + items, dim)
         nn.init.xavier_uniform_(self.embedding.weight)
 
-    def forward(self, edges: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, edges: torch.Tensor, progress=None) -> tuple[torch.Tensor, torch.Tensor]:
         x = self.embedding.weight
         src, dst = edges
         degree = torch.bincount(src, minlength=x.size(0)).clamp_min(1).float().to(x.device)
         all_layers = [x]
+        if progress is not None:
+            progress.update(1)
         for _ in range(self.layers):
             out = torch.zeros_like(x)
             weight = (degree[src] * degree[dst]).rsqrt().unsqueeze(1)
             out.index_add_(0, dst, x[src] * weight)
             x = out
             all_layers.append(x)
+            if progress is not None:
+                progress.update(1)
         x = torch.stack(all_layers).mean(0)
         return x[: self.users], x[self.users :]
 

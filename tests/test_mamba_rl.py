@@ -15,7 +15,11 @@ if HAS_TORCH:
 @unittest.skipUnless(HAS_TORCH, "requires torch")
 class MultiAgentMambaRLTest(unittest.TestCase):
     def test_agents_have_disjoint_lora_parameters_and_full_catalog_scores(self):
-        model = MultiAgentMambaRecommender(torch.randn(12, 16), dim=8, lora_rank=2, short_window=2)
+        edges = torch.tensor([[0, 1, 2, 3], [4, 5, 6, 7]])
+        model = MultiAgentMambaRecommender(
+            torch.randn(12, 16), dim=8, lora_rank=2, short_window=2,
+            graph_edges=edges, graph_users=4,
+        )
         histories = torch.tensor([[1, 2, 3], [3, 4, 0]])
         lengths = torch.tensor([3, 2])
         candidates = torch.tensor([[4, 5, 6], [5, 6, 7]])
@@ -24,13 +28,39 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertEqual(model.full_catalog_scores(histories, lengths)["coordinator"].shape, (2, 12))
         self.assertTrue(set(model.long_agent.parameters()).isdisjoint(set(model.short_agent.parameters())))
 
+    def test_graph_embeddings_can_be_disabled(self):
+        model = MultiAgentMambaRecommender(
+            torch.randn(12, 16), dim=8, lora_rank=2, use_graph_embeddings=False,
+        )
+        model.set_stage("specialists")
+        model.set_stage("joint")
+        histories = torch.tensor([[1, 2, 3]])
+        lengths = torch.tensor([3])
+        candidates = torch.tensor([[4, 5, 6]])
+        self.assertEqual(model(histories, lengths, candidates)["coordinator"].shape, (1, 3))
+
     def test_each_training_stage_selects_expected_parameters(self):
-        model = MultiAgentMambaRecommender(torch.randn(8, 6), dim=4, lora_rank=2)
+        edges = torch.tensor([[0, 1], [4, 5]])
+        model = MultiAgentMambaRecommender(torch.randn(8, 6), dim=4, lora_rank=2,
+                                           graph_edges=edges, graph_users=4)
         model.set_stage("coordinator")
         self.assertTrue(all(parameter.requires_grad for parameter in model.coordinator.parameters()))
         self.assertFalse(any(parameter.requires_grad for parameter in model.long_agent.parameters()))
+        self.assertFalse(any(parameter.requires_grad for parameter in model.graph.parameters()))
         model.set_stage("joint")
         self.assertTrue(all(parameter.requires_grad for parameter in model.parameters()))
+
+    def test_graph_embeddings_receive_joint_training_gradients(self):
+        edges = torch.tensor([[0, 1], [4, 5]])
+        model = MultiAgentMambaRecommender(torch.randn(8, 6), dim=4, lora_rank=2,
+                                           graph_edges=edges, graph_users=4)
+        model.set_stage("joint")
+        output = model(
+            torch.tensor([[1, 2, 3]]), torch.tensor([3]), torch.tensor([[4, 5, 6]]),
+        )
+        output["coordinator"].sum().backward()
+        self.assertTrue(all(parameter.requires_grad for parameter in model.graph.parameters()))
+        self.assertTrue(all(parameter.grad is not None for parameter in model.graph.parameters()))
 
     def test_synthetic_transition_batch(self):
         data = load_recommendation_data("synthetic", None, "/tmp", min_user_events=5)
@@ -58,7 +88,9 @@ class MultiAgentMambaRLTest(unittest.TestCase):
 
     def test_evaluation_reports_hit_at_5_and_10(self):
         data = load_recommendation_data("synthetic", None, "/tmp", min_user_events=5)
-        model = MultiAgentMambaRecommender(torch.randn(data.num_items, 8), dim=4, lora_rank=2)
+        model = MultiAgentMambaRecommender(
+            torch.randn(data.num_items, 8), dim=4, lora_rank=2, use_graph_embeddings=False,
+        )
         metrics, _ = evaluate(model, data, "test", 8, 10, "cpu")
         self.assertEqual(metrics["hit@5"], metrics["recall@5"])
         self.assertEqual(metrics["hit@10"], metrics["recall@10"])

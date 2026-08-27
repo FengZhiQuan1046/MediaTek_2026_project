@@ -20,6 +20,7 @@ from torch.distributions import Categorical
 from torch.nn import functional as F
 from tqdm.auto import tqdm
 
+from src.data import edge_index
 from src.data_mamba_rl import load_recommendation_data
 from src.model import MAMBA_MODEL_ID, load_or_encode_text
 from src.model_mamba_rl import MultiAgentMambaRecommender
@@ -315,12 +316,15 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
             histories, lengths, targets = history_batch(data, batch, max_history, device)
             slates = candidate_slates(targets, data.num_items, candidates)
             with amp_context(device):
-                states = model.encode_states(histories, lengths)
+                graph_items = model.graph_item_vectors()
+                states = model.encode_states(histories, lengths, graph_items)
                 if full_catalog_supervised and stage != "joint":
-                    output = model.logits_from_states(states, model.project_all())
+                    output = model.logits_from_states(states, model.project_all(graph_items))
                     labels = targets
                 else:
-                    output = model.logits_from_states(states, model.project_ids(slates))
+                    output = model.logits_from_states(
+                        states, model.project_ids(slates, graph_items)
+                    )
                     labels = torch.zeros(len(batch), dtype=torch.long, device=device)
                 reward_mean = 0.0
                 if stage == "specialists":
@@ -343,7 +347,9 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                     long_state, short_state, _ = output["states"]
                     specialization = F.cosine_similarity(long_state, short_state).square().mean()
                     if full_catalog_supervised:
-                        full_output = model.logits_from_states(states, model.project_all())
+                        full_output = model.logits_from_states(
+                            states, model.project_all(graph_items)
+                        )
                         supervised = sum(
                             F.cross_entropy(full_output[name], targets)
                             for name in ("long", "short", "coordinator")
@@ -447,7 +453,8 @@ def evaluate(
     }
     samples = []
     with amp_context(device):
-        projected_items = model.project_all()
+        graph_items = model.graph_item_vectors()
+        projected_items = model.project_all(graph_items)
     if device.startswith("cuda"):
         torch.cuda.synchronize()
     started = time.perf_counter()
@@ -455,7 +462,9 @@ def evaluate(
         batch_users = users[start:start + batch_size]
         histories, lengths, raw_histories = evaluation_history_batch(data, batch_users, split, max_history, device)
         with amp_context(device):
-            output = model.full_catalog_scores(histories, lengths, projected_items)
+            output = model.full_catalog_scores(
+                histories, lengths, projected_items, graph_items
+            )
         scores = output["coordinator"].float()
         gold = torch.tensor([targets[user] for user in batch_users], device=device)
         if priors is not None:
@@ -573,6 +582,10 @@ def parse_args():
     parser.add_argument("--lora-alpha", type=float, default=16.0)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--short-window", type=int, default=10)
+    parser.add_argument(
+        "--use-graph-embeddings", action=argparse.BooleanOptionalAction, default=True,
+        help="Fuse trainable LightGCN item embeddings with Mamba item vectors.",
+    )
     parser.add_argument("--max-history", type=int, default=100)
     parser.add_argument("--specialist-lr", type=float, default=2e-4)
     parser.add_argument("--coordinator-lr", type=float, default=2e-4)
@@ -679,8 +692,15 @@ def main():
         )
     logger.info("ITEM_VECTOR_ARTIFACT path=%s fingerprint=%s", artifact, fingerprint)
     item_features = item_features.to(dtype=torch.float16 if args.device.startswith("cuda") else torch.float32)
+    graph_edges = edge_index(data).to(args.device) if args.use_graph_embeddings else None
+    logger.info(
+        "GRAPH_EMBEDDINGS enabled=%s source=train_histories_only",
+        args.use_graph_embeddings,
+    )
     model = MultiAgentMambaRecommender(
-        item_features, args.dim, args.lora_rank, args.lora_alpha, args.lora_dropout, args.short_window
+        item_features, args.dim, args.lora_rank, args.lora_alpha, args.lora_dropout, args.short_window,
+        graph_edges=graph_edges, graph_users=data.num_users,
+        use_graph_embeddings=args.use_graph_embeddings,
     ).to(args.device)
     if args.resume_checkpoint:
         resume_path = Path(args.resume_checkpoint)

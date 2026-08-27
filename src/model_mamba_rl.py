@@ -11,6 +11,9 @@ import math
 import torch
 from torch import nn
 from torch.nn import functional as F
+from tqdm.auto import tqdm
+
+from src.model import LightGCN
 
 
 class LoRAUpdate(nn.Module):
@@ -97,13 +100,23 @@ class MultiAgentMambaRecommender(nn.Module):
         lora_alpha: float = 16.0,
         lora_dropout: float = 0.05,
         short_window: int = 10,
+        graph_edges: torch.Tensor | None = None,
+        graph_users: int | None = None,
+        use_graph_embeddings: bool = True,
     ):
         super().__init__()
         if item_features.ndim != 2:
             raise ValueError("item_features must have shape [items, feature_dim]")
+        if use_graph_embeddings and (graph_edges is None or graph_users is None):
+            raise ValueError("graph_edges and graph_users are required when graph embeddings are enabled")
         self.register_buffer("item_features", item_features, persistent=False)
         self.item_projection = nn.Linear(item_features.size(1), dim, bias=False)
         nn.init.xavier_uniform_(self.item_projection.weight)
+        self.use_graph_embeddings = use_graph_embeddings
+        self._show_graph_progress = use_graph_embeddings
+        if use_graph_embeddings:
+            self.graph = LightGCN(graph_users, item_features.size(0), dim)
+            self.register_buffer("graph_edges", graph_edges, persistent=False)
         self.long_agent = SelectiveMambaAgent(dim, lora_rank, lora_alpha, lora_dropout, initial_timescale=0.08)
         self.short_agent = SelectiveMambaAgent(dim, lora_rank, lora_alpha, lora_dropout, initial_timescale=0.5)
         self.coordinator = CoordinatorAgent(dim, lora_rank, lora_alpha, lora_dropout)
@@ -113,13 +126,41 @@ class MultiAgentMambaRecommender(nn.Module):
     def num_items(self) -> int:
         return self.item_features.size(0)
 
-    def project_ids(self, item_ids: torch.Tensor) -> torch.Tensor:
+    def graph_item_vectors(self) -> torch.Tensor | None:
+        """Propagate the graph once so all item lookups in a batch can share it."""
+        if not self.use_graph_embeddings:
+            return None
+        if self._show_graph_progress:
+            with tqdm(
+                total=self.graph.layers + 1,
+                desc="GCN item embeddings (initial pass)",
+                unit="layer",
+                leave=True,
+                dynamic_ncols=True,
+            ) as progress:
+                _, graph_items = self.graph(self.graph_edges, progress=progress)
+            self._show_graph_progress = False
+            return graph_items
+        return self.graph(self.graph_edges)[1]
+
+    def project_ids(
+        self, item_ids: torch.Tensor, graph_items: torch.Tensor | None = None
+    ) -> torch.Tensor:
         features = self.item_features[item_ids]
         projected = self.item_projection(features.to(self.item_projection.weight.dtype))
-        return F.normalize(projected, dim=-1)
+        projected = F.normalize(projected, dim=-1)
+        if not self.use_graph_embeddings:
+            return projected
+        if graph_items is None:
+            graph_items = self.graph_item_vectors()
+        assert graph_items is not None
+        graph_projected = F.normalize(graph_items[item_ids], dim=-1)
+        return F.normalize(projected + graph_projected, dim=-1)
 
-    def project_all(self) -> torch.Tensor:
-        return self.project_ids(torch.arange(self.num_items, device=self.item_features.device))
+    def project_all(self, graph_items: torch.Tensor | None = None) -> torch.Tensor:
+        return self.project_ids(
+            torch.arange(self.num_items, device=self.item_features.device), graph_items
+        )
 
     @staticmethod
     def _short_histories(histories: torch.Tensor, lengths: torch.Tensor, window: int) -> tuple[torch.Tensor, torch.Tensor]:
@@ -132,11 +173,16 @@ class MultiAgentMambaRecommender(nn.Module):
         gathered = torch.where(positions < short_lengths.unsqueeze(1), gathered, torch.zeros_like(gathered))
         return gathered, short_lengths
 
-    def encode_states(self, histories: torch.Tensor, lengths: torch.Tensor):
-        long_sequence = self.project_ids(histories)
+    def encode_states(
+        self, histories: torch.Tensor, lengths: torch.Tensor,
+        graph_items: torch.Tensor | None = None,
+    ):
+        if self.use_graph_embeddings and graph_items is None:
+            graph_items = self.graph_item_vectors()
+        long_sequence = self.project_ids(histories, graph_items)
         long_state = self.long_agent.encode(long_sequence, lengths)
         short_ids, short_lengths = self._short_histories(histories, lengths, min(self.short_window, histories.size(1)))
-        short_sequence = self.project_ids(short_ids)
+        short_sequence = self.project_ids(short_ids, graph_items)
         short_state = self.short_agent.encode(short_sequence, short_lengths)
         coordinator_state, weights = self.coordinator(long_state, short_state)
         return long_state, short_state, coordinator_state, weights
@@ -156,13 +202,20 @@ class MultiAgentMambaRecommender(nn.Module):
         }
 
     def forward(self, histories: torch.Tensor, lengths: torch.Tensor, candidates: torch.Tensor):
-        states = self.encode_states(histories, lengths)
-        candidate_vectors = self.project_ids(candidates)
+        graph_items = self.graph_item_vectors()
+        states = self.encode_states(histories, lengths, graph_items)
+        candidate_vectors = self.project_ids(candidates, graph_items)
         return self.logits_from_states(states, candidate_vectors)
 
-    def full_catalog_scores(self, histories: torch.Tensor, lengths: torch.Tensor, item_vectors: torch.Tensor | None = None):
-        states = self.encode_states(histories, lengths)
-        items = self.project_all() if item_vectors is None else item_vectors
+    def full_catalog_scores(
+        self, histories: torch.Tensor, lengths: torch.Tensor,
+        item_vectors: torch.Tensor | None = None,
+        graph_items: torch.Tensor | None = None,
+    ):
+        if self.use_graph_embeddings and graph_items is None:
+            graph_items = self.graph_item_vectors()
+        states = self.encode_states(histories, lengths, graph_items)
+        items = self.project_all(graph_items) if item_vectors is None else item_vectors
         return self.logits_from_states(states, items)
 
     def set_stage(self, stage: str) -> None:
@@ -170,12 +223,13 @@ class MultiAgentMambaRecommender(nn.Module):
             raise ValueError(stage)
         for parameter in self.parameters():
             parameter.requires_grad_(False)
+        graph_modules = (self.graph,) if self.use_graph_embeddings else ()
         modules = (
-            (self.long_agent, self.short_agent, self.item_projection)
+            (self.long_agent, self.short_agent, self.item_projection, *graph_modules)
             if stage == "specialists"
             else (self.coordinator,)
             if stage == "coordinator"
-            else (self.long_agent, self.short_agent, self.coordinator, self.item_projection)
+            else (self.long_agent, self.short_agent, self.coordinator, self.item_projection, *graph_modules)
         )
         for module in modules:
             for parameter in module.parameters():
@@ -187,4 +241,5 @@ class MultiAgentMambaRecommender(nn.Module):
             "short": sum(p.numel() for p in self.short_agent.parameters()),
             "coordinator": sum(p.numel() for p in self.coordinator.parameters()),
             "shared_projection": sum(p.numel() for p in self.item_projection.parameters()),
+            "graph": sum(p.numel() for p in self.graph.parameters()) if self.use_graph_embeddings else 0,
         }
