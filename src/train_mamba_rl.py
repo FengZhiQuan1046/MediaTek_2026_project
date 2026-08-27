@@ -229,11 +229,28 @@ def record_validation(model, metrics, stage, epoch, monitor, logger) -> bool:
     return improved
 
 
+def log_metric_block(logger, label, metrics, stage, epoch, step) -> None:
+    """Log the six ranking metrics as one readable multi-line record."""
+    logger.info(
+        "\n========== %s ==========\n"
+        "stage=%s | epoch=%d | step=%d | users=%d/%d\n"
+        "NDCG  | @5 %.6f | @10 %.6f\n"
+        "Recall| @5 %.6f | @10 %.6f\n"
+        "Hit   | @5 %.6f | @10 %.6f\n"
+        "================================",
+        label, stage, epoch, step,
+        int(metrics.get("evaluated_users", 0)), int(metrics.get("total_users", 0)),
+        metrics["ndcg@5"], metrics["ndcg@10"],
+        metrics["recall@5"], metrics["recall@10"],
+        metrics["hit@5"], metrics["hit@10"],
+    )
+
+
 def train_stage(model, data, transitions, stage, epochs, batch_size, candidates, max_history,
                 learning_rate, entropy_coef, supervised_coef, specialization_coef, device, logger,
                 monitor, validate_every_steps, eval_batch_size, early_stopping_patience,
                 lr_patience, full_catalog_supervised, catalog_priors, popularity_alpha,
-                transition_beta, validation_user_limit):
+                transition_beta, validation_user_limit, periodic_test_user_limit):
     if epochs == 0:
         return []
     model.set_stage(stage)
@@ -324,6 +341,20 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                     priors=catalog_priors, popularity_alpha=popularity_alpha,
                     transition_beta=transition_beta, user_limit=validation_user_limit,
                 )
+                log_metric_block(
+                    logger, "PERIODIC VALIDATION", valid_metrics,
+                    stage, epoch, monitor.global_step,
+                )
+                if periodic_test_user_limit >= 0:
+                    test_metrics, _ = evaluate(
+                        model, data, "test", eval_batch_size, max_history, device,
+                        priors=catalog_priors, popularity_alpha=popularity_alpha,
+                        transition_beta=transition_beta, user_limit=periodic_test_user_limit,
+                    )
+                    log_metric_block(
+                        logger, "PERIODIC TEST", test_metrics,
+                        stage, epoch, monitor.global_step,
+                    )
                 validation_seconds += time.perf_counter() - validation_started
                 record_validation(model, valid_metrics, stage, epoch, monitor, logger)
                 if scheduler is not None:
@@ -523,6 +554,10 @@ def parse_args():
     parser.add_argument("--mamba-encode-batch-size", type=int, default=4)
     parser.add_argument("--mamba-max-tokens", type=int, default=48)
     parser.add_argument("--validation-user-limit", type=int, default=0)
+    parser.add_argument(
+        "--periodic-test-user-limit", type=int, default=-1,
+        help="Users in each periodic test; 0 means all and -1 disables periodic test.",
+    )
     parser.add_argument("--generate-reasons", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--reason-count", type=int, default=20)
     parser.add_argument("--reason-max-new-tokens", type=int, default=40)
@@ -547,7 +582,7 @@ def parse_args():
     if (
         args.candidates < 2 or args.batch_size < 1 or args.max_history < 1
         or args.mamba_encode_batch_size < 1 or args.mamba_max_tokens < 1
-        or args.validation_user_limit < 0
+        or args.validation_user_limit < 0 or args.periodic_test_user_limit < -1
     ):
         parser.error("candidate count must be >=2 and batch/history sizes must be positive")
     if not 0.0 <= args.target_recall_at_10 <= 1.0:
@@ -619,9 +654,11 @@ def main():
     logger.info("training_transitions=%d", len(transitions))
     logger.info(
         "schedule specialist_epochs=%d coordinator_epochs=%d rl_epochs=%d "
-        "validate_every_steps=%d monitor=%s early_stopping_patience=%d",
+        "validate_every_steps=%d validation_users=%d periodic_test_users=%d "
+        "monitor=%s early_stopping_patience=%d",
         args.specialist_epochs, args.coordinator_epochs, args.rl_epochs,
-        args.validate_every_steps, args.monitor_metric, args.early_stopping_patience,
+        args.validate_every_steps, args.validation_user_limit,
+        args.periodic_test_user_limit, args.monitor_metric, args.early_stopping_patience,
     )
     monitor = TrainingMonitor(
         metric_name=args.monitor_metric,
@@ -633,6 +670,7 @@ def main():
             priors=catalog_priors, popularity_alpha=args.popularity_alpha,
             transition_beta=args.transition_beta, user_limit=args.validation_user_limit,
         )
+        log_metric_block(logger, "RESUME VALIDATION", resumed_metrics, "resume", 0, monitor.global_step)
         record_validation(model, resumed_metrics, "resume", 0, monitor, logger)
     common = dict(
         model=model, data=data, transitions=transitions, batch_size=args.batch_size,
@@ -645,6 +683,7 @@ def main():
         catalog_priors=catalog_priors, popularity_alpha=args.popularity_alpha,
         transition_beta=args.transition_beta,
         validation_user_limit=args.validation_user_limit,
+        periodic_test_user_limit=args.periodic_test_user_limit,
     )
     losses = {
         "specialists": train_stage(stage="specialists", epochs=args.specialist_epochs,
@@ -659,6 +698,10 @@ def main():
         model, data, "valid", args.eval_batch_size, args.max_history, args.device,
         priors=catalog_priors, popularity_alpha=args.popularity_alpha,
         transition_beta=args.transition_beta, user_limit=args.validation_user_limit,
+    )
+    log_metric_block(
+        logger, "FINAL CURRENT VALIDATION", final_current_metrics,
+        "final", 0, monitor.global_step,
     )
     record_validation(model, final_current_metrics, "final", 0, monitor, logger)
     if monitor.best_state is None:
@@ -677,6 +720,14 @@ def main():
         model, data, "test", args.eval_batch_size, args.max_history, args.device, args.reason_count,
         priors=catalog_priors, popularity_alpha=args.popularity_alpha,
         transition_beta=args.transition_beta,
+    )
+    log_metric_block(
+        logger, "BEST CHECKPOINT VALIDATION", valid_metrics,
+        monitor.best_stage, 0, monitor.best_step,
+    )
+    log_metric_block(
+        logger, "FINAL FULL TEST", test_metrics,
+        monitor.best_stage, 0, monitor.best_step,
     )
     logger.info("VALID_BEST %s", json.dumps(valid_metrics, sort_keys=True))
     logger.info("TEST_FINAL %s", json.dumps(test_metrics, sort_keys=True))

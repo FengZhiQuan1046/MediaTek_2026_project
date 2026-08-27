@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
-# Usage: bash run_mamba_rl.sh DATASET [CUDA_ID] [DATA_PATH]
+# Usage: bash run_mamba_rl.sh DATASET [CUDA_ID] [DATA_PATH] [TRAINING_OPTIONS...]
 # Examples:
 #   bash run_mamba_rl.sh movielens-1m 0
-#   bash run_mamba_rl.sh amazon-all-beauty 0
+#   bash run_mamba_rl.sh amazon-all-beauty 0 --validate-every-steps 250
 #   bash run_mamba_rl.sh yelp19 0 /data/yelp-2019
 #   bash run_mamba_rl.sh yelp23 0 /data/yelp-2023/yelp_academic_dataset_review.json
 set -euo pipefail
 
 DATASET="${1:-movielens-1m}"
 CUDA_ID="${2:-0}"
-DATA_PATH="${3:-}"
+if (( $# > 0 )); then shift; fi
+if (( $# > 0 )); then shift; fi
+DATA_PATH=""
+if (( $# > 0 )) && [[ "$1" != --* ]]; then
+  DATA_PATH="$1"
+  shift
+fi
+TRAINING_OPTIONS=("$@")
 CACHE_DIR="${CACHE_DIR:-/workspace/P78123011/cache}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 BATCH_SIZE="${BATCH_SIZE:-128}"
@@ -50,9 +57,10 @@ FULL_CATALOG_SUPERVISED="${FULL_CATALOG_SUPERVISED:-0}"
 MAMBA_ENCODE_BATCH_SIZE="${MAMBA_ENCODE_BATCH_SIZE:-4}"
 MAMBA_MAX_TOKENS="${MAMBA_MAX_TOKENS:-48}"
 VALIDATION_USER_LIMIT="${VALIDATION_USER_LIMIT:-0}"
+PERIODIC_TEST_USER_LIMIT="${PERIODIC_TEST_USER_LIMIT:--1}"
 
-if [[ $# -gt 3 || ! "$CUDA_ID" =~ ^[0-9]+$ ]]; then
-  echo "Usage: bash run_mamba_rl.sh DATASET [CUDA_ID] [DATA_PATH]" >&2
+if [[ ! "$CUDA_ID" =~ ^[0-9]+$ ]]; then
+  echo "Usage: bash run_mamba_rl.sh DATASET [CUDA_ID] [DATA_PATH] [TRAINING_OPTIONS...]" >&2
   exit 2
 fi
 
@@ -103,6 +111,7 @@ ARGS=(
   --mamba-encode-batch-size "$MAMBA_ENCODE_BATCH_SIZE"
   --mamba-max-tokens "$MAMBA_MAX_TOKENS"
   --validation-user-limit "$VALIDATION_USER_LIMIT"
+  --periodic-test-user-limit "$PERIODIC_TEST_USER_LIMIT"
   --seed "$SEED"
   --popularity-alpha "$POPULARITY_ALPHA"
   --transition-beta "$TRANSITION_BETA"
@@ -137,5 +146,9 @@ fi
 if [[ -n "$DATA_PATH" ]]; then
   ARGS+=(--data-path "$DATA_PATH")
 fi
+
+# Explicit options supplied by a suite launcher come last and therefore
+# override the environment-backed defaults above.
+ARGS+=("${TRAINING_OPTIONS[@]}")
 
 "$PYTHON_BIN" -m src.train_mamba_rl "${ARGS[@]}"
