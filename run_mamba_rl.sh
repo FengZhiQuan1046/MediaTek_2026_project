@@ -30,6 +30,7 @@ MONITOR_METRIC="${MONITOR_METRIC:-ndcg@10}"
 EARLY_STOPPING_PATIENCE="${EARLY_STOPPING_PATIENCE:-12}"
 LR_PATIENCE="${LR_PATIENCE:-3}"
 MAX_TRANSITIONS="${MAX_TRANSITIONS:-500000}"
+MIN_TRANSITIONS_PER_USER="${MIN_TRANSITIONS_PER_USER:-1}"
 SEED="${SEED:-25252}"
 POPULARITY_ALPHA="${POPULARITY_ALPHA:-0.0}"
 TRANSITION_BETA="${TRANSITION_BETA:-0.0}"
@@ -40,8 +41,10 @@ OUTPUT_DIR="${OUTPUT_DIR:-$PWD/outputs_mamba_rl}"
 OUTPUT_RUN_DIR="${OUTPUT_RUN_DIR:-}"
 SCORE_FILE="${SCORE_FILE:-}"
 GENERATE_REASONS="${GENERATE_REASONS:-0}"
+SAVE_MODEL_WEIGHTS="${SAVE_MODEL_WEIGHTS:-1}"
 CANDIDATES="${CANDIDATES:-64}"
 DIM="${DIM:-128}"
+ID_BUCKETS="${ID_BUCKETS:-262144}"
 LORA_RANK="${LORA_RANK:-8}"
 LORA_ALPHA="${LORA_ALPHA:-16.0}"
 LORA_DROPOUT="${LORA_DROPOUT:-0.05}"
@@ -51,7 +54,9 @@ SPECIALIST_LR="${SPECIALIST_LR:-2e-4}"
 COORDINATOR_LR="${COORDINATOR_LR:-2e-4}"
 JOINT_LR="${JOINT_LR:-5e-5}"
 ENTROPY_COEF="${ENTROPY_COEF:-0.01}"
+RL_COEF="${RL_COEF:-0.05}"
 SUPERVISED_COEF="${SUPERVISED_COEF:-0.1}"
+HARD_NEGATIVE_COEF="${HARD_NEGATIVE_COEF:-0.5}"
 SPECIALIZATION_COEF="${SPECIALIZATION_COEF:-0.01}"
 FULL_CATALOG_SUPERVISED="${FULL_CATALOG_SUPERVISED:-0}"
 MAMBA_ENCODE_BATCH_SIZE="${MAMBA_ENCODE_BATCH_SIZE:-4}"
@@ -95,8 +100,10 @@ ARGS=(
   --early-stopping-patience "$EARLY_STOPPING_PATIENCE"
   --lr-patience "$LR_PATIENCE"
   --max-transitions "$MAX_TRANSITIONS"
+  --min-transitions-per-user "$MIN_TRANSITIONS_PER_USER"
   --candidates "$CANDIDATES"
   --dim "$DIM"
+  --id-buckets "$ID_BUCKETS"
   --lora-rank "$LORA_RANK"
   --lora-alpha "$LORA_ALPHA"
   --lora-dropout "$LORA_DROPOUT"
@@ -106,7 +113,9 @@ ARGS=(
   --coordinator-lr "$COORDINATOR_LR"
   --joint-lr "$JOINT_LR"
   --entropy-coef "$ENTROPY_COEF"
+  --rl-coef "$RL_COEF"
   --supervised-coef "$SUPERVISED_COEF"
+  --hard-negative-coef "$HARD_NEGATIVE_COEF"
   --specialization-coef "$SPECIALIZATION_COEF"
   --mamba-encode-batch-size "$MAMBA_ENCODE_BATCH_SIZE"
   --mamba-max-tokens "$MAMBA_MAX_TOKENS"
@@ -132,6 +141,11 @@ if [[ "$FULL_CATALOG_SUPERVISED" == "1" ]]; then
   ARGS+=(--full-catalog-supervised)
 else
   ARGS+=(--no-full-catalog-supervised)
+fi
+if [[ "$SAVE_MODEL_WEIGHTS" == "1" ]]; then
+  ARGS+=(--save-model-weights)
+else
+  ARGS+=(--no-save-model-weights)
 fi
 if [[ -n "$OUTPUT_RUN_DIR" ]]; then
   ARGS+=(--output-run-dir "$OUTPUT_RUN_DIR")

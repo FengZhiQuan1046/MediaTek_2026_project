@@ -36,6 +36,30 @@ def _normalise_row(row: dict, item_texts: dict[str, str] | None = None) -> tuple
     return str(user), str(item), timestamp, text
 
 
+def _amazon_positive(row: dict, min_rating: float) -> bool:
+    """Return whether an Amazon review is an eligible positive interaction."""
+    value = row.get("rating")
+    if value is None:
+        return False
+    try:
+        return float(value) >= min_rating
+    except (TypeError, ValueError):
+        return False
+
+
+def _deduplicate_user_items(
+    events: Iterable[tuple[str, str, int, str]],
+) -> list[tuple[str, str, int, str]]:
+    """Keep the latest review per user/parent item after variant aggregation."""
+    latest: dict[tuple[str, str], tuple[str, str, int, str]] = {}
+    for event in events:
+        key = (event[0], event[1])
+        previous = latest.get(key)
+        if previous is None or event[2] >= previous[2]:
+            latest[key] = event
+    return list(latest.values())
+
+
 def _metadata_text(row: dict) -> str:
     """Make a compact LLM input from the Amazon item-metadata fields."""
     parts = [row.get("title"), row.get("subtitle"), row.get("main_category")]
@@ -68,6 +92,7 @@ def load_amazon(
     max_events: int | None,
     cache_dir: str | None = None,
     item_group: str | None = None,
+    min_rating: float = 4.0,
 ) -> list[tuple[str, str, int, str]]:
     """Load reviews and item metadata from matching Amazon Reviews 2023 configs.
 
@@ -111,7 +136,7 @@ def load_amazon(
         progress.update(1)
     required_items = set()
     for row in tqdm(limited_reviews, total=len(limited_reviews), desc="Scanning review item IDs", unit="review", disable=not _show_progress()):
-        if row.get("parent_asin"):
+        if _amazon_positive(row, min_rating) and row.get("parent_asin"):
             required_items.add(str(row["parent_asin"]))
     item_texts = {}
     for row in tqdm(metadata, total=len(metadata), desc="Joining item metadata by parent_asin", unit="item", disable=not _show_progress()):
@@ -123,16 +148,21 @@ def load_amazon(
         ):
             item_texts[str(parent_asin)] = text
 
-    rows = []
+    latest_rows: dict[tuple[str, str], tuple[str, str, int, str]] = {}
     for row in tqdm(limited_reviews, total=len(limited_reviews), desc="Normalising review interactions", unit="review", disable=not _show_progress()):
+        if not _amazon_positive(row, min_rating):
+            continue
         if item_group is not None and str(row.get("parent_asin") or "") not in item_texts:
             continue
         normal = _normalise_row(row, item_texts)
         if normal is not None:
-            rows.append(normal)
-    if not rows:
+            key = (normal[0], normal[1])
+            previous = latest_rows.get(key)
+            if previous is None or normal[2] >= previous[2]:
+                latest_rows[key] = normal
+    if not latest_rows:
         raise RuntimeError(f"No usable user/item rows found in subset {subset!r}.")
-    return rows
+    return list(latest_rows.values())
 
 
 def synthetic_events() -> list[tuple[str, str, int, str]]:

@@ -294,7 +294,8 @@ def load_recommendation_data(
         events = load_movielens(name, data_path, cache_dir, max_events, min_rating)
     elif name.startswith("amazon-") or name.startswith("amazon:"):
         events = load_amazon(
-            amazon_subset(dataset), max_events, cache_dir, item_group=amazon_item_group(dataset)
+            amazon_subset(dataset), max_events, cache_dir,
+            item_group=amazon_item_group(dataset), min_rating=min_rating,
         )
     elif name in {"yelp19", "yelp-2019", "yelp23", "yelp-2023"}:
         events = load_yelp(data_path, max_events, min_rating)
