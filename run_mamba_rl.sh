@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Usage: bash run_mamba_rl.sh DATASET [CUDA_ID] [DATA_PATH] [TRAINING_OPTIONS...]
+# Usage: bash run_mamba_rl.sh DATASET [CUDA_IDS] [DATA_PATH] [TRAINING_OPTIONS...]
 # Examples:
 #   bash run_mamba_rl.sh movielens-1m 0
 #   bash run_mamba_rl.sh amazon-all-beauty 0 --validate-every-steps 250
+#   bash run_mamba_rl.sh amazon-sports-and-outdoors 0,1
 #   bash run_mamba_rl.sh yelp19 0 /data/yelp-2019
 #   bash run_mamba_rl.sh yelp23 0 /data/yelp-2023/yelp_academic_dataset_review.json
 set -euo pipefail
 
 DATASET="${1:-movielens-1m}"
-CUDA_ID="${2:-0}"
+CUDA_IDS="${2:-0}"
 if (( $# > 0 )); then shift; fi
 if (( $# > 0 )); then shift; fi
 DATA_PATH=""
@@ -61,8 +62,8 @@ MAMBA_MAX_TOKENS="${MAMBA_MAX_TOKENS:-48}"
 VALIDATION_USER_LIMIT="${VALIDATION_USER_LIMIT:-0}"
 PERIODIC_TEST_USER_LIMIT="${PERIODIC_TEST_USER_LIMIT:--1}"
 
-if [[ ! "$CUDA_ID" =~ ^[0-9]+$ ]]; then
-  echo "Usage: bash run_mamba_rl.sh DATASET [CUDA_ID] [DATA_PATH] [TRAINING_OPTIONS...]" >&2
+if [[ ! "$CUDA_IDS" =~ ^[0-9]+(,[0-9]+)?$ ]]; then
+  echo "Usage: bash run_mamba_rl.sh DATASET [CUDA_IDS] [DATA_PATH] [TRAINING_OPTIONS...]" >&2
   exit 2
 fi
 
@@ -79,7 +80,12 @@ if [[ "$DATASET" == yelp* && -z "$DATA_PATH" ]]; then
   exit 2
 fi
 
-export CUDA_VISIBLE_DEVICES="$CUDA_ID"
+export CUDA_VISIBLE_DEVICES="$CUDA_IDS"
+MAIN_DEVICE="cuda:0"
+GRAPH_DEVICE="cuda:0"
+if [[ "$CUDA_IDS" == *,* ]]; then
+  GRAPH_DEVICE="cuda:1"
+fi
 export HF_HOME="$CACHE_DIR"
 export HF_DATASETS_CACHE="$CACHE_DIR/datasets"
 export TRANSFORMERS_CACHE="$CACHE_DIR/transformers"
@@ -120,7 +126,8 @@ ARGS=(
   --target-recall-at-10 "$TARGET_RECALL_AT_10"
   --experiment-note "$EXPERIMENT_NOTE"
   --output-dir "$OUTPUT_DIR"
-  --device cuda
+  --device "$MAIN_DEVICE"
+  --graph-device "$GRAPH_DEVICE"
 )
 if [[ "$USE_GRAPH_EMBEDDINGS" == "1" ]]; then
   ARGS+=(--use-graph-embeddings)

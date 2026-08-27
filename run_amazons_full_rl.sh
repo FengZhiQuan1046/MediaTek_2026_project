@@ -8,6 +8,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_ROOT="$PROJECT_ROOT/outputs_mamba_rl/amazons_full"
 PYTHON_BIN="${PYTHON_BIN:-/home/P78123011/miniforge3/envs/py31014/bin/python}"
 CACHE_DIR="${CACHE_DIR:-/workspace/P78123011/cache}"
+GPU_IDS="${GPU_IDS:-0,1}"
 
 COMMON_ENV=(
   "PYTHON_BIN=$PYTHON_BIN"
@@ -52,7 +53,7 @@ run_subset() {
   timestamp="$(date '+%Y%m%d_%H%M%S')"
   run_dir="$OUTPUT_ROOT/$subset_name/rl_$timestamp"
 
-  env "${COMMON_ENV[@]}" bash "$PROJECT_ROOT/run_mamba_rl.sh" "$dataset" 0 \
+  env "${COMMON_ENV[@]}" bash "$PROJECT_ROOT/run_mamba_rl.sh" "$dataset" "$GPU_IDS" \
     --output-run-dir "$run_dir" \
     --score-file "$run_dir/${subset_name}_scores.json" \
     --validate-every-steps "$validate_every_steps" \

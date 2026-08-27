@@ -126,6 +126,26 @@ class MultiAgentMambaRecommender(nn.Module):
     def num_items(self) -> int:
         return self.item_features.size(0)
 
+    def place_devices(self, main_device: str, graph_device: str | None = None):
+        """Place the dense agents and LightGCN on separate devices when requested."""
+        main = torch.device(main_device)
+        self.item_features = self.item_features.to(main)
+        for module in (
+            self.item_projection,
+            self.long_agent,
+            self.short_agent,
+            self.coordinator,
+        ):
+            module.to(main)
+        if self.use_graph_embeddings:
+            graph = torch.device(graph_device or main_device)
+            self.graph.to(graph)
+            self.graph_edges = self.graph_edges.to(graph)
+            self._graph_device = graph
+        else:
+            self._graph_device = None
+        return self
+
     def graph_item_vectors(self) -> torch.Tensor | None:
         """Propagate the graph once so all item lookups in a batch can share it."""
         if not self.use_graph_embeddings:
@@ -154,7 +174,10 @@ class MultiAgentMambaRecommender(nn.Module):
         if graph_items is None:
             graph_items = self.graph_item_vectors()
         assert graph_items is not None
-        graph_projected = F.normalize(graph_items[item_ids], dim=-1)
+        graph_ids = item_ids.to(graph_items.device)
+        graph_projected = F.normalize(graph_items[graph_ids], dim=-1).to(
+            projected.device, non_blocking=True
+        )
         return F.normalize(projected + graph_projected, dim=-1)
 
     def project_all(self, graph_items: torch.Tensor | None = None) -> torch.Tensor:

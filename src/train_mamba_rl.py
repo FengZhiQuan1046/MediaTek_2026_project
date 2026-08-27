@@ -599,6 +599,10 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=25252)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--skip-mamba", action="store_true")
+    parser.add_argument(
+        "--graph-device", default=None,
+        help="Optional device for LightGCN parameters/edges; use cuda:1 for two-GPU model parallelism.",
+    )
     parser.add_argument("--mamba-encode-batch-size", type=int, default=4)
     parser.add_argument("--mamba-max-tokens", type=int, default=48)
     parser.add_argument("--validation-user-limit", type=int, default=0)
@@ -692,22 +696,24 @@ def main():
         )
     logger.info("ITEM_VECTOR_ARTIFACT path=%s fingerprint=%s", artifact, fingerprint)
     item_features = item_features.to(dtype=torch.float16 if args.device.startswith("cuda") else torch.float32)
-    graph_edges = edge_index(data).to(args.device) if args.use_graph_embeddings else None
+    graph_edges = edge_index(data) if args.use_graph_embeddings else None
     logger.info(
-        "GRAPH_EMBEDDINGS enabled=%s source=train_histories_only",
-        args.use_graph_embeddings,
+        "GRAPH_EMBEDDINGS enabled=%s source=train_histories_only main_device=%s graph_device=%s",
+        args.use_graph_embeddings, args.device,
+        args.graph_device or args.device,
     )
     model = MultiAgentMambaRecommender(
         item_features, args.dim, args.lora_rank, args.lora_alpha, args.lora_dropout, args.short_window,
         graph_edges=graph_edges, graph_users=data.num_users,
         use_graph_embeddings=args.use_graph_embeddings,
-    ).to(args.device)
+    )
     if args.resume_checkpoint:
         resume_path = Path(args.resume_checkpoint)
         resume_payload = torch.load(resume_path, map_location="cpu", weights_only=True)
         resume_state = resume_payload.get("model", resume_payload)
         model.load_state_dict(resume_state)
         logger.info("RESUME_CHECKPOINT path=%s", resume_path)
+    model.place_devices(args.device, args.graph_device)
     logger.info("agent_parameters=%s", model.agent_parameter_counts())
     transitions = build_transitions(data, args.max_transitions, args.seed)
     logger.info("training_transitions=%d", len(transitions))
