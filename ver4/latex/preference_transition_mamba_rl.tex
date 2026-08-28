@@ -177,17 +177,17 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
 
 \begin{figure}[H]
 \centering
-\resizebox{0.92\textwidth}{!}{%
+\resizebox{0.96\textwidth}{!}{%
 \begin{tikzpicture}[
   box/.style={draw,rounded corners=2pt,align=center,minimum height=10mm,
               minimum width=39mm,fill=black!3,font=\small},
   shared/.style={box,minimum width=92mm,fill=black!6},
-  agent/.style={box,minimum width=39mm,minimum height=15mm},
+  agent/.style={box,text width=34mm,minimum width=34mm,minimum height=14mm,
+                font=\footnotesize},
   coordinator/.style={box,minimum width=64mm,minimum height=14mm,
                       draw=agentorange,very thick,fill=agentorange!10},
   arrow/.style={-{Latex[length=2.3mm]},thick},
-  feedback/.style={-{Latex[length=2.3mm]},thick,dashed,draw=red!70!black},
-  level/.style={font=\footnotesize\bfseries,text=black!55,anchor=east}
+  feedback/.style={-{Latex[length=2.3mm]},thick,dashed,draw=red!70!black}
 ]
 % Shared observation and representation layer.
 \node[box,minimum width=66mm] (data) at (0,0)
@@ -198,18 +198,18 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
    normalized semantic--collaborative item matrix $E\in\R^{N\times d}$};
 
 % Parallel specialist level.
-\node[agent,draw=agentblue,very thick,fill=agentblue!8] (long) at (-4.45,-3.55)
+\node[agent,draw=agentblue,very thick,fill=agentblue!8] (long) at (-4.05,-3.55)
   {\textbf{Long-term specialist $\pi_L$}\\
-   full history $\rightarrow$ slow LoRA selective SSM\\
-   stable preference $\bm s_u^{(L)}$, logits $\bm z^{(L)}$};
+   full history; slow selective SSM\\
+   $\bm s_u^{(L)},\bm z^{(L)}$};
 \node[agent,draw=purple!75!black,very thick,fill=purple!7] (pref) at (0,-3.55)
   {\textbf{Preference agent $\pi_P$}\\
-   prototypes $\rightarrow$ GRU + Tiny Mamba\\
-   $\widehat{\bm q}_{t+1}$, $\rho_t$, logits $\bm z^{(P)}$};
-\node[agent,draw=agentgreen,very thick,fill=agentgreen!8] (short) at (4.45,-3.55)
+   prototypes; GRU + Tiny Mamba\\
+   $\widehat{\bm q}_{t+1},\rho_t,\bm z^{(P)}$};
+\node[agent,draw=agentgreen,very thick,fill=agentgreen!8] (short) at (4.05,-3.55)
   {\textbf{Short-term specialist $\pi_S$}\\
-   recent window $\rightarrow$ fast LoRA selective SSM\\
-   current intent $\bm s_u^{(S)}$, logits $\bm z^{(S)}$};
+   recent window; fast selective SSM\\
+   $\bm s_u^{(S)},\bm z^{(S)}$};
 
 % Higher-level coordination and the deployed action.
 \node[coordinator] (coord) at (0,-5.65)
@@ -223,8 +223,8 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
 \node[box,minimum width=55mm] (catalog) at (0,-8.85)
   {Training-only prior calibration + Top-$K$\\
    $\widetilde z=z^{\mathrm{final}}+\alpha p+\beta q$; Recall/NDCG};
-\node[box,minimum width=46mm] (reason) at (5.7,-8.85)
-  {Post-hoc Mamba reason\\grounded in history};
+\node[box,minimum width=55mm] (reason) at (0,-10.25)
+  {Optional post-hoc Mamba explanation grounded in history};
 
 % Inference path.
 \draw[arrow] (data)--(semantic);
@@ -240,12 +240,6 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
 \draw[arrow] (coord)--(rank);
 \draw[arrow] (rank)--(catalog);
 \draw[arrow] (catalog)--(reason);
-
-% Explicit hierarchy labels.
-\node[level] at (-6.65,-1.55) {Shared representation};
-\node[level] at (-6.65,-3.55) {Specialist agents};
-\node[level] at (-6.65,-5.65) {Coordination};
-\node[level] at (-6.65,-8.85) {Decision and output};
 \end{tikzpicture}}
 \caption{Hierarchical cooperative multi-agent Mamba ranking architecture.
 Solid arrows show the inference path.}
