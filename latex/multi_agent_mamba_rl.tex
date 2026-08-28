@@ -62,7 +62,7 @@
 \maketitle
 
 \begin{abstract}
-Sequential recommendation is naturally connected to reinforcement learning because a recommender repeatedly observes user behavior, selects items, and receives feedback. In practice, however, reinforcement-learning recommenders face three persistent difficulties: user interests evolve at different time scales, logged datasets provide only partial counterfactual evidence, and large language or sequence backbones are expensive to execute inside every policy update. This report presents the independent Multi-Agent Mamba-RL pipeline implemented in \Project. The pipeline uses a frozen Mamba-2.8B model once to produce reusable item-text embeddings, then trains three lightweight agents over those embeddings: a long-term preference agent, a short-term intent agent, and a coordinator agent. Each agent owns a disjoint low-rank adaptation module. The two specialists use Mamba-inspired selective state-space recurrences with different observation horizons and decay time scales, while the coordinator learns user-dependent mixing weights and produces the final ranking policy.
+Sequential recommendation is naturally connected to reinforcement learning because a recommender repeatedly observes user behavior, selects items, and receives feedback. In practice, however, reinforcement-learning recommenders face three persistent difficulties: user interests evolve at different time scales, logged datasets provide only partial counterfactual evidence, and large language or sequence backbones are expensive to execute inside every policy update. This report presents the independent Multi-Agent Mamba-RL pipeline implemented in \Project. The pipeline fuses cached frozen Mamba-2.8B item-text embeddings with trainable two-layer LightGCN embeddings from the training-only user--item graph, then trains three lightweight agents: a long-term preference agent, a short-term intent agent, and a coordinator agent. Each agent owns a disjoint low-rank adaptation module. The two specialists use Mamba-inspired selective state-space recurrences with different observation horizons and decay time scales, while the coordinator learns user-dependent mixing weights and produces the final ranking policy.
 
 Training follows a deliberately staged procedure: supervised specialist warm-up, frozen-specialist coordinator warm-up, and joint REINFORCE optimization. An optional full-catalog cross-entropy anchor reduces the mismatch between sampled-slate training and complete-catalog evaluation. At inference, the neural score can additionally be calibrated by popularity and first-order transition priors computed only from training histories; their coefficients are selected on validation data and default to zero for backward compatibility. The implementation supports MovieLens, Amazon Reviews 2023, and local Yelp 2019/2023 snapshots; performs chronological leave-two-out splitting; evaluates every user against the complete item catalog; records ranking and throughput metrics; and generates a grounded natural-language reason after recommendation. The architecture separates expensive semantic encoding, high-frequency policy learning, catalog ranking, calibration, and explanation generation. This separation makes the system suitable as a reproducible research baseline for studying multi-agent specialization, selective state dynamics, parameter-efficient policy learning, and high-throughput recommendation.
 \end{abstract}
@@ -166,9 +166,9 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
 \node[box,minimum width=66mm] (data) at (0,0)
   {Interaction history and item metadata\\MovieLens, Amazon, or Yelp};
 \node[shared] (semantic) at (0,-1.55)
-  {\textbf{Shared Mamba semantic layer}\\
-   chronological user state $s_t$ + cached frozen Mamba-2.8B item matrix
-   $E\in\R^{N\times d_m}$};
+  {\textbf{Shared hybrid item layer}\\
+   cached frozen Mamba-2.8B semantics + training-only two-layer LightGCN\\
+   normalized semantic--collaborative item matrix $E\in\R^{N\times d}$};
 
 % Parallel specialist level.
 \node[agent,draw=agentblue,very thick,fill=agentblue!8] (long) at (-3.25,-3.45)
@@ -276,6 +276,34 @@ A dataset/item/text fingerprint controls cache reuse. A shared bridge gives
   \bm e_i=\operatorname{norm}(W_p\bm e_i^{\mathrm{text}}),
   \qquad W_p\in\R^{d\times d_m},\quad d=128.
 \end{equation}
+
+\subsection{Training-Only LightGCN Fusion}
+
+The current implementation enables a two-layer LightGCN branch by default
+\cite{LIGHTGCN}. It constructs an undirected bipartite graph only from unique
+user--item pairs in \texttt{train\_by\_user}; validation and test edges are
+excluded. Let $A$ be its adjacency matrix, $D$ its degree matrix, and
+$X^{(0)}\in\R^{(|\mathcal U|+|\mathcal I|)\times d}$ trainable node embeddings.
+The code performs symmetric normalized propagation without feature transforms
+or nonlinearities:
+\begin{align}
+  X^{(\ell+1)} &= D^{-1/2}AD^{-1/2}X^{(\ell)},\qquad \ell\in\{0,1\},\\
+  \bar X &= \frac{1}{3}\sum_{\ell=0}^{2}X^{(\ell)}.
+\end{align}
+Writing $\bm e_i^{\mathrm{gcn}}$ for item $i$'s row of $\bar X$, the actual
+vector consumed by both specialists and by catalog scoring is
+\begin{equation}
+  \bm e_i=operatorname{norm}\!\left(
+    \operatorname{norm}(W_p\bm e_i^{\mathrm{text}})+
+    \operatorname{norm}(\bm e_i^{\mathrm{gcn}})
+  \right).
+\end{equation}
+Thus the graph is a shared collaborative item encoder, not a fourth policy
+agent. It is optimized with the item projection during specialist warm-up and
+joint training, frozen during coordinator warm-up, and recomputed once per
+batch for reuse by histories and candidates. The optional
+\texttt{--graph-device} places graph parameters and edges on a second GPU;
+\texttt{--no-use-graph-embeddings} provides the semantic-only ablation.
 
 \subsection{Agent-Specific LoRA}
 
@@ -541,6 +569,34 @@ held out until the coefficients were fixed. The resulting Test Recall@10 of
 itself isolate causal contributions; the prior components and the full-catalog
 anchor should still be reported as separate controlled ablations.
 
+\subsection{MovieLens-1M and Yelp19 Held-Out Results}
+
+Table~\ref{tab:ml-yelp-project} records the selected best-validation checkpoints
+already produced by this repository. Both runs use rating $\geq4$,
+chronological leave-two-out, one test target per user, and full-catalog ranking;
+therefore Recall and Hit Ratio coincide. LightGCN is enabled and its edges, as
+well as the popularity and transition calibration statistics, come only from
+training histories. These rows are directly comparable to each other only at a
+metric-definition level: the catalogs and calibrated coefficients differ.
+
+\begin{table}[H]
+\centering
+\caption{Current project full-catalog test results.}
+\label{tab:ml-yelp-project}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+Dataset & Run & $R@5$ & $R@10$ & $N@5$ & $N@10$ \\
+\midrule
+MovieLens-1M & 20260827\_011510 & .14899 & .21793 & .10257 & .12476 \\
+Yelp19 & 20260827\_030443 & .06940 & .09685 & .04656 & .05545 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The published tables in Section~\ref{sec:baselines} remain contextual
+references rather than evidence of superiority because AMIM and Yelp2018 use
+different preprocessing and, in Yelp's case, a different corpus and cutoff.
+
 \section{Implementation and Reproducibility}
 
 \begin{table}[H]
@@ -576,6 +632,7 @@ Environment variables include \texttt{CACHE\_DIR},
 \texttt{MONITOR\_METRIC}, \texttt{EARLY\_STOPPING\_PATIENCE},
 \texttt{LR\_PATIENCE}, \texttt{MAX\_TRANSITIONS}, \texttt{SEED},
 \texttt{POPULARITY\_ALPHA}, \texttt{TRANSITION\_BETA},
+\texttt{USE\_GRAPH\_EMBEDDINGS}, \texttt{GRAPH\_DEVICE},
 \texttt{TARGET\_RECALL\_AT\_10}, \texttt{EXPERIMENT\_NOTE}, and
 \texttt{RESUME\_CHECKPOINT}. The Round-4 evaluation can be reproduced with
 \begin{lstlisting}[language=bash]
@@ -676,6 +733,9 @@ measurable.
 \bibitem{FMLPREC} K. Zhou, H. Yu, W. X. Zhao, and J. R. Wen. Filter-Enhanced MLP Is All You Need for Sequential Recommendation. \emph{The Web Conference}, 2022.
 \bibitem{JGCF} J. Guo, L. Du, X. Chen, et al. On Manipulating Signals of User--Item Graph: A Jacobi Polynomial-Based Graph Collaborative Filtering. \emph{KDD}, 2023.
 \bibitem{FASHIONRETRIEVAL} M. Pandey. Domain-Adaptive and Scalable Dense Retrieval for Content-Based Recommendation. \emph{arXiv:2602.00899}, 2026.
+\bibitem{LIGHTGCN} X. He, K. Deng, X. Wang, Y. Li, Y. Zhang, and M. Wang. LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation. \emph{SIGIR}, 2020.
+\bibitem{AMIM} Y. Cheng, Y. Fan, Y. Wang, and X. Li. Accurate Multi-Interest Modeling for Sequential Recommendation with Attention and Distillation Capsule Network. \emph{Expert Systems with Applications}, vol. 243, article 122887, 2024.
+\bibitem{PAAC} M. Cai, L. Chen, Y. Wang, H. Bai, P. Sun, L. Wu, M. Zhang, and M. Wang. Popularity-Aware Alignment and Contrast for Mitigating Popularity Bias. \emph{KDD}, 2024.
 \end{thebibliography}
 
 \end{document}
