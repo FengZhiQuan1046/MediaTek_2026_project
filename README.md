@@ -157,3 +157,14 @@ Network-free CPU smoke test (not a research configuration):
 python -m src.train_mamba_rl --dataset synthetic --device cpu --skip-mamba \
   --no-generate-reasons --max-transitions 32 --batch-size 8
 ```
+# Versioned layout
+
+The actively preserved runnable snapshots are:
+
+- `ver1/`: supervised DL (`bash ver1/run.sh`)
+- `ver2/`: REINFORCE RL (`bash ver2/run_rl.sh`)
+- `ver3/`: multi-agent Mamba-RL (`cd ver3 && bash run_amazons_full_rl.sh`)
+
+Historical outputs and supporting files have been migrated into these folders.
+Before deleting legacy root files, follow `ver3/DELETION_CHECKLIST.md` and make
+sure no process launched from the old root is still running.
