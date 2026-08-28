@@ -142,7 +142,7 @@ Finally, explanation generation should not dominate ranking latency. The pipelin
 
 \subsection{Innovations and Contributions}
 
-The implementation makes six contributions:
+The implementation makes seven contributions:
 \begin{enumerate}
   \item A cooperative four-policy recommender with long- and short-term selective-state specialists, a latent preference-transition agent, and a learned coordinator.
   \item Disjoint specialist LoRA parameters with shared cached Mamba semantics,
@@ -182,7 +182,7 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
   box/.style={draw,rounded corners=2pt,align=center,minimum height=10mm,
               minimum width=39mm,fill=black!3,font=\small},
   shared/.style={box,minimum width=92mm,fill=black!6},
-  agent/.style={box,minimum width=48mm,minimum height=14mm},
+  agent/.style={box,minimum width=39mm,minimum height=15mm},
   coordinator/.style={box,minimum width=64mm,minimum height=14mm,
                       draw=agentorange,very thick,fill=agentorange!10},
   arrow/.style={-{Latex[length=2.3mm]},thick},
@@ -198,53 +198,54 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
    normalized semantic--collaborative item matrix $E\in\R^{N\times d}$};
 
 % Parallel specialist level.
-\node[agent,draw=agentblue,very thick,fill=agentblue!8] (long) at (-3.25,-3.45)
+\node[agent,draw=agentblue,very thick,fill=agentblue!8] (long) at (-4.45,-3.55)
   {\textbf{Long-term specialist $\pi_L$}\\
    full history $\rightarrow$ slow LoRA selective SSM\\
    stable preference $\bm s_u^{(L)}$, logits $\bm z^{(L)}$};
-\node[agent,draw=agentgreen,very thick,fill=agentgreen!8] (short) at (3.25,-3.45)
+\node[agent,draw=purple!75!black,very thick,fill=purple!7] (pref) at (0,-3.55)
+  {\textbf{Preference agent $\pi_P$}\\
+   prototypes $\rightarrow$ GRU + Tiny Mamba\\
+   $\widehat{\bm q}_{t+1}$, $\rho_t$, logits $\bm z^{(P)}$};
+\node[agent,draw=agentgreen,very thick,fill=agentgreen!8] (short) at (4.45,-3.55)
   {\textbf{Short-term specialist $\pi_S$}\\
    recent window $\rightarrow$ fast LoRA selective SSM\\
    current intent $\bm s_u^{(S)}$, logits $\bm z^{(S)}$};
 
 % Higher-level coordination and the deployed action.
-\node[coordinator] (coord) at (0,-5.45)
+\node[coordinator] (coord) at (0,-5.65)
   {\textbf{Higher-level coordinator $\pi_C$}\\
-   agent-specific LoRA + state-dependent weights $(w_L,w_S)$\\
-   cooperative fusion of specialist states and logits};
-\node[box,minimum width=64mm,fill=agentorange!5] (rank) at (0,-7.15)
+   state-dependent temporal weights $(w_L,w_S)$\\
+   dynamic preference gate $\gamma_{P,u}=f(\rho_t,1-H/\log K)$};
+\node[box,minimum width=78mm,fill=agentorange!5] (rank) at (0,-7.35)
   {Joint recommendation policy\\
-   $\bm z^{\mathrm{final}}=\bm z^{(C)}+w_L\bm z^{(L)}+w_S\bm z^{(S)}$};
-\node[box,minimum width=55mm] (catalog) at (0,-8.65)
+   $\bm z^{\mathrm{final}}=\bm z^{(C)}+w_L\bm z^{(L)}+w_S\bm z^{(S)}
+   +\gamma_{P,u}\bm z^{(P)}$};
+\node[box,minimum width=55mm] (catalog) at (0,-8.85)
   {Training-only prior calibration + Top-$K$\\
    $\widetilde z=z^{\mathrm{final}}+\alpha p+\beta q$; Recall/NDCG};
-\node[box,minimum width=46mm] (reason) at (5.7,-8.65)
+\node[box,minimum width=46mm] (reason) at (5.7,-8.85)
   {Post-hoc Mamba reason\\grounded in history};
-% \node[box,minimum width=47mm,draw=red!70!black,fill=red!4] (objective) at (-4.7,-6.65)
-%   {Joint training objective\\REINFORCE + CE + specialization};
 
 % Inference path.
 \draw[arrow] (data)--(semantic);
 \draw[arrow] (semantic.south) -- ++(0,-0.35) -| (long.north);
+\draw[arrow] (semantic)--(pref);
 \draw[arrow] (semantic.south) -- ++(0,-0.35) -| (short.north);
 \draw[arrow] (long.south) -- ++(0,-0.35) -| node[pos=0.72,above left,font=\scriptsize]
   {$\bm s^{(L)},\bm z^{(L)}$} (coord.north);
 \draw[arrow] (short.south) -- ++(0,-0.35) -| node[pos=0.72,above right,font=\scriptsize]
   {$\bm s^{(S)},\bm z^{(S)}$} (coord.north);
+\draw[arrow,draw=purple!75!black] (pref)--node[right,font=\scriptsize]
+  {$\bm z^{(P)},\rho, H$} (coord);
 \draw[arrow] (coord)--(rank);
 \draw[arrow] (rank)--(catalog);
 \draw[arrow] (catalog)--(reason);
 
-% Training-only cooperative feedback.
-% \draw[feedback] (objective.north) to[bend right=16] (long.west);
-% \draw[feedback] (objective.north east) to[bend right=12] (coord.west);
-% \draw[feedback] (objective.north east) to[bend left=25] (short.west);
-
 % Explicit hierarchy labels.
 \node[level] at (-6.65,-1.55) {Shared representation};
-\node[level] at (-6.65,-3.45) {Specialist agents};
-\node[level] at (-6.65,-5.45) {Coordination};
-\node[level] at (-6.65,-8.65) {Decision and output};
+\node[level] at (-6.65,-3.55) {Specialist agents};
+\node[level] at (-6.65,-5.65) {Coordination};
+\node[level] at (-6.65,-8.85) {Decision and output};
 \end{tikzpicture}}
 \caption{Hierarchical cooperative multi-agent Mamba ranking architecture.
 Solid arrows show the inference path.}
@@ -660,7 +661,10 @@ non-target items receive $-\infty$.
 \end{align}
 The code reports $K=5,10$, users/s, and scores/s.
 
-Throughput comes from cached Mamba vectors, shared semantics, linear recurrences, capped history, sampled RL action slates, optional batched full-catalog CE, FP16, bounded transitions, GEMM ranking, sparse prior updates, and delayed generator loading.
+Throughput comes from cached Mamba vectors, shared semantics, linear
+recurrences, capped history, bounded listwise candidate sets with model-aware
+hard negatives, optional batched full-catalog supervision, FP16, GEMM ranking,
+sparse prior updates, and delayed generator loading.
 
 \section{Recommendation Explanation}
 
