@@ -632,6 +632,7 @@ Environment variables include \texttt{CACHE\_DIR},
 \texttt{MONITOR\_METRIC}, \texttt{EARLY\_STOPPING\_PATIENCE},
 \texttt{LR\_PATIENCE}, \texttt{MAX\_TRANSITIONS}, \texttt{SEED},
 \texttt{POPULARITY\_ALPHA}, \texttt{TRANSITION\_BETA},
+\texttt{USE\_GRAPH\_EMBEDDINGS}, \texttt{GRAPH\_DEVICE},
 \texttt{TARGET\_RECALL\_AT\_10}, \texttt{EXPERIMENT\_NOTE}, and
 \texttt{RESUME\_CHECKPOINT}. The Round-4 evaluation can be reproduced with
 \begin{lstlisting}[language=bash]
@@ -732,6 +733,9 @@ measurable.
 \bibitem{FMLPREC} K. Zhou, H. Yu, W. X. Zhao, and J. R. Wen. Filter-Enhanced MLP Is All You Need for Sequential Recommendation. \emph{The Web Conference}, 2022.
 \bibitem{JGCF} J. Guo, L. Du, X. Chen, et al. On Manipulating Signals of User--Item Graph: A Jacobi Polynomial-Based Graph Collaborative Filtering. \emph{KDD}, 2023.
 \bibitem{FASHIONRETRIEVAL} M. Pandey. Domain-Adaptive and Scalable Dense Retrieval for Content-Based Recommendation. \emph{arXiv:2602.00899}, 2026.
+\bibitem{LIGHTGCN} X. He, K. Deng, X. Wang, Y. Li, Y. Zhang, and M. Wang. LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation. \emph{SIGIR}, 2020.
+\bibitem{AMIM} Y. Cheng, Y. Fan, Y. Wang, and X. Li. Accurate Multi-Interest Modeling for Sequential Recommendation with Attention and Distillation Capsule Network. \emph{Expert Systems with Applications}, vol. 243, article 122887, 2024.
+\bibitem{PAAC} M. Cai, L. Chen, Y. Wang, H. Bai, P. Sun, L. Wu, M. Zhang, and M. Wang. Popularity-Aware Alignment and Contrast for Mitigating Popularity Bias. \emph{KDD}, 2024.
 \end{thebibliography}
 
 \end{document}

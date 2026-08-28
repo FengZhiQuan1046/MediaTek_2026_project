@@ -58,3 +58,72 @@ Hit   | @5 0.020540 | @10 0.025360
 ================================
 2026-08-28 14:29:28,585 | INFO | VALID_STEP step=12000 stage=specialists epoch=2 ndcg@10=0.018902 recall@10=0.027578 improved=True
 2026-08-28 14:29:28,890 | INFO | BEST_MODEL_IN_MEMORY step=12000 stage=specialists ndcg@10=0.018902
+2026-08-28 14:41:15,900 | INFO | stage=specialists epoch=2 loss=6.834682 steps=7813 transitions/s=655.08
+2026-08-28 14:45:37,632 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=specialists | epoch=3 | step=16000 | users=567775/567775
+NDCG  | @5 0.018296 | @10 0.020111
+Recall| @5 0.023571 | @10 0.029191
+Hit   | @5 0.023571 | @10 0.029191
+================================
+2026-08-28 14:48:47,046 | INFO | 
+========== PERIODIC TEST ==========
+stage=specialists | epoch=3 | step=16000 | users=567775/567775
+NDCG  | @5 0.017366 | @10 0.019004
+Recall| @5 0.022088 | @10 0.027164
+Hit   | @5 0.022088 | @10 0.027164
+================================
+2026-08-28 14:48:47,046 | INFO | VALID_STEP step=16000 stage=specialists epoch=3 ndcg@10=0.020111 recall@10=0.029191 improved=True
+2026-08-28 14:48:47,353 | INFO | BEST_MODEL_IN_MEMORY step=16000 stage=specialists ndcg@10=0.020111
+2026-08-28 15:04:55,726 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=specialists | epoch=3 | step=20000 | users=567775/567775
+NDCG  | @5 0.018241 | @10 0.020113
+Recall| @5 0.023608 | @10 0.029410
+Hit   | @5 0.023608 | @10 0.029410
+================================
+2026-08-28 15:08:05,281 | INFO | 
+========== PERIODIC TEST ==========
+stage=specialists | epoch=3 | step=20000 | users=567775/567775
+NDCG  | @5 0.017348 | @10 0.019043
+Recall| @5 0.022056 | @10 0.027300
+Hit   | @5 0.022056 | @10 0.027300
+================================
+2026-08-28 15:08:05,281 | INFO | VALID_STEP step=20000 stage=specialists epoch=3 ndcg@10=0.020113 recall@10=0.029410 improved=True
+2026-08-28 15:08:05,602 | INFO | BEST_MODEL_IN_MEMORY step=20000 stage=specialists ndcg@10=0.020113
+2026-08-28 15:19:15,839 | INFO | stage=specialists epoch=3 loss=5.997036 steps=7813 transitions/s=656.82
+2026-08-28 15:23:17,845 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=coordinator | epoch=1 | step=24000 | users=567775/567775
+NDCG  | @5 0.020421 | @10 0.022470
+Recall| @5 0.026380 | @10 0.032740
+Hit   | @5 0.026380 | @10 0.032740
+================================
+2026-08-28 15:26:36,405 | INFO | 
+========== PERIODIC TEST ==========
+stage=coordinator | epoch=1 | step=24000 | users=567775/567775
+NDCG  | @5 0.019562 | @10 0.021387
+Recall| @5 0.024828 | @10 0.030480
+Hit   | @5 0.024828 | @10 0.030480
+================================
+2026-08-28 15:26:36,406 | INFO | VALID_STEP step=24000 stage=coordinator epoch=1 ndcg@10=0.022470 recall@10=0.032740 improved=True
+2026-08-28 15:26:36,714 | INFO | BEST_MODEL_IN_MEMORY step=24000 stage=coordinator ndcg@10=0.022470
+2026-08-28 15:26:36,714 | INFO | LEARNING_RATE step=24000 stage=coordinator lr=0.0001
+2026-08-28 15:35:05,369 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=coordinator | epoch=1 | step=28000 | users=567775/567775
+NDCG  | @5 0.021543 | @10 0.023678
+Recall| @5 0.027617 | @10 0.034235
+Hit   | @5 0.027617 | @10 0.034235
+================================
+2026-08-28 15:38:24,683 | INFO | 
+========== PERIODIC TEST ==========
+stage=coordinator | epoch=1 | step=28000 | users=567775/567775
+NDCG  | @5 0.020963 | @10 0.022902
+Recall| @5 0.026377 | @10 0.032379
+Hit   | @5 0.026377 | @10 0.032379
+================================
+2026-08-28 15:38:24,683 | INFO | VALID_STEP step=28000 stage=coordinator epoch=1 ndcg@10=0.023678 recall@10=0.034235 improved=True
+2026-08-28 15:38:24,995 | INFO | BEST_MODEL_IN_MEMORY step=28000 stage=coordinator ndcg@10=0.023678
+2026-08-28 15:38:24,995 | INFO | LEARNING_RATE step=28000 stage=coordinator lr=0.0001
+2026-08-28 15:42:37,245 | INFO | stage=coordinator epoch=1 loss=2.211018 steps=7813 transitions/s=1650.77
