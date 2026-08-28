@@ -16,7 +16,6 @@ import time
 
 import numpy as np
 import torch
-from torch.distributions import Categorical
 from torch.nn import functional as F
 from tqdm.auto import tqdm
 
@@ -190,6 +189,69 @@ def candidate_slates(targets: torch.Tensor, num_items: int, count: int) -> torch
     return torch.cat((targets.unsqueeze(1), negatives), dim=1)
 
 
+def future_target_batch(data, transitions, horizon, decay, device):
+    """Training-only multi-step targets; validation/test items are never read."""
+    ids = torch.zeros((len(transitions), horizon), dtype=torch.long, device=device)
+    weights = torch.zeros((len(transitions), horizon), dtype=torch.float32, device=device)
+    for row, transition in enumerate(transitions):
+        sequence = data.train_by_user[transition.user]
+        future = sequence[transition.end:min(transition.end + horizon, len(sequence))]
+        if not future:
+            future = [transition.target]
+        values = torch.tensor(future, dtype=torch.long, device=device)
+        ids[row, :len(future)] = values
+        ids[row, len(future):] = values[-1]
+        weights[row, :len(future)] = torch.tensor(
+            [decay ** offset for offset in range(len(future))],
+            device=device,
+        )
+    return ids, weights / weights.sum(1, keepdim=True).clamp_min(1e-8)
+
+
+def soft_target_ranking_loss(logits, target_positions, target_weights):
+    log_probabilities = F.log_softmax(logits, dim=-1)
+    selected = log_probabilities.gather(1, target_positions)
+    return -(selected * target_weights).sum(1).mean()
+
+
+def preference_contrastive_loss(states, target_vectors, target_ids, temperature=0.1):
+    """In-batch multi-positive contrastive alignment without false duplicate negatives."""
+    similarities = F.normalize(states, dim=-1) @ F.normalize(target_vectors, dim=-1).T
+    similarities = similarities / temperature
+    positive_mask = target_ids.unsqueeze(1) == target_ids.unsqueeze(0)
+    log_denominator = torch.logsumexp(similarities, dim=1)
+    positive_logits = similarities.masked_fill(~positive_mask, -torch.inf)
+    log_numerator = torch.logsumexp(positive_logits, dim=1)
+    return (log_denominator - log_numerator).mean()
+
+
+def model_hard_negative_slates(
+    model, states, data, transitions, future_ids, count, pool_multiplier, graph_items,
+):
+    """Mine high-scoring negatives from a random pool while excluding train positives."""
+    negative_count = max(count - future_ids.size(1), 1)
+    pool_size = max(negative_count * pool_multiplier, negative_count)
+    pool = torch.randint(
+        data.num_items, (len(transitions), pool_size), device=future_ids.device
+    )
+    with torch.no_grad():
+        pool_vectors = model.project_ids(pool, graph_items)
+        pool_scores = model.logits_from_states(states, pool_vectors)["coordinator"].float()
+        for row, transition in enumerate(transitions):
+            known = torch.tensor(
+                list(set(data.train_by_user[transition.user])),
+                device=pool.device,
+                dtype=pool.dtype,
+            )
+            if known.numel():
+                pool_scores[row].masked_fill_(
+                    (pool[row].unsqueeze(1) == known.unsqueeze(0)).any(1), -torch.inf
+                )
+        selected = pool_scores.topk(negative_count, dim=1).indices
+    negatives = pool.gather(1, selected)
+    return torch.cat((future_ids, negatives), dim=1)
+
+
 def build_catalog_priors(data, device: str) -> CatalogPriors:
     """Build popularity and first-order transition priors from training histories only."""
     popularity = torch.zeros(data.num_items, dtype=torch.float32)
@@ -309,12 +371,13 @@ def preference_auxiliary_losses(model, output, target_vectors):
 
 
 def train_stage(model, data, transitions, stage, epochs, batch_size, candidates, max_history,
-                learning_rate, entropy_coef, supervised_coef, specialization_coef, device, logger,
+                learning_rate, device, logger,
                 monitor, validate_every_steps, eval_batch_size, early_stopping_patience,
                 lr_patience, full_catalog_supervised, catalog_priors, popularity_alpha,
                 transition_beta, validation_user_limit, periodic_test_user_limit,
                 preference_coef, preference_transition_coef, preference_balance_coef,
-                preference_separation_coef):
+                preference_separation_coef, future_horizon, future_decay,
+                hard_negative_pool_multiplier, preference_contrastive_coef, seed):
     if epochs == 0:
         return []
     model.set_stage(stage)
@@ -326,35 +389,44 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
             optimizer, mode="max", factor=0.5, patience=lr_patience, min_lr=1e-6
         )
     scaler = torch.amp.GradScaler("cuda", enabled=device.startswith("cuda"))
-    baselines = {"long": 0.0, "short": 0.0, "preference": 0.0, "coordinator": 0.0}
     step_losses = []
     for epoch in range(1, epochs + 1):
-        random.shuffle(transitions)
+        epoch_transitions = build_transitions(
+            data, len(transitions), seed + epoch * 1009 + monitor.global_step
+        )
         model.train()
         total = 0.0
         completed_steps = 0
         completed_examples = 0
         validation_seconds = 0.0
-        steps = math.ceil(len(transitions) / batch_size)
+        steps = math.ceil(len(epoch_transitions) / batch_size)
         started = time.perf_counter()
-        progress = tqdm(range(0, len(transitions), batch_size), total=steps,
+        progress = tqdm(range(0, len(epoch_transitions), batch_size), total=steps,
                         desc=f"{stage} {epoch}/{epochs}", unit="step", dynamic_ncols=True)
         for start in progress:
-            batch = transitions[start:start + batch_size]
+            batch = epoch_transitions[start:start + batch_size]
             histories, lengths, targets = history_batch(data, batch, max_history, device)
-            slates = candidate_slates(targets, data.num_items, candidates)
+            future_ids, future_weights = future_target_batch(
+                data, batch, future_horizon, future_decay, device
+            )
             with amp_context(device):
                 graph_items = model.graph_item_vectors()
                 states = model.encode_states(histories, lengths, graph_items)
-                if full_catalog_supervised and stage != "joint":
+                if full_catalog_supervised:
                     candidate_vectors = model.project_all(graph_items)
                     output = model.logits_from_states(states, candidate_vectors)
-                    labels = targets
+                    target_positions = future_ids
                     target_vectors = candidate_vectors[targets]
                 else:
+                    slates = model_hard_negative_slates(
+                        model, states, data, batch, future_ids, candidates,
+                        hard_negative_pool_multiplier, graph_items,
+                    )
                     candidate_vectors = model.project_ids(slates, graph_items)
                     output = model.logits_from_states(states, candidate_vectors)
-                    labels = torch.zeros(len(batch), dtype=torch.long, device=device)
+                    target_positions = torch.arange(
+                        future_horizon, device=device
+                    ).unsqueeze(0).expand(len(batch), -1)
                     target_vectors = candidate_vectors[:, 0]
                 preference_terms = preference_auxiliary_losses(model, output, target_vectors)
                 preference_auxiliary = (
@@ -363,47 +435,29 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                     + preference_balance_coef * preference_terms[2]
                     + preference_separation_coef * preference_terms[3]
                 )
-                reward_mean = 0.0
+                ranking_losses = {
+                    name: soft_target_ranking_loss(
+                        output[name], target_positions, future_weights
+                    )
+                    for name in ("long", "short", "preference", "coordinator")
+                }
                 if stage == "specialists":
                     loss = (
-                        F.cross_entropy(output["long"], labels)
-                        + F.cross_entropy(output["short"], labels)
-                        + F.cross_entropy(output["preference"], labels)
+                        ranking_losses["long"] + ranking_losses["short"]
+                        + ranking_losses["preference"]
                         + preference_auxiliary
                     )
                 elif stage == "coordinator":
-                    loss = F.cross_entropy(output["coordinator"], labels)
+                    loss = ranking_losses["coordinator"]
                 else:
-                    distributions = {name: Categorical(logits=output[name])
-                                     for name in ("long", "short", "preference", "coordinator")}
-                    actions = {name: distribution.sample() for name, distribution in distributions.items()}
-                    rewards = {name: torch.where(action == 0, torch.ones_like(action, dtype=torch.float),
-                                                 torch.full_like(action, -0.05, dtype=torch.float))
-                               for name, action in actions.items()}
-                    policy_loss = 0.0
-                    for name, distribution in distributions.items():
-                        baselines[name] = 0.95 * baselines[name] + 0.05 * rewards[name].mean().item()
-                        advantage = rewards[name] - baselines[name]
-                        policy_loss -= (advantage.detach() * distribution.log_prob(actions[name])).mean()
-                        policy_loss -= entropy_coef * distribution.entropy().mean()
-                    long_state, short_state = output["states"][:2]
-                    specialization = F.cosine_similarity(long_state, short_state).square().mean()
-                    if full_catalog_supervised:
-                        full_output = model.logits_from_states(
-                            states, model.project_all(graph_items)
-                        )
-                        supervised = sum(
-                            F.cross_entropy(full_output[name], targets)
-                            for name in ("long", "short", "preference", "coordinator")
-                        ) / 4
-                    else:
-                        supervised = sum(F.cross_entropy(output[name], labels)
-                                         for name in ("long", "short", "preference", "coordinator")) / 4
-                    loss = (
-                        policy_loss + supervised_coef * supervised
-                        + specialization_coef * specialization + preference_auxiliary
+                    supervised = sum(ranking_losses.values()) / len(ranking_losses)
+                    contrastive = preference_contrastive_loss(
+                        output["states"][3], target_vectors, targets
                     )
-                    reward_mean = rewards["coordinator"].mean().item()
+                    loss = (
+                        supervised + preference_auxiliary
+                        + preference_contrastive_coef * contrastive
+                    )
             optimizer.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -417,7 +471,7 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
             total += loss.item()
             step_losses.append(loss.item())
             progress.set_postfix(
-                loss=f"{loss.item():.4f}", reward=f"{reward_mean:.3f}",
+                loss=f"{loss.item():.4f}",
                 step=monitor.global_step,
             )
 
@@ -498,6 +552,7 @@ def evaluate(
         "preference_change_probability": 0.0,
         "preference_current_entropy": 0.0,
         "preference_next_entropy": 0.0,
+        "preference_ranking_weight": 0.0,
     }
     samples = []
     with amp_context(device):
@@ -539,6 +594,7 @@ def evaluate(
         totals["preference_next_entropy"] += (
             -(next_preference * next_preference.log()).sum(-1).sum().item()
         )
+        totals["preference_ranking_weight"] += output["preference_weight"].float().sum().item()
         for cutoff in (5, 10):
             hits = (ranks <= cutoff).sum().item()
             # There is one held-out target per user, so Recall and Hit are
@@ -572,7 +628,11 @@ def evaluate(
                         "transition_probability": round(
                             float(output["preference_change"][row]), 6
                         ),
-                        "ranking_weight": round(float(output["preference_weight"]), 6),
+                        "ranking_weight": round(float(output["preference_weight"][row, 0]), 6),
+                        "uncertainty": round(float(output["preference_uncertainty"][row]), 6),
+                        "tiny_mamba_residual_weight": round(
+                            float(output["preference_tiny_mamba_weight"]), 6
+                        ),
                     },
                 })
     if device.startswith("cuda"):
@@ -643,7 +703,10 @@ def parse_args():
     parser.add_argument("--min-user-events", type=int, default=5)
     parser.add_argument("--specialist-epochs", type=int, default=3)
     parser.add_argument("--coordinator-epochs", type=int, default=2)
-    parser.add_argument("--rl-epochs", type=int, default=20)
+    parser.add_argument(
+        "--joint-epochs", "--rl-epochs", dest="joint_epochs", type=int, default=20,
+        help="Joint ranking epochs; --rl-epochs remains as a backward-compatible alias.",
+    )
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--eval-batch-size", type=int, default=128)
     parser.add_argument("--validate-every-steps", type=int, default=1000)
@@ -660,6 +723,7 @@ def parse_args():
     parser.add_argument("--preference-hidden", type=int, default=128)
     parser.add_argument("--preference-temperature", type=float, default=0.2)
     parser.add_argument("--preference-score-weight", type=float, default=0.2)
+    parser.add_argument("--preference-tiny-mamba-dim", type=int, default=32)
     parser.add_argument(
         "--use-graph-embeddings", action=argparse.BooleanOptionalAction, default=True,
         help="Fuse trainable LightGCN item embeddings with Mamba item vectors.",
@@ -668,13 +732,14 @@ def parse_args():
     parser.add_argument("--specialist-lr", type=float, default=2e-4)
     parser.add_argument("--coordinator-lr", type=float, default=2e-4)
     parser.add_argument("--joint-lr", type=float, default=5e-5)
-    parser.add_argument("--entropy-coef", type=float, default=0.01)
-    parser.add_argument("--supervised-coef", type=float, default=0.1)
-    parser.add_argument("--specialization-coef", type=float, default=0.01)
     parser.add_argument("--preference-coef", type=float, default=0.2)
     parser.add_argument("--preference-transition-coef", type=float, default=0.1)
     parser.add_argument("--preference-balance-coef", type=float, default=0.01)
     parser.add_argument("--preference-separation-coef", type=float, default=0.01)
+    parser.add_argument("--future-horizon", type=int, default=3)
+    parser.add_argument("--future-decay", type=float, default=0.5)
+    parser.add_argument("--hard-negative-pool-multiplier", type=int, default=4)
+    parser.add_argument("--preference-contrastive-coef", type=float, default=0.05)
     parser.add_argument("--full-catalog-supervised", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--popularity-alpha", type=float, default=0.0)
     parser.add_argument("--transition-beta", type=float, default=0.0)
@@ -687,6 +752,11 @@ def parse_args():
     )
     parser.add_argument("--mamba-encode-batch-size", type=int, default=4)
     parser.add_argument("--mamba-max-tokens", type=int, default=48)
+    parser.add_argument(
+        "--item-prompt-prefix",
+        default="Preference-aware product representation: ",
+        help="Short prefix for frozen Mamba item encoding; excluded from mean pooling.",
+    )
     parser.add_argument("--validation-user-limit", type=int, default=0)
     parser.add_argument(
         "--periodic-test-user-limit", type=int, default=-1,
@@ -713,7 +783,7 @@ def parse_args():
         help="Optional JSON path for validation/test ranking scores.",
     )
     args = parser.parse_args()
-    if min(args.specialist_epochs, args.coordinator_epochs, args.rl_epochs) < 0:
+    if min(args.specialist_epochs, args.coordinator_epochs, args.joint_epochs) < 0:
         parser.error("stage epoch counts cannot be negative")
     if min(args.validate_every_steps, args.early_stopping_patience, args.lr_patience) < 0:
         parser.error("validation interval and patience values cannot be negative")
@@ -722,7 +792,10 @@ def parse_args():
         or args.mamba_encode_batch_size < 1 or args.mamba_max_tokens < 1
         or args.validation_user_limit < 0 or args.periodic_test_user_limit < -1
         or args.preference_count < 2 or args.preference_hidden < 1
+        or args.preference_tiny_mamba_dim < 1
         or args.preference_temperature <= 0
+        or args.future_horizon < 1 or args.candidates <= args.future_horizon
+        or args.hard_negative_pool_multiplier < 1
     ):
         parser.error("candidate count must be >=2 and batch/history sizes must be positive")
     if not 0.0 <= args.target_recall_at_10 <= 1.0:
@@ -732,8 +805,11 @@ def parse_args():
     if min(
         args.preference_coef, args.preference_transition_coef,
         args.preference_balance_coef, args.preference_separation_coef,
+        args.preference_contrastive_coef,
     ) < 0:
         parser.error("preference loss coefficients cannot be negative")
+    if not 0.0 < args.future_decay <= 1.0:
+        parser.error("--future-decay must be in (0, 1]")
     return args
 
 
@@ -762,12 +838,13 @@ def main():
         args.popularity_alpha, args.transition_beta, catalog_priors is not None,
     )
 
-    fingerprint = hashlib.sha1("\n".join(data.item_texts).encode("utf-8")).hexdigest()[:12]
+    vector_identity = args.item_prompt_prefix + "\n" + "\n".join(data.item_texts)
+    fingerprint = hashlib.sha1(vector_identity.encode("utf-8")).hexdigest()[:12]
     artifact = (
         Path(args.item_vector_artifact)
         if args.item_vector_artifact
         else Path(args.cache_dir) / "mamba_multi_agent" / (
-            f"{safe_dataset}_{data.num_items}_{fingerprint}_tok{args.mamba_max_tokens}.pt"
+            f"{safe_dataset}_{data.num_items}_{fingerprint}_prompt_tok{args.mamba_max_tokens}.pt"
         )
     )
     if args.skip_mamba:
@@ -778,6 +855,7 @@ def main():
         item_features = load_or_encode_text(
             data.item_texts, str(artifact), args.device, False, args.cache_dir,
             batch_size=args.mamba_encode_batch_size, max_tokens=args.mamba_max_tokens,
+            prompt_prefix=args.item_prompt_prefix,
         )
         assert item_features is not None
     if item_features.size(0) != data.num_items:
@@ -801,6 +879,7 @@ def main():
         preference_hidden=args.preference_hidden,
         preference_temperature=args.preference_temperature,
         preference_score_weight=args.preference_score_weight,
+        preference_tiny_mamba_dim=args.preference_tiny_mamba_dim,
     )
     if args.resume_checkpoint:
         resume_path = Path(args.resume_checkpoint)
@@ -813,10 +892,10 @@ def main():
     transitions = build_transitions(data, args.max_transitions, args.seed)
     logger.info("training_transitions=%d", len(transitions))
     logger.info(
-        "schedule specialist_epochs=%d coordinator_epochs=%d rl_epochs=%d "
+        "schedule specialist_epochs=%d coordinator_epochs=%d joint_ranking_epochs=%d "
         "validate_every_steps=%d validation_users=%d periodic_test_users=%d "
         "monitor=%s early_stopping_patience=%d",
-        args.specialist_epochs, args.coordinator_epochs, args.rl_epochs,
+        args.specialist_epochs, args.coordinator_epochs, args.joint_epochs,
         args.validate_every_steps, args.validation_user_limit,
         args.periodic_test_user_limit, args.monitor_metric, args.early_stopping_patience,
     )
@@ -834,8 +913,7 @@ def main():
         record_validation(model, resumed_metrics, "resume", 0, monitor, logger)
     common = dict(
         model=model, data=data, transitions=transitions, batch_size=args.batch_size,
-        candidates=args.candidates, max_history=args.max_history, entropy_coef=args.entropy_coef,
-        supervised_coef=args.supervised_coef, specialization_coef=args.specialization_coef,
+        candidates=args.candidates, max_history=args.max_history,
         device=args.device, logger=logger, monitor=monitor,
         validate_every_steps=args.validate_every_steps, eval_batch_size=args.eval_batch_size,
         early_stopping_patience=args.early_stopping_patience, lr_patience=args.lr_patience,
@@ -848,13 +926,17 @@ def main():
         preference_transition_coef=args.preference_transition_coef,
         preference_balance_coef=args.preference_balance_coef,
         preference_separation_coef=args.preference_separation_coef,
+        future_horizon=args.future_horizon, future_decay=args.future_decay,
+        hard_negative_pool_multiplier=args.hard_negative_pool_multiplier,
+        preference_contrastive_coef=args.preference_contrastive_coef,
+        seed=args.seed,
     )
     losses = {
         "specialists": train_stage(stage="specialists", epochs=args.specialist_epochs,
                                    learning_rate=args.specialist_lr, **common),
         "coordinator": train_stage(stage="coordinator", epochs=args.coordinator_epochs,
                                    learning_rate=args.coordinator_lr, **common),
-        "joint": train_stage(stage="joint", epochs=args.rl_epochs,
+        "joint": train_stage(stage="joint", epochs=args.joint_epochs,
                              learning_rate=args.joint_lr, **common),
     }
 
@@ -910,6 +992,17 @@ def main():
         "target_recall_at_10": args.target_recall_at_10,
         "target_achieved": target_achieved,
         "experiment_note": args.experiment_note,
+        "training_objective": {
+            "type": "multi_step_listwise_ranking",
+            "reinforce_removed": True,
+            "long_short_orthogonality_removed": True,
+            "prefix_sampling": "resampled_each_epoch",
+            "future_horizon": args.future_horizon,
+            "future_decay": args.future_decay,
+            "negative_mining": "model_hard_from_training_safe_random_pool",
+            "hard_negative_pool_multiplier": args.hard_negative_pool_multiplier,
+            "preference_contrastive_coef": args.preference_contrastive_coef,
+        },
         "catalog_prior": {
             "popularity_alpha": args.popularity_alpha,
             "transition_beta": args.transition_beta,
@@ -919,6 +1012,10 @@ def main():
             "preference_count": args.preference_count,
             "hidden_dim": args.preference_hidden,
             "assignment_temperature": args.preference_temperature,
+            "tiny_mamba_dim": args.preference_tiny_mamba_dim,
+            "tiny_mamba_residual_weight": float(
+                torch.sigmoid(model.preference_agent.tiny_residual_logit).detach().cpu()
+            ),
             "learned_ranking_weight": float(
                 torch.sigmoid(model.coordinator.preference_score_logit).detach().cpu()
             ),
@@ -956,6 +1053,7 @@ def main():
             "mean_transition_probability": test_metrics["preference_change_probability"],
             "mean_current_entropy": test_metrics["preference_current_entropy"],
             "mean_predicted_next_entropy": test_metrics["preference_next_entropy"],
+            "mean_ranking_weight": test_metrics["preference_ranking_weight"],
             "preference_count": args.preference_count,
         },
         "samples": [

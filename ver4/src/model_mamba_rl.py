@@ -77,6 +77,9 @@ class CoordinatorAgent(nn.Module):
         self.preference_score_logit = nn.Parameter(
             torch.tensor(math.log(bounded_weight / (1.0 - bounded_weight)))
         )
+        self.preference_context_gate = nn.Linear(2, 1)
+        nn.init.zeros_(self.preference_context_gate.weight)
+        nn.init.zeros_(self.preference_context_gate.bias)
 
     def forward(self, long_state: torch.Tensor, short_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         combined = torch.cat((long_state, short_state), dim=-1)
@@ -96,13 +99,24 @@ class CoordinatorAgent(nn.Module):
 class PreferenceTransitionAgent(nn.Module):
     """Discover soft preference prototypes and predict the next preference state."""
 
-    def __init__(self, dim: int, preference_count: int, hidden_dim: int, temperature: float):
+    def __init__(
+        self, dim: int, preference_count: int, hidden_dim: int,
+        temperature: float, tiny_mamba_dim: int,
+    ):
         super().__init__()
         self.preference_count = preference_count
         self.assignment_temperature = temperature
         self.prototypes = nn.Parameter(torch.empty(preference_count, dim))
         nn.init.orthogonal_(self.prototypes)
         self.transition_encoder = nn.GRU(preference_count, hidden_dim, batch_first=True)
+        self.tiny_input = nn.Linear(preference_count, tiny_mamba_dim)
+        self.tiny_delta = nn.Linear(preference_count, tiny_mamba_dim)
+        self.tiny_gate = nn.Linear(preference_count, tiny_mamba_dim)
+        self.tiny_output = nn.Linear(tiny_mamba_dim, hidden_dim)
+        self.tiny_delta_bias = nn.Parameter(
+            torch.full((tiny_mamba_dim,), math.log(math.expm1(0.15)))
+        )
+        self.tiny_residual_logit = nn.Parameter(torch.tensor(-4.595))
         self.next_head = nn.Linear(hidden_dim, preference_count)
         self.change_head = nn.Linear(hidden_dim + preference_count, 1)
         self.state_lora = nn.Linear(dim, dim, bias=False)
@@ -119,14 +133,39 @@ class PreferenceTransitionAgent(nn.Module):
         encoded, _ = self.transition_encoder(preference_sequence)
         rows = torch.arange(sequence.size(0), device=sequence.device)
         last_index = lengths.clamp_min(1) - 1
-        last = encoded[rows, last_index]
+        gru_last = encoded[rows, last_index]
+        tiny_state = preference_sequence.new_zeros(
+            sequence.size(0), self.tiny_input.out_features
+        )
+        tiny_output = tiny_state
+        for index in range(preference_sequence.size(1)):
+            inputs = preference_sequence[:, index]
+            delta = F.softplus(
+                self.tiny_delta_bias + self.tiny_delta(inputs)
+            ).clamp(max=12.0)
+            decay = torch.exp(-delta)
+            proposal = torch.tanh(self.tiny_input(inputs))
+            updated = decay * tiny_state + (1.0 - decay) * proposal
+            active = (index < lengths).unsqueeze(1)
+            tiny_state = torch.where(active, updated, tiny_state)
+            gate = torch.sigmoid(self.tiny_gate(inputs))
+            current = gate * tiny_state + (1.0 - gate) * proposal
+            tiny_output = torch.where(active, current, tiny_output)
+        tiny_last = self.tiny_output(tiny_output)
+        tiny_weight = torch.sigmoid(self.tiny_residual_logit)
+        last = F.layer_norm(
+            gru_last + tiny_weight * tiny_last, (gru_last.size(-1),)
+        )
         current = preference_sequence[rows, last_index]
         predicted = torch.softmax(self.next_head(last), dim=-1)
         change_logit = self.change_head(torch.cat((last, current), dim=-1)).squeeze(-1)
         change_probability = torch.sigmoid(change_logit)
         preference_state = predicted @ F.normalize(self.prototypes, dim=-1)
         preference_state = F.normalize(preference_state + self.state_lora(preference_state), dim=-1)
-        return preference_state, current, predicted, change_logit, change_probability
+        return (
+            preference_state, current, predicted, change_logit,
+            change_probability, tiny_weight,
+        )
 
     def logits(self, state: torch.Tensor, candidate_vectors: torch.Tensor) -> torch.Tensor:
         temperature = self.log_temperature.exp().clamp(max=20.0)
@@ -153,6 +192,7 @@ class MultiAgentMambaRecommender(nn.Module):
         preference_hidden: int = 128,
         preference_temperature: float = 0.2,
         preference_score_weight: float = 0.2,
+        preference_tiny_mamba_dim: int = 32,
     ):
         super().__init__()
         if item_features.ndim != 2:
@@ -170,7 +210,8 @@ class MultiAgentMambaRecommender(nn.Module):
         self.long_agent = SelectiveMambaAgent(dim, lora_rank, lora_alpha, lora_dropout, initial_timescale=0.08)
         self.short_agent = SelectiveMambaAgent(dim, lora_rank, lora_alpha, lora_dropout, initial_timescale=0.5)
         self.preference_agent = PreferenceTransitionAgent(
-            dim, preference_count, preference_hidden, preference_temperature
+            dim, preference_count, preference_hidden, preference_temperature,
+            preference_tiny_mamba_dim,
         )
         self.coordinator = CoordinatorAgent(
             dim, lora_rank, lora_alpha, lora_dropout, preference_score_weight
@@ -262,7 +303,7 @@ class MultiAgentMambaRecommender(nn.Module):
         long_state = self.long_agent.encode(long_sequence, lengths)
         (
             preference_state, current_preference, predicted_preference,
-            change_logit, change_probability,
+            change_logit, change_probability, tiny_mamba_weight,
         ) = (
             self.preference_agent.encode(long_sequence, lengths)
         )
@@ -273,18 +314,31 @@ class MultiAgentMambaRecommender(nn.Module):
         return (
             long_state, short_state, coordinator_state, weights, preference_state,
             current_preference, predicted_preference, change_logit, change_probability,
+            tiny_mamba_weight,
         )
 
     def logits_from_states(self, states, candidate_vectors: torch.Tensor):
         (
             long_state, short_state, coordinator_state, weights, preference_state,
             current_preference, predicted_preference, change_logit, change_probability,
+            tiny_mamba_weight,
         ) = states
         long_logits = self.long_agent.logits(long_state, candidate_vectors)
         short_logits = self.short_agent.logits(short_state, candidate_vectors)
         coordinator_logits = self.coordinator.logits(coordinator_state, candidate_vectors)
         preference_logits = self.preference_agent.logits(preference_state, candidate_vectors)
-        preference_weight = torch.sigmoid(self.coordinator.preference_score_logit)
+        preference_entropy = -(
+            predicted_preference.clamp_min(1e-8)
+            * predicted_preference.clamp_min(1e-8).log()
+        ).sum(-1)
+        preference_entropy = preference_entropy / math.log(predicted_preference.size(-1))
+        preference_context = torch.stack(
+            (change_probability, 1.0 - preference_entropy), dim=-1
+        )
+        preference_weight = torch.sigmoid(
+            self.coordinator.preference_score_logit
+            + self.coordinator.preference_context_gate(preference_context).squeeze(-1)
+        ).unsqueeze(-1)
         final_logits = (
             coordinator_logits + weights[:, :1] * long_logits + weights[:, 1:] * short_logits
             + preference_weight * preference_logits
@@ -301,6 +355,8 @@ class MultiAgentMambaRecommender(nn.Module):
             "preference_change_logit": change_logit,
             "preference_change": change_probability,
             "preference_weight": preference_weight,
+            "preference_uncertainty": preference_entropy,
+            "preference_tiny_mamba_weight": tiny_mamba_weight,
         }
 
     def preference_targets(self, item_vectors: torch.Tensor) -> torch.Tensor:

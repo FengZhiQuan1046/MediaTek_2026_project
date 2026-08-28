@@ -8,7 +8,7 @@ The report contains:
 - latent preference prototype discovery;
 - current-to-next preference transition prediction;
 - four preference auxiliary losses and the final ranking equation;
-- staged supervised/RL optimization and full-catalog evaluation;
+- staged listwise ranking, future soft labels, hard-negative mining, and full-catalog evaluation;
 - protocol-aware published MovieLens, Yelp, and Amazon result tables;
 - the completed ver4 Beauty result available at generation time;
 - separation of ver4 measurements, ver3 history, and external results.

@@ -9,7 +9,9 @@ WORKSPACE_ROOT="$(cd "$PROJECT_ROOT/../.." && pwd)"
 OUTPUT_ROOT="$PROJECT_ROOT/outputs_mamba_rl/amazons_full"
 PYTHON_BIN="${PYTHON_BIN:-/home/P78123011/miniforge3/envs/py31014/bin/python}"
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
-GPU_IDS="${GPU_IDS:-0,1}"
+# 手動設定要使用的實體 GPU："0"、"1"、"0,1" 或 "1,0"
+# 使用兩張卡時，第一張供主模型使用，第二張供 graph/preference 模型使用。
+GPU_IDS="1"
 
 COMMON_ENV=(
   "PYTHON_BIN=$PYTHON_BIN"
@@ -28,14 +30,20 @@ COMMON_ENV=(
   "PREFERENCE_HIDDEN=128"
   "PREFERENCE_TEMPERATURE=0.2"
   "PREFERENCE_SCORE_WEIGHT=0.2"
+  "PREFERENCE_TINY_MAMBA_DIM=32"
   "PREFERENCE_COEF=0.2"
   "PREFERENCE_TRANSITION_COEF=0.1"
   "PREFERENCE_BALANCE_COEF=0.01"
   "PREFERENCE_SEPARATION_COEF=0.01"
+  "FUTURE_HORIZON=3"
+  "FUTURE_DECAY=0.5"
+  "HARD_NEGATIVE_POOL_MULTIPLIER=4"
+  "PREFERENCE_CONTRASTIVE_COEF=0.05"
   "USE_GRAPH_EMBEDDINGS=1"
   "MAX_HISTORY=100"
   "MAMBA_ENCODE_BATCH_SIZE=32"
-  "MAMBA_MAX_TOKENS=16"
+  "MAMBA_MAX_TOKENS=32"
+  "ITEM_PROMPT_PREFIX=Preference-aware product representation: "
   "GENERATE_REASONS=0"
   "SAVE_MODEL_WEIGHTS=0"
 )
@@ -48,15 +56,12 @@ run_subset() {
   local candidates="$5"
   local specialist_epochs="$6"
   local coordinator_epochs="$7"
-  local rl_epochs="$8"
+  local joint_epochs="$8"
   local specialist_lr="$9"
   local coordinator_lr="${10}"
   local joint_lr="${11}"
-  local entropy_coef="${12}"
-  local supervised_coef="${13}"
-  local specialization_coef="${14}"
-  local popularity_alpha="${15}"
-  local transition_beta="${16}"
+  local popularity_alpha="${12}"
+  local transition_beta="${13}"
   local timestamp run_dir
 
   timestamp="$(date '+%Y%m%d_%H%M%S')"
@@ -72,13 +77,10 @@ run_subset() {
     --candidates "$candidates" \
     --specialist-epochs "$specialist_epochs" \
     --coordinator-epochs "$coordinator_epochs" \
-    --rl-epochs "$rl_epochs" \
+    --joint-epochs "$joint_epochs" \
     --specialist-lr "$specialist_lr" \
     --coordinator-lr "$coordinator_lr" \
     --joint-lr "$joint_lr" \
-    --entropy-coef "$entropy_coef" \
-    --supervised-coef "$supervised_coef" \
-    --specialization-coef "$specialization_coef" \
     --popularity-alpha "$popularity_alpha" \
     --transition-beta "$transition_beta" \
     --experiment-note "amazons_full subset=$subset_name; common architecture; periodic validation/test"
@@ -88,12 +90,12 @@ run_subset() {
 REPEATS="${REPEATS:-1}"
 for ((run_number = 1; run_number <= REPEATS; run_number++)); do
   # name dataset validation_steps max_samples candidates specialist coord joint
-  # specialist_lr coord_lr joint_lr entropy supervised specialization popularity transition
-  run_subset "Beauty" "amazon-all-beauty" 250 500000 64 3 2 20 2e-4 2e-4 5e-5 0.01 0.1 0.01 -0.25 4.0
-  run_subset "Sports" "amazon-sports-and-outdoors" 8000 1000000 256 3 2 12 2e-5 1e-4 2e-5 0.003 0.5 0.005 0.35 0.5
-  run_subset "Games" "amazon-games" 4000 1000000 128 3 2 15 5e-5 1e-4 2e-5 0.005 0.4 0.005 0.20 0.5
-  run_subset "Books" "amazon-books" 12000 2000000 256 3 2 12 2e-5 1e-4 2e-5 0.003 0.5 0.005 0.35 0.5
-  run_subset "Toys" "amazon-toys" 6000 1500000 192 3 2 15 3e-5 1e-4 2e-5 0.004 0.5 0.005 0.30 0.5
-  run_subset "Video_Games" "amazon-video-games" 4000 1000000 128 3 2 15 5e-5 1e-4 2e-5 0.005 0.4 0.005 0.20 0.5
-  run_subset "Clothing" "amazon-clothing-shoes-and-jewelry" 12000 2000000 256 3 2 12 2e-5 1e-4 2e-5 0.003 0.5 0.005 0.35 0.5
+  # specialist_lr coord_lr joint_lr popularity transition
+  # run_subset "Beauty" "amazon-all-beauty" 250 500000 64 3 2 20 2e-4 2e-4 5e-5 -0.25 4.0
+  # run_subset "Sports" "amazon-sports-and-outdoors" 8000 1000000 256 3 2 12 2e-5 1e-4 2e-5 0.35 0.5
+  # run_subset "Games" "amazon-games" 4000 1000000 128 3 2 15 5e-5 1e-4 2e-5 0.20 0.5
+  # run_subset "Books" "amazon-books" 12000 2000000 256 3 2 12 2e-5 1e-4 2e-5 0.35 0.5
+  run_subset "Toys" "amazon-toys" 6000 1500000 192 3 2 15 3e-5 1e-4 2e-5 0.30 0.5
+  run_subset "Video_Games" "amazon-video-games" 4000 1000000 128 3 2 15 5e-5 1e-4 2e-5 0.20 0.5
+  run_subset "Clothing" "amazon-clothing-shoes-and-jewelry" 12000 2000000 256 3 2 12 2e-5 1e-4 2e-5 0.35 0.5
 done

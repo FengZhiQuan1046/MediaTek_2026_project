@@ -11,7 +11,8 @@ if HAS_TORCH:
     from src.model_mamba_rl import MultiAgentMambaRecommender
     from src.train_mamba_rl import (
         build_transitions, candidate_slates, evaluate, history_batch,
-        preference_auxiliary_losses,
+        preference_auxiliary_losses, future_target_batch,
+        preference_contrastive_loss, soft_target_ranking_loss,
     )
 
 
@@ -32,6 +33,10 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertEqual(output["preference_current"].shape, (2, 64))
         self.assertTrue(torch.allclose(output["preference_next"].sum(-1), torch.ones(2)))
         self.assertTrue(torch.all((output["preference_change"] >= 0) & (output["preference_change"] <= 1)))
+        self.assertEqual(output["preference_weight"].shape, (2, 1))
+        self.assertEqual(output["preference_uncertainty"].shape, (2,))
+        self.assertGreater(float(output["preference_tiny_mamba_weight"]), 0.0)
+        self.assertLess(float(output["preference_tiny_mamba_weight"]), 0.02)
         self.assertEqual(model.full_catalog_scores(histories, lengths)["coordinator"].shape, (2, 12))
         self.assertTrue(set(model.long_agent.parameters()).isdisjoint(set(model.short_agent.parameters())))
 
@@ -78,6 +83,8 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertTrue(any(
             parameter.grad is not None for parameter in model.preference_agent.parameters()
         ))
+        self.assertIsNotNone(model.preference_agent.tiny_input.weight.grad)
+        self.assertIsNotNone(model.preference_agent.tiny_delta.weight.grad)
 
     def test_graph_embeddings_receive_joint_training_gradients(self):
         edges = torch.tensor([[0, 1], [4, 5]])
@@ -105,6 +112,33 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         eligible_users = {user for user, history in data.train_by_user.items() if len(history) > 1}
         transitions = build_transitions(data, maximum=len(eligible_users), seed=7)
         self.assertEqual({row.user for row in transitions}, eligible_users)
+
+    def test_future_soft_targets_use_training_sequence_only(self):
+        data = load_recommendation_data("synthetic", None, "/tmp", min_user_events=5)
+        transition = build_transitions(data, maximum=1, seed=3)
+        ids, weights = future_target_batch(data, transition, 3, 0.5, "cpu")
+        row = transition[0]
+        expected = data.train_by_user[row.user][row.end:row.end + 3]
+        self.assertEqual(ids[0, :len(expected)].tolist(), expected)
+        self.assertAlmostEqual(float(weights.sum()), 1.0, places=6)
+        data.valid_target[row.user] = data.num_items + 100
+        data.test_target[row.user] = data.num_items + 200
+        repeated_ids, repeated_weights = future_target_batch(
+            data, transition, 3, 0.5, "cpu"
+        )
+        self.assertTrue(torch.equal(ids, repeated_ids))
+        self.assertTrue(torch.equal(weights, repeated_weights))
+
+    def test_soft_ranking_and_multi_positive_contrastive_losses_are_finite(self):
+        logits = torch.tensor([[2.0, 1.0, -1.0], [0.5, 1.5, -0.5]])
+        positions = torch.tensor([[0, 1], [0, 1]])
+        weights = torch.tensor([[0.75, 0.25], [0.75, 0.25]])
+        ranking = soft_target_ranking_loss(logits, positions, weights)
+        contrastive = preference_contrastive_loss(
+            torch.randn(3, 4), torch.randn(3, 4), torch.tensor([1, 1, 2])
+        )
+        self.assertTrue(torch.isfinite(ranking))
+        self.assertTrue(torch.isfinite(contrastive))
 
     def test_amazon_category_config_name(self):
         self.assertEqual(amazon_subset("amazon-all-beauty"), "raw_review_All_Beauty")

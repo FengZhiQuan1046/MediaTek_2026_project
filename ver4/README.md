@@ -1,4 +1,4 @@
-# ver4: Preference-Transition Multi-Agent Mamba-RL
+# ver4: Preference-Transition Multi-Agent Mamba Ranker
 
 ver4 is an independent copy of the ver3 training system. It does not import
 code, logs, or outputs from ver1, ver2, or ver3. Shared downloaded datasets and
@@ -26,6 +26,18 @@ preference prototypes. A GRU reads the preference sequence and produces:
 - a probability that the next interaction represents a preference transition;
 - preference-based candidate scores fused into the coordinator ranking.
 
+The improved encoder also runs a tiny selective-state Mamba branch in parallel
+with the GRU. Its input-dependent decay preserves or forgets latent preference
+evidence in linear time. A near-zero residual gate (about 0.01 initially)
+protects the GRU baseline while allowing training to increase the branch's
+contribution. The coordinator makes the preference ranking weight
+user-dependent using transition probability and prediction confidence.
+
+Frozen Mamba item encoding uses a short preference-aware representation
+prefix. Prompt tokens are excluded from mean pooling, and the prompt
+participates in the cache fingerprint so prompted vectors cannot accidentally
+reuse the older cache.
+
 The preference prototypes and transition model are shared unchanged across all
 Amazon subsets. Four auxiliary objectives train next-preference prediction,
 transition detection, balanced prototype use, and prototype separation.
@@ -47,10 +59,12 @@ All can be set as environment variables before launching:
 - `PREFERENCE_HIDDEN` (default 128)
 - `PREFERENCE_TEMPERATURE` (default 0.2)
 - `PREFERENCE_SCORE_WEIGHT` (default 0.2)
+- `PREFERENCE_TINY_MAMBA_DIM` (default 32)
 - `PREFERENCE_COEF` (default 0.2)
 - `PREFERENCE_TRANSITION_COEF` (default 0.1)
 - `PREFERENCE_BALANCE_COEF` (default 0.01)
 - `PREFERENCE_SEPARATION_COEF` (default 0.01)
+- `ITEM_PROMPT_PREFIX` (default preference-aware product representation)
 
 ## Verification
 

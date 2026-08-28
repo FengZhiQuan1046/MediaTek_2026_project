@@ -69,7 +69,13 @@
 \begin{abstract}
 Sequential recommendation must represent both stable interests and abrupt changes in user intent. This report presents the independent ver4 Preference-Transition Multi-Agent Mamba-RL pipeline implemented in \Project. It fuses cached frozen Mamba-2.8B item-text embeddings with trainable two-layer LightGCN embeddings constructed exclusively from training interactions. Long- and short-horizon selective-state specialists model complementary temporal scales, while a new preference-transition agent discovers latent preference prototypes, infers the current soft preference distribution, predicts the next distribution, and estimates the probability of a preference shift. A coordinator combines specialist scores with preference-based candidate scores through a learned global gate.
 
-Training uses supervised warm-up, coordinator calibration, and joint REINFORCE optimization. Preference learning adds next-distribution KL divergence, soft transition detection with Jensen--Shannon targets, prototype-utilization balance, and prototype-separation objectives. The implementation supports MovieLens, Amazon Reviews 2023, and local Yelp 2019/2023 snapshots; uses chronological leave-two-out splitting; and ranks the complete catalog for Recall, Hit Ratio, and NDCG at 5 and 10. The report separates locally measured results from published results whose filtering, split, or candidate protocols differ. This distinction is essential: literature tables provide context, not a valid claim of superiority without matched preprocessing and evaluation.
+Training uses supervised specialist warm-up, coordinator calibration, and
+joint listwise ranking. High-variance sampled-action REINFORCE is removed
+because the offline task evaluates one-step full-catalog ranking. Training
+instead combines per-epoch prefix resampling, multi-step future soft labels,
+model-aware hard negatives, and preference contrastive alignment. Preference
+learning additionally uses next-distribution KL divergence, soft transition
+detection, prototype balance, and prototype separation.
 \end{abstract}
 
 \section{Introduction}
@@ -82,7 +88,9 @@ Sequential user representation creates another challenge. A user can exhibit a s
 
 A direct combination of a large Mamba language model and RL would nevertheless be computationally inefficient. If three agents each executed an independent 2.8-billion-parameter model for every sampled action, policy learning would be dominated by repeated text encoding rather than recommendation. Storing three complete adapted backbones would also undermine the parameter-efficiency motivation. The central systems question is therefore not simply whether Mamba can replace a Transformer, but how its semantic and selective-state capabilities can be used without placing a large foundation model inside the high-frequency optimization loop.
 
-This project studies a fundamental question: \emph{Can a shared Mamba semantic space and several low-rank, time-specialized policy agents provide an efficient and interpretable foundation for reinforcement-learning-based sequential recommendation?}
+This project studies a fundamental question: \emph{Can a shared Mamba semantic
+space, time-specialized rankers, and explicit preference-transition learning
+provide an efficient and interpretable foundation for sequential recommendation?}
 
 The proposed answer is a four-policy architecture. A frozen Mamba model first converts item metadata into a cached semantic matrix. Long- and short-term agents process the sequence with different selective dynamics. The preference agent converts the same history into a trajectory over latent prototypes and predicts its next state. A coordinator observes both temporal specialists and adds gated preference evidence to the final catalog ranking. The implementation is isolated in \texttt{ver4} and does not import or modify ver1--ver3.
 
@@ -94,7 +102,11 @@ Early deep RL recommenders commonly formulated recommendation as a Markov decisi
 
 These studies establish the reasons to use RL---exploration, delayed effects, and long-term value---but they also expose a gap between research formulations and common offline experiments. Many sequential recommenders use a sampled next-item RL objective even though the evaluation contains no environment transition caused by the recommended action. Recent work showed that part of the apparent benefit can arise because the RL term acts as an auxiliary representation-learning objective rather than because it learns a genuinely long-horizon policy \cite{UNEXPECTEDRL}. A credible implementation must therefore distinguish its current offline objective from claims about online long-term satisfaction.
 
-The present pipeline adopts a conservative interpretation. Its implemented reward is a sampled next-item reward, so it is best understood as a cooperative policy-gradient sequential ranker or contextual-bandit baseline. The code is structured so that the same agent interface can later receive simulator or online rewards, but the current MovieLens, Amazon, and Yelp evaluation does not claim to reconstruct unobserved counterfactual behavior.
+The present pipeline adopts a conservative interpretation. Static MovieLens,
+Amazon, and Yelp logs provide no action-dependent environment response, so
+ver4 removes sampled-action REINFORCE and optimizes the measured next-item
+ranking task directly. A genuine RL extension would require logged propensities,
+a simulator, or online interaction and is outside the current claim.
 
 \subsection{Mamba and Sequential Recommendation}
 
@@ -121,7 +133,10 @@ Scientifically, the topic tests whether multi-agent specialization is more than 
 
 The topic also clarifies what Mamba contributes. A pretrained Mamba can supply textual knowledge, but repeatedly invoking it inside RL may erase any throughput advantage. A tiny recurrent model is efficient but may fail to exploit item metadata. Separating semantic precomputation from selective policy-state updates provides a testable middle ground.
 
-Catalog ranking must also remain practical. Training over the full catalog at every step is expensive, while sampled-negative evaluation can exaggerate quality. This pipeline samples small slates for policy-gradient actions, optionally anchors supervised learning against the full catalog, and always evaluates by matrix multiplication against the complete catalog. It reports users per second and user--item scores per second so that efficiency is measurable.
+Catalog ranking must also remain practical. Training over the full catalog at
+every step is expensive, while random sampled negatives are often trivial.
+This pipeline mines hard negatives from a larger model-scored pool, optionally
+uses full-catalog supervision, and always evaluates against the complete catalog.
 
 Finally, explanation generation should not dominate ranking latency. The pipeline performs retrieval first and loads the generator only after evaluation. This creates a clear boundary between the policy and its post-hoc verbalization.
 
@@ -133,7 +148,9 @@ The implementation makes six contributions:
   \item Disjoint specialist LoRA parameters with shared cached Mamba semantics,
   avoiding repeated forward passes of the 2.8B backbone.
   \item Explicit identification and prediction of preference transitions using soft prototypes, a recurrent transition encoder, and Jensen--Shannon-derived transition targets.
-  \item Three-stage optimization separating specialist learning, coordinator calibration, and joint policy-gradient adaptation, with four anti-collapse and transition-learning auxiliaries.
+  \item Three-stage optimization separating specialist learning, coordinator
+  calibration, and joint listwise adaptation, with per-epoch prefix resampling,
+  future soft labels, hard negatives, and preference contrastive alignment.
   \item Leakage-controlled catalog calibration combining the neural policy with training-only popularity and first-order transition statistics.
   \item A unified MovieLens, Amazon Reviews 2023, and Yelp 2019/2023 evaluation interface with chronological splitting, periodic validation, best-checkpoint restoration, and full-catalog ranking.
   \item Preference analysis isolated into a machine-readable report containing current/next latent preferences, entropy, transition probability, and ranking weight.
@@ -229,16 +246,16 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
 \node[level] at (-6.65,-5.45) {Coordination};
 \node[level] at (-6.65,-8.65) {Decision and output};
 \end{tikzpicture}}
-\caption{Hierarchical cooperative Multi-Agent Mamba-RL architecture. Solid arrows
-show the inference path; dashed red arrows show training-only policy feedback.}
+\caption{Hierarchical cooperative multi-agent Mamba ranking architecture.
+Solid arrows show the inference path.}
 \label{fig:pipeline}
 \end{figure}
 
-The hierarchy assigns complementary responsibilities rather than making three
-agents vote independently. The two specialist policies extract preferences at
+The hierarchy assigns complementary responsibilities rather than making the
+rankers vote independently. The two temporal specialists extract preferences at
 different time scales, and the higher-level coordinator decides their
 state-dependent contribution to one deployed recommendation policy. During joint
-training, the coordinator and both specialists receive policy-gradient signals;
+training, the coordinator and all specialists receive listwise ranking gradients;
 during inference, only the solid forward path is executed.
 
 \subsection{Data and Chronological Splitting}
@@ -373,8 +390,24 @@ dataset. For normalized item vector $\bm e_t$, its soft pseudo-preference is
 where $T_p=0.2$ by default. These assignments are latent pseudo-preferences,
 not human-authored genres or categories.
 
-A GRU reads $(\bm q_1,\ldots,\bm q_t)$ and returns the last valid hidden
-state $\bm h_t^{(P)}$. The current and predicted-next distributions and the
+A GRU and a tiny selective-state Mamba branch read
+$(\bm q_1,\ldots,\bm q_t)$ in parallel. The tiny branch uses
+\begin{align}
+  \bm\delta_t^M&=\operatorname{softplus}(\bm b_M+W_\delta\bm q_t),\\
+  \bm a_t^M&=\exp(-\bm\delta_t^M),\\
+  \bm m_t&=\bm a_t^M\odot\bm m_{t-1}
+    +(1-\bm a_t^M)\odot\tanh(W_M\bm q_t).
+\end{align}
+If $\bm h_t^G$ is the last GRU state, the fused representation is
+\begin{equation}
+  \bm h_t^{(P)}
+  =\operatorname{LayerNorm}
+    (\bm h_t^G+\sigmoid(g_M)W_o\bm m_t).
+\end{equation}
+$g_M$ is initialized to $-4.595$, giving approximately $0.01$ residual
+weight. This preserves the original GRU behavior at initialization while
+allowing selective linear-time memory to grow when supported by training.
+The current and predicted-next distributions and the
 transition probability are
 \begin{align}
   \bm q_t^{\mathrm{current}} &= \bm q_t,\\
@@ -403,7 +436,7 @@ AMP-safe binary cross entropy with logits; $\rho_t$ is used for analysis.
 ]
 \node[pbox] (items) {hybrid item vectors\\$\bm e_1,\ldots,\bm e_t$};
 \node[pbox,right=7mm of items] (assign) {prototype assignment\\$\bm q_1,\ldots,\bm q_t$};
-\node[pbox,right=7mm of assign] (gru) {transition GRU\\$\bm h_t^{(P)}$};
+\node[pbox,right=7mm of assign] (gru) {GRU + Tiny Mamba\\$\bm h_t^{(P)}$};
 \node[pbox,right=7mm of gru] (next) {next preference\\$\widehat{\bm q}_{t+1}$};
 \node[pbox,below=7mm of gru] (change) {change detector\\$\rho_t$};
 \node[pbox,right=7mm of next] (score) {prototype mixture\\$z_i^{(P)}$};
@@ -468,14 +501,16 @@ The default auxiliary objective is
   \operatorname{norm}\left(
   w_L\bm s_u^{(L)}+w_S\bm s_u^{(S)}
   +\operatorname{LoRA}_{\mathrm{state}}(\bm q_u)\right),\\
-  \gamma_P&=\sigmoid(g_P),\\
+  c_t^P&=1-H(\widehat{\bm q}_{t+1})/\log K,\\
+  \gamma_{P,u}&=\sigmoid(g_P+f_g[\rho_t;c_t^P]),\\
   z_i^{\mathrm{final}}
   &=z_i^{(C)}+w_Lz_i^{(L)}+w_Sz_i^{(S)}
-    +\gamma_Pz_i^{(P)}.
+    +\gamma_{P,u}z_i^{(P)}.
 \end{align}
-The scalar $g_P$ belongs to the coordinator and is initialized so that
-$\gamma_P=0.2$. Coordinator warm-up can therefore calibrate preference
-evidence while the preference encoder is frozen.
+The base scalar $g_P$ is initialized so that $\gamma_{P,u}=0.2$, and $f_g$
+starts at zero. Thus the dynamic gate initially reproduces the previous global
+weight, then learns user-dependent calibration from transition probability and
+next-preference confidence while coordinator warm-up freezes the encoder.
 
 \subsection{Training-Only Catalog Calibration}
 
@@ -513,22 +548,39 @@ original neural ranking exactly.
 
 \section{Training Strategy}
 
+\subsection{Training Targets and Hard Negatives}
+
+For every training prefix ending at $t$, up to $H=3$ future items from the
+training sequence receive exponentially decayed weights:
+\begin{equation}
+  \omega_h=\frac{\eta^{h-1}}{\sum_{r=1}^{H_u}\eta^{r-1}},
+  \qquad \eta=0.5,\quad h\leq H_u\leq H.
+\end{equation}
+Validation and test targets are never used to construct these labels. A random
+pool four times larger than the required negative set is scored by the current
+coordinator. Items occurring in that user's training history are masked, and
+the highest-scoring remaining items become model-aware hard negatives. For
+policy $j$, the soft listwise loss is
+\begin{equation}
+  \mathcal L_{\mathrm{rank}}^{(j)}
+  =-\sum_{h=1}^{H_u}\omega_h
+    \log\softmax(\bm z^{(j)})_{i_{t+h}}.
+\end{equation}
+The bounded transition set is regenerated with a new deterministic seed every
+epoch, so large datasets expose different prefixes without increasing one
+epoch's memory budget.
+
 \subsection{Stage 1: Specialist Warm-Up}
 
-A sampled slate is $\mathcal C=\{i^+,i_1^-,\ldots,i_{K-1}^-\}$,
-where $K$ is configurable and defaults to 64. The coordinator is frozen:
+The coordinator is frozen:
 \begin{equation}
   \mathcal L_{\mathrm{specialist}}
   =
-  \operatorname{CE}(\bm z^{(L)},y)
-  +\operatorname{CE}(\bm z^{(S)},y)
-  +\operatorname{CE}(\bm z^{(P)},y)
+  \mathcal L_{\mathrm{rank}}^{(L)}
+  +\mathcal L_{\mathrm{rank}}^{(S)}
+  +\mathcal L_{\mathrm{rank}}^{(P)}
   +\mathcal L_P.
 \end{equation}
-In sampled mode, $y=0$ because the positive item is placed first. With
-\texttt{--full-catalog-supervised}, both specialist logit vectors contain all
-$N$ items and $y=i^+$. This option removes negative-sampling noise during the
-warm-up at the cost of a larger matrix multiplication.
 
 \subsection{Stage 2: Coordinator Warm-Up}
 
@@ -536,55 +588,36 @@ Specialists and projection are frozen:
 \begin{equation}
   \mathcal L_{\mathrm{coord}}
   =
-  \operatorname{CE}(\bm z^{\mathrm{final}},y).
+  \mathcal L_{\mathrm{rank}}^{(C)}.
 \end{equation}
-The target convention follows Stage 1: $y=0$ for a sampled slate and $y=i^+$
-for full-catalog supervision.
 
-\subsection{Stage 3: Joint REINFORCE}
+\subsection{Stage 3: Joint Ranking and Preference Alignment}
 
-Each policy $j\in\{L,S,P,C\}$ forms
-$\pi_j(a\mid s)=\softmax(\bm z^{(j)})_a$ and samples an action:
-\begin{equation}
-  r_j=
-  \begin{cases}
-    1,&a_j=0,\\
-    -0.05,&a_j\neq0.
-  \end{cases}
-\end{equation}
-Baselines use $b_j\leftarrow0.95b_j+0.05\overline r_j$ and $A_j=r_j-b_j$. The policy loss is
-\begin{equation}
-  \mathcal L_{\mathrm{PG}}
-  =
-  -\sum_j\mathbb E[A_j\log\pi_j(a_j\mid s)]
-  -0.01\sum_j\mathbb E[H(\pi_j)].
-\end{equation}
-Advantage is detached. Additional terms are
+The preference state is aligned with immediate target item vectors using an
+in-batch multi-positive contrastive objective. Samples sharing the same target
+are all treated as positives rather than false negatives:
 \begin{align}
-  \mathcal L_{\mathrm{sup}}
+  \mathcal P_b&=\{r:i_r^+=i_b^+\},\\
+  \mathcal L_{\mathrm{contrast}}
   &=
-  \frac14\sum_{j\in\{L,S,P,C\}}\operatorname{CE}(\bm z^{(j)},y),\\
-  \mathcal L_{\mathrm{spec}}
-  &=
-  \operatorname{cos}^2(\bm s_u^{(L)},\bm s_u^{(S)}),\\
+  -\frac1B\sum_b\log
+  \frac{\sum_{r\in\mathcal P_b}
+    \exp(\operatorname{sim}(\bm s_b^{(P)},\bm e_r^+)/\tau)}
+  {\sum_r\exp(\operatorname{sim}(\bm s_b^{(P)},\bm e_r^+)/\tau)},\\
   \mathcal L_{\mathrm{joint}}
   &=
-  \mathcal L_{\mathrm{PG}}
-  +\lambda_{\mathrm{sup}}\mathcal L_{\mathrm{sup}}
-  +\lambda_{\mathrm{spec}}\mathcal L_{\mathrm{spec}}
-  +\mathcal L_P.
+  \frac14\sum_{j\in\{L,S,P,C\}}\mathcal L_{\mathrm{rank}}^{(j)}
+  +\mathcal L_P+0.05\mathcal L_{\mathrm{contrast}}.
 \end{align}
-The defaults are $\lambda_{\mathrm{sup}}=0.1$ and
-$\lambda_{\mathrm{spec}}=0.01$. Joint REINFORCE actions are still sampled
-from the configured slate. When full-catalog supervision is enabled, a second
-catalog projection computes $\mathcal L_{\mathrm{sup}}$ over all $N$ items;
-otherwise the auxiliary cross-entropy uses the sampled slate. Thus the policy
-gradient remains inexpensive while the supervised anchor can be aligned with
-the evaluation action space.
+The previous cosine-squared long/short specialization penalty is removed:
+different history windows and decay time scales already provide structural
+specialization, while forced orthogonality can discard preference information
+shared across temporal scales.
 
 \subsection{Gradients and Optimization}
 
-Coordinator gradients flow through fusion into both specialist LoRA paths. Each specialist also receives its own policy loss. This is cooperative local credit rather than a centralized counterfactual critic.
+Coordinator ranking gradients flow through fusion into both specialist paths,
+and every specialist receives its own listwise ranking loss.
 
 \begin{table}[H]
 \centering
@@ -595,7 +628,7 @@ Stage & Learning rate & Trainable components\\
 \midrule
 Specialists & $2\times10^{-4}$ & long, short, preference, projection\\
 Coordinator & $2\times10^{-4}$ & coordinator and preference score gate\\
-Joint RL & $5\times10^{-5}$ & all components\\
+Joint ranking & $5\times10^{-5}$ & all components\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -642,9 +675,10 @@ Mamba greedily generates at most 40 tokens after ranking. The explanation is gro
 
 \section{Experimental Design}
 
-Required ablations include removal of each of the four policies, identical versus 100/10
-windows, fixed versus learned fusion, direct joint RL versus staged training,
-sampled versus full-catalog supervised anchoring, and removal of specialization.
+Required ablations include removal of each of the four policies, identical
+versus 100/10 windows, fixed versus learned fusion, random versus model-hard
+negatives, one-step versus future soft labels, fixed versus per-epoch prefix
+sampling, and sampled versus full-catalog supervision.
 Catalog calibration must be ablated as neural-only, popularity-only,
 transition-only, and combined scoring, with $\alpha$ and $\beta$ selected on
 validation for every dataset. Semantic features should compare Mamba vectors,
@@ -822,7 +856,8 @@ The Amazon suite deliberately disables weight persistence. Its outputs are
   \item Static logs contain no action-dependent user transition, so this is not a complete long-horizon MDP.
   \item Random negatives may be unexposed; no propensity correction is used.
   \item Credit assignment uses local rewards rather than a centralized critic.
-  \item REINFORCE still samples slates; full-catalog CE reduces but does not remove the policy-gradient/evaluation mismatch.
+  \item Model-mined negatives reduce but do not eliminate the mismatch between
+  sampled training and full-catalog evaluation.
   \item Popularity and first-order transition counts are simple, dataset-dependent priors and may not transfer across domains or temporal shifts.
   \item Calibrated gains must be separated from gains in the learned neural policy; the priors are deterministic post-training score corrections.
   \item Explanations are post-hoc and not optimized for faithfulness.
