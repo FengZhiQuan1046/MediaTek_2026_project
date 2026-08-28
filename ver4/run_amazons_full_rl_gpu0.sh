@@ -91,7 +91,7 @@ REPEATS="${REPEATS:-1}"
 for ((run_number = 1; run_number <= REPEATS; run_number++)); do
   # name dataset validation_steps max_samples candidates specialist coord joint
   # specialist_lr coord_lr joint_lr popularity transition
-  # run_subset "Beauty" "amazon-all-beauty" 250 500000 64 3 2 20 2e-4 2e-4 5e-5 -0.25 4.0
+  run_subset "Beauty" "amazon-all-beauty" 250 500000 64 3 2 20 2e-4 2e-4 5e-5 -0.25 4.0
   run_subset "Sports" "amazon-sports-and-outdoors" 8000 1000000 256 3 2 12 2e-5 1e-4 2e-5 0.35 0.5
   run_subset "Games" "amazon-games" 4000 1000000 128 3 2 15 5e-5 1e-4 2e-5 0.20 0.5
   run_subset "Books" "amazon-books" 12000 2000000 256 3 2 12 2e-5 1e-4 2e-5 0.35 0.5

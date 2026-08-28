@@ -672,6 +672,45 @@ def generate_reasons(samples, data, cache_dir, device, max_new_tokens):
         }
 
 
+def readable_recommendation_samples(samples, data):
+    """Convert internal integer item indices into inspectable JSON records.
+
+    Training and evaluation intentionally keep compact integer indices.  This
+    conversion is applied only at serialization time, so it cannot alter model
+    inputs, rankings, or metrics.
+    """
+    def item_record(item):
+        item = int(item)
+        return {"item_index": item, "item_name": data.item_texts[item]}
+
+    readable = []
+    for sample in samples:
+        preference = dict(sample["preference_analysis"])
+        for field in ("current_top", "predicted_next_top"):
+            preference[field] = [
+                {
+                    "preference": f"latent_preference_{entry['preference_id']}",
+                    "probability": entry["probability"],
+                }
+                for entry in preference[field]
+            ]
+        recommendation = dict(sample["recommendation"])
+        recommendation["item_name"] = recommendation.pop("item_text")
+        readable.append({
+            "user": {
+                "user_index": sample["user_index"],
+                "display_name": f"anonymous_user_{sample['user_index']}",
+            },
+            "history": [item_record(item) for item in sample["history"]],
+            "target": item_record(sample["target"]),
+            "top_items": [item_record(item) for item in sample["top_items"]],
+            "agent_weights": sample["agent_weights"],
+            "preference_analysis": preference,
+            "recommendation": recommendation,
+        })
+    return readable
+
+
 def save_loss_curve(losses, path):
     import matplotlib
     matplotlib.use("Agg")
@@ -1047,7 +1086,10 @@ def main():
         for sample in samples:
             item = sample["top_items"][0]
             sample["recommendation"] = {"item_index": item, "item_text": data.item_texts[item], "reason": None}
-    (output / "recommendations.json").write_text(json.dumps(samples, ensure_ascii=False, indent=2), encoding="utf-8")
+    readable_samples = readable_recommendation_samples(samples, data)
+    (output / "recommendations.json").write_text(
+        json.dumps(readable_samples, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     preference_report = {
         "summary": {
             "mean_transition_probability": test_metrics["preference_change_probability"],
