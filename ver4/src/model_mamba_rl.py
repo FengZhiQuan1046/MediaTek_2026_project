@@ -30,15 +30,41 @@ class LoRAUpdate(nn.Module):
         return self.b(self.a(self.dropout(inputs))) * self.scale
 
 
+class FullRankUpdate(nn.Module):
+    """Dense residual update used when LoRA is disabled."""
+
+    def __init__(self, input_dim: int, output_dim: int, dropout: float = 0.0):
+        super().__init__()
+        self.dropout = nn.Dropout(dropout)
+        self.projection = nn.Linear(input_dim, output_dim, bias=False)
+        # Match LoRA's initial no-op behaviour for a fair/stable switch.
+        nn.init.zeros_(self.projection.weight)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return self.projection(self.dropout(inputs))
+
+
+def adaptation_update(
+    input_dim: int, output_dim: int, rank: int, alpha: float,
+    dropout: float, enable_lora: bool,
+) -> nn.Module:
+    if enable_lora:
+        return LoRAUpdate(input_dim, output_dim, rank, alpha, dropout)
+    return FullRankUpdate(input_dim, output_dim, dropout)
+
+
 class SelectiveMambaAgent(nn.Module):
     """Mamba-style diagonal selective SSM with an agent-owned LoRA delta."""
 
-    def __init__(self, dim: int, rank: int, alpha: float, dropout: float, initial_timescale: float):
+    def __init__(
+        self, dim: int, rank: int, alpha: float, dropout: float,
+        initial_timescale: float, enable_lora: bool,
+    ):
         super().__init__()
-        self.candidate_lora = LoRAUpdate(dim, dim, rank, alpha, dropout)
-        self.delta_lora = LoRAUpdate(dim, dim, rank, alpha, dropout)
-        self.gate_lora = LoRAUpdate(dim, dim, rank, alpha, dropout)
-        self.output_lora = LoRAUpdate(dim, dim, rank, alpha, dropout)
+        self.candidate_lora = adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
+        self.delta_lora = adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
+        self.gate_lora = adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
+        self.output_lora = adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
         self.delta_bias = nn.Parameter(torch.full((dim,), math.log(math.expm1(initial_timescale))))
         self.log_temperature = nn.Parameter(torch.tensor(0.0))
 
@@ -67,11 +93,14 @@ class SelectiveMambaAgent(nn.Module):
 
 
 class CoordinatorAgent(nn.Module):
-    def __init__(self, dim: int, rank: int, alpha: float, dropout: float, preference_score_weight: float):
+    def __init__(
+        self, dim: int, rank: int, alpha: float, dropout: float,
+        preference_score_weight: float, enable_lora: bool,
+    ):
         super().__init__()
-        self.state_lora = LoRAUpdate(dim * 2, dim, rank, alpha, dropout)
-        self.mix_lora = LoRAUpdate(dim * 2, 2, rank, alpha, dropout)
-        self.score_lora = LoRAUpdate(dim, dim, rank, alpha, dropout)
+        self.state_lora = adaptation_update(dim * 2, dim, rank, alpha, dropout, enable_lora)
+        self.mix_lora = adaptation_update(dim * 2, 2, rank, alpha, dropout, enable_lora)
+        self.score_lora = adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
         self.log_temperature = nn.Parameter(torch.tensor(0.0))
         bounded_weight = min(max(preference_score_weight, 1e-4), 1.0 - 1e-4)
         self.preference_score_logit = nn.Parameter(
@@ -101,7 +130,8 @@ class PreferenceTransitionAgent(nn.Module):
 
     def __init__(
         self, dim: int, preference_count: int, hidden_dim: int,
-        temperature: float, tiny_mamba_dim: int,
+        temperature: float, rank: int, alpha: float,
+        dropout: float, enable_lora: bool,
     ):
         super().__init__()
         self.preference_count = preference_count
@@ -109,18 +139,14 @@ class PreferenceTransitionAgent(nn.Module):
         self.prototypes = nn.Parameter(torch.empty(preference_count, dim))
         nn.init.orthogonal_(self.prototypes)
         self.transition_encoder = nn.GRU(preference_count, hidden_dim, batch_first=True)
-        self.tiny_input = nn.Linear(preference_count, tiny_mamba_dim)
-        self.tiny_delta = nn.Linear(preference_count, tiny_mamba_dim)
-        self.tiny_gate = nn.Linear(preference_count, tiny_mamba_dim)
-        self.tiny_output = nn.Linear(tiny_mamba_dim, hidden_dim)
-        self.tiny_delta_bias = nn.Parameter(
-            torch.full((tiny_mamba_dim,), math.log(math.expm1(0.15)))
+        self.transition_lora = adaptation_update(
+            hidden_dim, hidden_dim, rank, alpha, dropout, enable_lora
         )
-        self.tiny_residual_logit = nn.Parameter(torch.tensor(-4.595))
         self.next_head = nn.Linear(hidden_dim, preference_count)
         self.change_head = nn.Linear(hidden_dim + preference_count, 1)
-        self.state_lora = nn.Linear(dim, dim, bias=False)
-        nn.init.zeros_(self.state_lora.weight)
+        self.state_lora = adaptation_update(
+            dim, dim, rank, alpha, dropout, enable_lora
+        )
         self.log_temperature = nn.Parameter(torch.tensor(0.0))
 
     def assignments(self, vectors: torch.Tensor) -> torch.Tensor:
@@ -134,38 +160,14 @@ class PreferenceTransitionAgent(nn.Module):
         rows = torch.arange(sequence.size(0), device=sequence.device)
         last_index = lengths.clamp_min(1) - 1
         gru_last = encoded[rows, last_index]
-        tiny_state = preference_sequence.new_zeros(
-            sequence.size(0), self.tiny_input.out_features
-        )
-        tiny_output = tiny_state
-        for index in range(preference_sequence.size(1)):
-            inputs = preference_sequence[:, index]
-            delta = F.softplus(
-                self.tiny_delta_bias + self.tiny_delta(inputs)
-            ).clamp(max=12.0)
-            decay = torch.exp(-delta)
-            proposal = torch.tanh(self.tiny_input(inputs))
-            updated = decay * tiny_state + (1.0 - decay) * proposal
-            active = (index < lengths).unsqueeze(1)
-            tiny_state = torch.where(active, updated, tiny_state)
-            gate = torch.sigmoid(self.tiny_gate(inputs))
-            current = gate * tiny_state + (1.0 - gate) * proposal
-            tiny_output = torch.where(active, current, tiny_output)
-        tiny_last = self.tiny_output(tiny_output)
-        tiny_weight = torch.sigmoid(self.tiny_residual_logit)
-        last = F.layer_norm(
-            gru_last + tiny_weight * tiny_last, (gru_last.size(-1),)
-        )
+        last = F.layer_norm(gru_last + self.transition_lora(gru_last), (gru_last.size(-1),))
         current = preference_sequence[rows, last_index]
         predicted = torch.softmax(self.next_head(last), dim=-1)
         change_logit = self.change_head(torch.cat((last, current), dim=-1)).squeeze(-1)
         change_probability = torch.sigmoid(change_logit)
         preference_state = predicted @ F.normalize(self.prototypes, dim=-1)
         preference_state = F.normalize(preference_state + self.state_lora(preference_state), dim=-1)
-        return (
-            preference_state, current, predicted, change_logit,
-            change_probability, tiny_weight,
-        )
+        return preference_state, current, predicted, change_logit, change_probability
 
     def logits(self, state: torch.Tensor, candidate_vectors: torch.Tensor) -> torch.Tensor:
         temperature = self.log_temperature.exp().clamp(max=20.0)
@@ -192,7 +194,7 @@ class MultiAgentMambaRecommender(nn.Module):
         preference_hidden: int = 128,
         preference_temperature: float = 0.2,
         preference_score_weight: float = 0.2,
-        preference_tiny_mamba_dim: int = 32,
+        enable_lora: bool = True,
     ):
         super().__init__()
         if item_features.ndim != 2:
@@ -207,20 +209,42 @@ class MultiAgentMambaRecommender(nn.Module):
         if use_graph_embeddings:
             self.graph = LightGCN(graph_users, item_features.size(0), dim)
             self.register_buffer("graph_edges", graph_edges, persistent=False)
-        self.long_agent = SelectiveMambaAgent(dim, lora_rank, lora_alpha, lora_dropout, initial_timescale=0.08)
-        self.short_agent = SelectiveMambaAgent(dim, lora_rank, lora_alpha, lora_dropout, initial_timescale=0.5)
+        self.enable_lora = enable_lora
+        self.long_agent = SelectiveMambaAgent(
+            dim, lora_rank, lora_alpha, lora_dropout,
+            initial_timescale=0.08, enable_lora=enable_lora,
+        )
+        self.short_agent = SelectiveMambaAgent(
+            dim, lora_rank, lora_alpha, lora_dropout,
+            initial_timescale=0.5, enable_lora=enable_lora,
+        )
         self.preference_agent = PreferenceTransitionAgent(
             dim, preference_count, preference_hidden, preference_temperature,
-            preference_tiny_mamba_dim,
+            lora_rank, lora_alpha, lora_dropout, enable_lora,
         )
         self.coordinator = CoordinatorAgent(
-            dim, lora_rank, lora_alpha, lora_dropout, preference_score_weight
+            dim, lora_rank, lora_alpha, lora_dropout, preference_score_weight,
+            enable_lora,
         )
         self.short_window = short_window
 
     @property
     def num_items(self) -> int:
         return self.item_features.size(0)
+
+    @property
+    def adaptation_mode(self) -> str:
+        """Name the two compatible update modes used by the launch scripts."""
+        return "multi_lora" if self.enable_lora else "full_rank"
+
+    def adapter_routes(self) -> dict[str, tuple[str, ...]]:
+        """Expose the disjoint adapter bank selected by each agent forward path."""
+        return {
+            "long": ("candidate_lora", "delta_lora", "gate_lora", "output_lora"),
+            "short": ("candidate_lora", "delta_lora", "gate_lora", "output_lora"),
+            "preference": ("transition_lora", "state_lora"),
+            "coordinator": ("state_lora", "mix_lora", "score_lora"),
+        }
 
     def place_devices(self, main_device: str, graph_device: str | None = None):
         """Place the dense agents and LightGCN on separate devices when requested."""
@@ -303,7 +327,7 @@ class MultiAgentMambaRecommender(nn.Module):
         long_state = self.long_agent.encode(long_sequence, lengths)
         (
             preference_state, current_preference, predicted_preference,
-            change_logit, change_probability, tiny_mamba_weight,
+            change_logit, change_probability,
         ) = (
             self.preference_agent.encode(long_sequence, lengths)
         )
@@ -314,14 +338,12 @@ class MultiAgentMambaRecommender(nn.Module):
         return (
             long_state, short_state, coordinator_state, weights, preference_state,
             current_preference, predicted_preference, change_logit, change_probability,
-            tiny_mamba_weight,
         )
 
     def logits_from_states(self, states, candidate_vectors: torch.Tensor):
         (
             long_state, short_state, coordinator_state, weights, preference_state,
             current_preference, predicted_preference, change_logit, change_probability,
-            tiny_mamba_weight,
         ) = states
         long_logits = self.long_agent.logits(long_state, candidate_vectors)
         short_logits = self.short_agent.logits(short_state, candidate_vectors)
@@ -356,7 +378,6 @@ class MultiAgentMambaRecommender(nn.Module):
             "preference_change": change_probability,
             "preference_weight": preference_weight,
             "preference_uncertainty": preference_entropy,
-            "preference_tiny_mamba_weight": tiny_mamba_weight,
         }
 
     def preference_targets(self, item_vectors: torch.Tensor) -> torch.Tensor:

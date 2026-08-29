@@ -8,9 +8,9 @@ HAS_TORCH = importlib.util.find_spec("torch") is not None
 if HAS_TORCH:
     import torch
     from src.data_mamba_rl import amazon_item_group, amazon_subset, load_movielens, load_recommendation_data
-    from src.model_mamba_rl import MultiAgentMambaRecommender
+    from src.model_mamba_rl import FullRankUpdate, LoRAUpdate, MultiAgentMambaRecommender
     from src.train_mamba_rl import (
-        build_transitions, candidate_slates, evaluate, history_batch,
+        build_transitions, candidate_slates, evaluate, evaluation_interval, history_batch,
         preference_auxiliary_losses, future_target_batch,
         preference_contrastive_loss, soft_target_ranking_loss,
     )
@@ -35,10 +35,52 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertTrue(torch.all((output["preference_change"] >= 0) & (output["preference_change"] <= 1)))
         self.assertEqual(output["preference_weight"].shape, (2, 1))
         self.assertEqual(output["preference_uncertainty"].shape, (2,))
-        self.assertGreater(float(output["preference_tiny_mamba_weight"]), 0.0)
-        self.assertLess(float(output["preference_tiny_mamba_weight"]), 0.02)
+        self.assertIsInstance(model.preference_agent.transition_lora, LoRAUpdate)
+        self.assertEqual(model.preference_agent.transition_lora.a.out_features, 2)
+        self.assertEqual(model.preference_agent.state_lora.a.out_features, 2)
+        self.assertEqual(model.preference_agent.transition_lora.scale, 8.0)
         self.assertEqual(model.full_catalog_scores(histories, lengths)["coordinator"].shape, (2, 12))
-        self.assertTrue(set(model.long_agent.parameters()).isdisjoint(set(model.short_agent.parameters())))
+        self.assertEqual(model.adaptation_mode, "multi_lora")
+        agents = {
+            "long": model.long_agent,
+            "short": model.short_agent,
+            "preference": model.preference_agent,
+            "coordinator": model.coordinator,
+        }
+        adapter_parameter_sets = []
+        for agent_name, adapter_names in model.adapter_routes().items():
+            adapters = [getattr(agents[agent_name], name) for name in adapter_names]
+            self.assertTrue(all(isinstance(adapter, LoRAUpdate) for adapter in adapters))
+            adapter_parameter_sets.append({
+                parameter for adapter in adapters for parameter in adapter.parameters()
+            })
+        for left_index, left in enumerate(adapter_parameter_sets):
+            for right in adapter_parameter_sets[left_index + 1:]:
+                self.assertTrue(left.isdisjoint(right))
+
+    def test_disabling_lora_preserves_full_rank_agent_updates(self):
+        model = MultiAgentMambaRecommender(
+            torch.randn(12, 16), dim=8, lora_rank=2,
+            use_graph_embeddings=False, enable_lora=False,
+        )
+        self.assertEqual(model.adaptation_mode, "full_rank")
+        agents = {
+            "long": model.long_agent,
+            "short": model.short_agent,
+            "preference": model.preference_agent,
+            "coordinator": model.coordinator,
+        }
+        for agent_name, adapter_names in model.adapter_routes().items():
+            self.assertTrue(all(
+                isinstance(getattr(agents[agent_name], name), FullRankUpdate)
+                for name in adapter_names
+            ))
+        self.assertFalse(any(isinstance(module, LoRAUpdate) for module in model.modules()))
+
+    def test_evaluation_interval_is_capped_by_steps_per_epoch(self):
+        self.assertEqual(evaluation_interval(12000, 5000), 5000)
+        self.assertEqual(evaluation_interval(1000, 5000), 1000)
+        self.assertEqual(evaluation_interval(0, 5000), 0)
 
     def test_graph_embeddings_can_be_disabled(self):
         model = MultiAgentMambaRecommender(
@@ -83,8 +125,8 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertTrue(any(
             parameter.grad is not None for parameter in model.preference_agent.parameters()
         ))
-        self.assertIsNotNone(model.preference_agent.tiny_input.weight.grad)
-        self.assertIsNotNone(model.preference_agent.tiny_delta.weight.grad)
+        self.assertIsNotNone(model.preference_agent.transition_lora.b.weight.grad)
+        self.assertIsNotNone(model.preference_agent.state_lora.b.weight.grad)
 
     def test_graph_embeddings_receive_joint_training_gradients(self):
         edges = torch.tensor([[0, 1], [4, 5]])

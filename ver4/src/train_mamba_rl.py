@@ -370,6 +370,11 @@ def preference_auxiliary_losses(model, output, target_vectors):
     return prediction, transition, balance, separation
 
 
+def evaluation_interval(configured_steps: int, steps_per_epoch: int) -> int:
+    """Cap periodic evaluation at one epoch while preserving zero as disabled."""
+    return min(configured_steps, steps_per_epoch) if configured_steps > 0 else 0
+
+
 def train_stage(model, data, transitions, stage, epochs, batch_size, candidates, max_history,
                 learning_rate, device, logger,
                 monitor, validate_every_steps, eval_batch_size, early_stopping_patience,
@@ -400,6 +405,7 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
         completed_examples = 0
         validation_seconds = 0.0
         steps = math.ceil(len(epoch_transitions) / batch_size)
+        evaluation_steps = evaluation_interval(validate_every_steps, steps)
         started = time.perf_counter()
         progress = tqdm(range(0, len(epoch_transitions), batch_size), total=steps,
                         desc=f"{stage} {epoch}/{epochs}", unit="step", dynamic_ncols=True)
@@ -475,7 +481,7 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                 step=monitor.global_step,
             )
 
-            if validate_every_steps > 0 and monitor.global_step % validate_every_steps == 0:
+            if evaluation_steps > 0 and completed_steps % evaluation_steps == 0:
                 validation_started = time.perf_counter()
                 valid_metrics, _ = evaluate(
                     model, data, "valid", eval_batch_size, max_history, device,
@@ -630,9 +636,6 @@ def evaluate(
                         ),
                         "ranking_weight": round(float(output["preference_weight"][row, 0]), 6),
                         "uncertainty": round(float(output["preference_uncertainty"][row]), 6),
-                        "tiny_mamba_residual_weight": round(
-                            float(output["preference_tiny_mamba_weight"]), 6
-                        ),
                     },
                 })
     if device.startswith("cuda"):
@@ -757,12 +760,18 @@ def parse_args():
     parser.add_argument("--lora-rank", type=int, default=8)
     parser.add_argument("--lora-alpha", type=float, default=16.0)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
+    parser.add_argument(
+        "--enable-lora", type=int, choices=(0, 1), default=1,
+        help=(
+            "1 uses a disjoint LoRA bank automatically routed by agent; "
+            "0 preserves trainable full-rank updates."
+        ),
+    )
     parser.add_argument("--short-window", type=int, default=10)
     parser.add_argument("--preference-count", type=int, default=64)
     parser.add_argument("--preference-hidden", type=int, default=128)
     parser.add_argument("--preference-temperature", type=float, default=0.2)
     parser.add_argument("--preference-score-weight", type=float, default=0.2)
-    parser.add_argument("--preference-tiny-mamba-dim", type=int, default=32)
     parser.add_argument(
         "--use-graph-embeddings", action=argparse.BooleanOptionalAction, default=True,
         help="Fuse trainable LightGCN item embeddings with Mamba item vectors.",
@@ -831,7 +840,6 @@ def parse_args():
         or args.mamba_encode_batch_size < 1 or args.mamba_max_tokens < 1
         or args.validation_user_limit < 0 or args.periodic_test_user_limit < -1
         or args.preference_count < 2 or args.preference_hidden < 1
-        or args.preference_tiny_mamba_dim < 1
         or args.preference_temperature <= 0
         or args.future_horizon < 1 or args.candidates <= args.future_horizon
         or args.hard_negative_pool_multiplier < 1
@@ -918,7 +926,7 @@ def main():
         preference_hidden=args.preference_hidden,
         preference_temperature=args.preference_temperature,
         preference_score_weight=args.preference_score_weight,
-        preference_tiny_mamba_dim=args.preference_tiny_mamba_dim,
+        enable_lora=bool(args.enable_lora),
     )
     if args.resume_checkpoint:
         resume_path = Path(args.resume_checkpoint)
@@ -927,6 +935,11 @@ def main():
         model.load_state_dict(resume_state)
         logger.info("RESUME_CHECKPOINT path=%s", resume_path)
     model.place_devices(args.device, args.graph_device)
+    logger.info(
+        "ADAPTATION_MODE mode=%s enable_lora=%d",
+        model.adaptation_mode, args.enable_lora,
+    )
+    logger.info("ADAPTER_ROUTES %s", model.adapter_routes())
     logger.info("agent_parameters=%s", model.agent_parameter_counts())
     transitions = build_transitions(data, args.max_transitions, args.seed)
     logger.info("training_transitions=%d", len(transitions))
@@ -1022,6 +1035,9 @@ def main():
         args.target_recall_at_10, test_metrics["recall@10"], target_achieved,
     )
     training_summary = {
+        "adaptation_mode": model.adaptation_mode,
+        "enable_lora": bool(args.enable_lora),
+        "adapter_routes": model.adapter_routes(),
         "monitor_metric": monitor.metric_name,
         "best_score": monitor.best_score,
         "best_step": monitor.best_step,
@@ -1051,10 +1067,9 @@ def main():
             "preference_count": args.preference_count,
             "hidden_dim": args.preference_hidden,
             "assignment_temperature": args.preference_temperature,
-            "tiny_mamba_dim": args.preference_tiny_mamba_dim,
-            "tiny_mamba_residual_weight": float(
-                torch.sigmoid(model.preference_agent.tiny_residual_logit).detach().cpu()
-            ),
+            "adapter": "lora" if args.enable_lora else "full_rank",
+            "adapter_rank": args.lora_rank if args.enable_lora else None,
+            "adapter_alpha": args.lora_alpha if args.enable_lora else None,
             "learned_ranking_weight": float(
                 torch.sigmoid(model.coordinator.preference_score_logit).detach().cpu()
             ),
@@ -1073,6 +1088,11 @@ def main():
             "config": vars(args), "valid_metrics": valid_metrics, "test_metrics": test_metrics,
             "training": training_summary, "item_vector_artifact": str(artifact),
             "interaction_artifact": str(interaction_artifact),
+            "semantic_backbone": {
+                "model_id": MAMBA_MODEL_ID,
+                "stored_in_checkpoint": False,
+                "usage": "shared_cached_item_vectors",
+            },
         }
         torch.save(checkpoint, output / "multi_agent_lora.pt")
     save_loss_curve(losses, output / "loss.png")
