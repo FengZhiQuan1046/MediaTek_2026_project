@@ -50,7 +50,7 @@
 \renewcommand{\arraystretch}{1.18}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{Preference-Transition Multi-Agent Mamba-RL}
+\fancyhead[L]{Preference-Transition Multi-LoRA Mamba System}
 \fancyhead[R]{MediaTek\_2026\_project}
 \fancyfoot[C]{\thepage}
 \setlength{\headheight}{15pt}
@@ -59,7 +59,7 @@
 \newcommand{\sigmoid}{\operatorname{sigmoid}}
 \newcommand{\Project}{\texttt{MediaTek\_2026\_project}}
 
-\title{\textbf{Preference-Transition Multi-Agent Mamba-RL\\for Sequential Recommendation}}
+\title{\textbf{Preference-Transition Multi-LoRA Mamba System\\for Sequential Recommendation}}
 \author{Zhi-Quan Feng}
 \date{}
 
@@ -67,15 +67,14 @@
 \maketitle
 
 \begin{abstract}
-Sequential recommendation must represent both stable interests and abrupt changes in user intent. This report presents the independent ver4 Preference-Transition Multi-Agent Mamba-RL pipeline implemented in \Project. It fuses cached frozen Mamba-2.8B item-text embeddings with trainable two-layer LightGCN embeddings constructed exclusively from training interactions. Long- and short-horizon selective-state specialists model complementary temporal scales, while a new preference-transition agent discovers latent preference prototypes, infers the current soft preference distribution, predicts the next distribution, and estimates the probability of a preference shift. A coordinator combines specialist scores with preference-based candidate scores through a learned global gate.
+Sequential recommendation must represent both stable interests and abrupt changes in user intent. This report presents the independent ver4 Preference-Transition Multi-LoRA Mamba system implemented in \Project. It fuses cached representations from a frozen Mamba-2.8B text encoder with trainable two-layer LightGCN item embeddings constructed exclusively from training interactions. Four functional agents---long-horizon, short-horizon, preference-transition, and coordinator---share this item space but use disjoint, automatically routed LoRA banks. The temporal agents model complementary time scales; the preference agent discovers latent prototypes, infers the current soft preference distribution, predicts the next distribution, and estimates preference-shift probability; and the coordinator combines all candidate scores with learned temporal weights and a context-dependent preference gate. The Mamba-2.8B backbone is never fine-tuned and is not duplicated per agent.
 
-Training uses supervised specialist warm-up, coordinator calibration, and
-joint listwise ranking. High-variance sampled-action REINFORCE is removed
-because the offline task evaluates one-step full-catalog ranking. Training
-instead combines per-epoch prefix resampling, multi-step future soft labels,
-model-aware hard negatives, and preference contrastive alignment. Preference
-learning additionally uses next-distribution KL divergence, soft transition
-detection, prototype balance, and prototype separation.
+Training uses specialist warm-up, coordinator warm-up, and joint multi-step
+listwise ranking. Each epoch resamples bounded training prefixes and mines hard
+negatives from a larger model-scored random pool. Preference learning adds
+next-distribution KL divergence, soft transition detection, prototype balance,
+prototype separation, and joint-stage contrastive alignment. Validation and
+test ranking always cover the complete catalog.
 \end{abstract}
 
 \section{Introduction}
@@ -86,13 +85,13 @@ The promise of RL does not make its application straightforward. Industrial reco
 
 Sequential user representation creates another challenge. A user can exhibit a stable preference over months while simultaneously pursuing a short-lived intent within the current session. A single recurrent state must decide how quickly to forget old evidence, yet one global time scale is unlikely to fit both behaviors. Transformer recommenders can model long dependencies, but their self-attention cost grows quadratically with sequence length. Selective state-space models such as Mamba instead update a recurrent state in linear time and make the update input-dependent \cite{MAMBA}. This mechanism is attractive for recommendation because an interaction can be selectively retained or forgotten according to its content.
 
-A direct combination of a large Mamba language model and RL would nevertheless be computationally inefficient. If three agents each executed an independent 2.8-billion-parameter model for every sampled action, policy learning would be dominated by repeated text encoding rather than recommendation. Storing three complete adapted backbones would also undermine the parameter-efficiency motivation. The central systems question is therefore not simply whether Mamba can replace a Transformer, but how its semantic and selective-state capabilities can be used without placing a large foundation model inside the high-frequency optimization loop.
+A direct multi-agent adaptation of a large Mamba language model would be computationally inefficient. If every agent executed an independent 2.8-billion-parameter model for each candidate-ranking update, training would be dominated by repeated text encoding. Duplicating the backbone would also undermine the parameter-efficiency motivation. The central systems question is therefore not simply whether Mamba can replace a Transformer, but how its semantic and selective-state capabilities can be used in a shared multi-LoRA system without placing the foundation model inside the high-frequency optimization loop.
 
 This project studies a fundamental question: \emph{Can a shared Mamba semantic
 space, time-specialized rankers, and explicit preference-transition learning
 provide an efficient and interpretable foundation for sequential recommendation?}
 
-The proposed answer is a four-policy architecture. A frozen Mamba model first converts item metadata into a cached semantic matrix. Long- and short-term agents process the sequence with different selective dynamics. The preference agent converts the same history into a trajectory over latent prototypes and predicts its next state. A coordinator observes both temporal specialists and adds gated preference evidence to the final catalog ranking. The implementation is isolated in \texttt{ver4} and does not import or modify ver1--ver3.
+The proposed answer is a four-agent multi-LoRA architecture. A frozen Mamba model first converts item metadata into a cached semantic matrix. Long- and short-term agents process the sequence with different selective dynamics. The preference agent converts the same history into a trajectory over latent prototypes and predicts its next state. A coordinator observes both temporal specialists and adds gated preference evidence to the final catalog ranking. Each agent follows its own LoRA route while sharing the semantic and collaborative item representation. The implementation is isolated in \texttt{ver4} and does not import code or artifacts from ver1--ver3.
 
 \section{Related Works and Innovations}
 
@@ -104,55 +103,57 @@ These studies establish the reasons to use RL---exploration, delayed effects, an
 
 The present pipeline adopts a conservative interpretation. Static MovieLens,
 Amazon, and Yelp logs provide no action-dependent environment response, so
-ver4 removes sampled-action REINFORCE and optimizes the measured next-item
-ranking task directly. A genuine RL extension would require logged propensities,
-a simulator, or online interaction and is outside the current claim.
+ver4 is trained as an offline sequential ranker with multi-step listwise losses,
+not as an online reinforcement-learning policy. A genuine RL extension would
+require logged propensities, a simulator, or online interaction and is outside
+the current claim.
 
 \subsection{Mamba and Sequential Recommendation}
 
 Transformer-based sequential recommenders capture rich dependencies but require quadratic attention computation. Mamba introduces input-dependent state-space parameters and linear sequence processing \cite{MAMBA}. Mamba4Rec applied selective state-space modeling to sequential recommendation \cite{MAMBA4REC}, while SIGMA introduced bidirectional and gated mechanisms to improve contextual and short-term modeling \cite{SIGMA}. These results show that Mamba is useful for sequential recommendation, but replacing a Transformer with a standard Mamba block does not solve RL credit assignment, preference time-scale separation, or foundation-model cost.
 
-This project uses Mamba in two distinct roles. The frozen Mamba-2.8B language model provides item semantics from natural-language metadata. Lightweight Mamba-inspired diagonal selective recurrences then provide trainable policy states. This separation preserves linear policy updates without executing the language model at every transition.
+This project uses Mamba in two distinct roles. The frozen Mamba-2.8B language model provides item semantics from natural-language metadata. Lightweight Mamba-inspired diagonal selective recurrences then provide trainable sequence states. This separation preserves linear state updates without executing the language model at every transition.
 
-The policy agents are not copies of Mamba-2.8B. They share one cached
-item-semantic space and use compact trainable modules. Independent adaptation
-is retained while memory and computation remain proportional to the small
-recommendation dimension.
+The agents are not copies of Mamba-2.8B, and their LoRA modules are not attached
+to the frozen language-model backbone. They share one cached item-semantic space
+and apply separate low-rank residual updates inside compact recommendation
+modules. Independent adaptation is therefore retained while online memory and
+computation remain proportional to the 128-dimensional recommendation space.
 
 \subsection{Multi-Agent and Multi-Time-Scale Recommendation}
 
-A multi-agent recommender should contain more than several neural modules. Each agent needs a distinct observation, policy, action distribution, reward signal, or functional role. In the proposed architecture, the long-term agent observes up to the full configured history, the short-term agent observes a recent window, and both define separate categorical policies. The coordinator is a third policy that observes specialist states and produces the deployed distribution.
+A multi-agent recommender should contain more than several identically used neural modules. In the proposed architecture, the long-term agent observes up to 100 interactions, the short-term agent observes the latest 10, the preference agent models a distribution over 64 latent prototypes, and the coordinator produces the deployed score distribution. These agents have distinct functional roles and disjoint LoRA routes even though they share item representations.
 
 This division reflects the fact that stable preferences and transient intents evolve at different rates. A user may consistently prefer one genre while temporarily searching within another category. A short-term specialist can react quickly, whereas a slowly changing specialist can resist noisy or accidental interactions. The coordinator performs context-dependent arbitration instead of using a fixed average.
 
-LoRA represents an update with two low-rank matrices while leaving the base path unchanged \cite{LORA}. Giving each agent its own LoRA parameters creates separate adaptation subspaces at a small cost. Zero-initializing the second matrix makes every adapter begin as a no-op and stabilizes staged training.
+LoRA represents a residual update with two low-rank matrices \cite{LORA}. Giving each agent its own LoRA parameters creates separate adaptation subspaces at a small cost. The ver4 Amazon configuration uses rank $r=16$, scale parameter $\alpha=32$, and dropout $0.05$. Zero-initializing the second matrix makes every adapter begin as a no-op and stabilizes staged training.
 
 \subsection{Why This Topic Must Be Investigated}
 
-Scientifically, the topic tests whether multi-agent specialization is more than extra parameter count. If long- and short-term agents receive identical inputs and objectives, they may collapse to nearly identical policies. A useful architecture must create structural differences through observation horizon, state time scale, and independent policy feedback, then verify these choices through ablation.
+Scientifically, the topic tests whether multi-agent specialization is more than extra parameter count. If long- and short-term agents receive identical inputs and objectives, they may collapse to nearly identical scoring functions. A useful architecture must create structural differences through observation horizon, state time scale, and separate listwise losses, then verify these choices through ablation.
 
-The topic also clarifies what Mamba contributes. A pretrained Mamba can supply textual knowledge, but repeatedly invoking it inside RL may erase any throughput advantage. A tiny recurrent model is efficient but may fail to exploit item metadata. Separating semantic precomputation from selective policy-state updates provides a testable middle ground.
+The topic also clarifies what Mamba contributes. A pretrained Mamba can supply textual knowledge, but repeatedly invoking it inside the training loop may erase any throughput advantage. A compact recurrent model is efficient but may fail to exploit item metadata. Separating semantic precomputation from selective recommender-state updates provides a testable middle ground.
 
 Catalog ranking must also remain practical. Training over the full catalog at
 every step is expensive, while random sampled negatives are often trivial.
-This pipeline mines hard negatives from a larger model-scored pool, optionally
-uses full-catalog supervision, and always evaluates against the complete catalog.
+This pipeline mines hard negatives from a larger model-scored pool during
+training and always evaluates against the complete catalog.
 
-Finally, explanation generation should not dominate ranking latency. The pipeline performs retrieval first and loads the generator only after evaluation. This creates a clear boundary between the policy and its post-hoc verbalization.
+Finally, explanation generation should not dominate ranking latency. The pipeline performs retrieval first and loads the generator only after evaluation. This creates a clear boundary between the ranker and its post-hoc verbalization.
 
 \subsection{Innovations and Contributions}
 
-The implementation makes seven contributions:
+The implementation makes eight contributions:
 \begin{enumerate}
-  \item A cooperative four-policy recommender with long- and short-term selective-state specialists, a latent preference-transition agent, and a learned coordinator.
-  \item Disjoint specialist LoRA parameters with shared cached Mamba semantics,
-  avoiding repeated forward passes of the 2.8B backbone.
+  \item A cooperative four-agent recommender with long- and short-term selective-state specialists, a latent preference-transition agent, and a learned coordinator.
+  \item A multi-LoRA bank with 13 disjoint residual adapters---four for each temporal specialist, two for the preference agent, and three for the coordinator---automatically selected by the corresponding forward path.
+  \item Shared cached Mamba semantics that avoid repeated forward passes of the frozen 2.8B backbone during training and ranking.
   \item Explicit identification and prediction of preference transitions using soft prototypes, a recurrent transition encoder, and Jensen--Shannon-derived transition targets.
   \item Three-stage optimization separating specialist learning, coordinator
   calibration, and joint listwise adaptation, with per-epoch prefix resampling,
   future soft labels, hard negatives, and preference contrastive alignment.
-  \item Leakage-controlled catalog calibration combining the neural policy with training-only popularity and first-order transition statistics.
-  \item A unified MovieLens, Amazon Reviews 2023, and Yelp 2019/2023 evaluation interface with chronological splitting, periodic validation, best-checkpoint restoration, and full-catalog ranking.
+  \item Leakage-controlled catalog calibration combining neural scores with training-only popularity and first-order transition statistics.
+  \item A unified MovieLens, Amazon Reviews 2023, and Yelp 2019/2023 evaluation interface with chronological splitting, periodic validation, best-state restoration, and full-catalog ranking.
   \item Preference analysis isolated into a machine-readable report containing current/next latent preferences, entropy, transition probability, and ranking weight.
 \end{enumerate}
 
@@ -166,11 +167,12 @@ Let $\mathcal U$ be users and $\mathcal I$ the catalog, with $N=|\mathcal I|$. U
 \begin{equation}
   \mathcal H_u=(i_1,i_2,\ldots,i_{T_u}).
 \end{equation}
-At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next item $i_{t+1}$ is positive. The policies are
+At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next item $i_{t+1}$ is positive. The agent scoring distributions are
 \begin{equation}
   \pi_L(a\mid s_L),\qquad
   \pi_S(a\mid s_S),\qquad
-  \pi_C(a\mid s_L,s_S).
+  \pi_P(a\mid s_L),\qquad
+  \pi_C(a\mid s_L,s_S,\pi_P).
 \end{equation}
 
 \subsection{Pipeline Overview}
@@ -200,11 +202,11 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
 % Parallel specialist level.
 \node[agent,draw=agentblue,very thick,fill=agentblue!8] (long) at (-4.05,-3.55)
   {\textbf{Long-term specialist $\pi_L$}\\
-   full history; slow selective SSM\\
+   up to 100 events; slow selective SSM\\
    $\bm s_u^{(L)},\bm z^{(L)}$};
 \node[agent,draw=purple!75!black,very thick,fill=purple!7] (pref) at (0,-3.55)
   {\textbf{Preference agent $\pi_P$}\\
-   prototypes; GRU + Tiny Mamba\\
+   prototypes; GRU transition encoder\\
    $\widehat{\bm q}_{t+1},\rho_t,\bm z^{(P)}$};
 \node[agent,draw=agentgreen,very thick,fill=agentgreen!8] (short) at (4.05,-3.55)
   {\textbf{Short-term specialist $\pi_S$}\\
@@ -217,7 +219,7 @@ At transition $t$, the state is prefix $s_t=(i_1,\ldots,i_t)$ and logged next it
    state-dependent temporal weights $(w_L,w_S)$\\
    dynamic preference gate $\gamma_{P,u}=f(\rho_t,1-H/\log K)$};
 \node[box,minimum width=78mm,fill=agentorange!5] (rank) at (0,-7.35)
-  {Joint recommendation policy\\
+  {Joint recommendation scores\\
    $\bm z^{\mathrm{final}}=\bm z^{(C)}+w_L\bm z^{(L)}+w_S\bm z^{(S)}
    +\gamma_{P,u}\bm z^{(P)}$};
 \node[box,minimum width=55mm] (catalog) at (0,-8.85)
@@ -249,9 +251,10 @@ Solid arrows show the inference path.}
 The hierarchy assigns complementary responsibilities rather than making the
 rankers vote independently. The two temporal specialists extract preferences at
 different time scales, and the higher-level coordinator decides their
-state-dependent contribution to one deployed recommendation policy. During joint
-training, the coordinator and all specialists receive listwise ranking gradients;
-during inference, only the solid forward path is executed.
+state-dependent contribution to one deployed ranking. During joint training,
+the coordinator and all specialists receive listwise ranking gradients; during
+inference, only the solid forward path is executed. Each colored agent box owns
+its own LoRA route; no adapter parameters are shared across agent routes.
 
 \subsection{Data and Chronological Splitting}
 
@@ -268,7 +271,7 @@ Argument & Interactions & Item text\\
 \midrule
 \endhead
 movielens & ratings & title and genres\\
-amazon-\textless category\textgreater & Amazon Reviews 2023 & title, category, features, description\\
+amazon-\textless category\textgreater & Amazon Reviews 2023 & title, subtitle, main category, features, description\\
 amazon:\textless exact-config\textgreater & exact HF config & review/meta join by \texttt{parent\_asin}\\
 yelp19, yelp23 & local Yelp JSON/table & name, categories, location, attributes\\
 synthetic & deterministic events & short names for tests\\
@@ -285,7 +288,10 @@ Training prefixes produce $\big((i_1,\ldots,i_k),i_{k+1}\big)$. Reservoir sampli
 
 \subsection{Cached Mamba Semantics}
 
-Frozen Mamba-2.8B encodes metadata:
+The frozen \texttt{state-spaces/mamba-2.8b-hf} backbone encodes metadata after
+the prefix \texttt{Preference-aware product representation:}. The Amazon suite
+caps the prompted input at 32 tokens. Prompt tokens condition the causal hidden
+states but are excluded from content mean pooling:
 \begin{equation}
   \bm e_i^{\mathrm{text}}
   =
@@ -293,7 +299,8 @@ Frozen Mamba-2.8B encodes metadata:
   \left(\operatorname{Mamba}_{\mathrm{frozen}}(t_i)\right)
   \in\R^{d_m}.
 \end{equation}
-A dataset/item/text fingerprint controls cache reuse. A shared bridge gives
+The prompt, item texts, dataset name, catalog size, and token cap determine the
+cache identity, preventing reuse of incompatible vectors. A shared bridge gives
 \begin{equation}
   \bm e_i=\operatorname{norm}(W_p\bm e_i^{\mathrm{text}}),
   \qquad W_p\in\R^{d\times d_m},\quad d=128.
@@ -320,8 +327,8 @@ vector consumed by both specialists and by catalog scoring is
     \operatorname{norm}(\bm e_i^{\mathrm{gcn}})
   \right).
 \end{equation}
-Thus the graph is a shared collaborative item encoder, not a fourth policy
-agent. It is optimized with the item projection during specialist warm-up and
+Thus the graph is a shared collaborative item encoder, not a fifth agent. It is
+optimized with the item projection during specialist warm-up and
 joint training, frozen during coordinator warm-up, and recomputed once per
 batch for reuse by histories and candidates. The optional
 \texttt{--graph-device} places graph parameters and edges on a second GPU;
@@ -335,7 +342,35 @@ For input $\bm x$, agent $j$ owns
   =
   \frac{\alpha}{r}B_jA_j\operatorname{Dropout}(\bm x).
 \end{equation}
-Defaults are $r=8$, $\alpha=16$, and dropout $0.05$. $A_j$ uses Kaiming initialization and $B_j$ starts at zero. Specialists own candidate, delta, gate, and output adapters; the coordinator owns state, mixture, and score adapters.
+The generic single-dataset launcher defaults to $r=8$ and $\alpha=16$, while
+the ver4 Amazon multi-LoRA suite used in this report sets $r=16$ and
+$\alpha=32$; both use dropout $0.05$. $A_j$ uses Kaiming initialization and
+$B_j$ starts at zero. The complete routing table is shown in
+Table~\ref{tab:lora-routing}.
+
+\begin{table}[H]
+\centering
+\caption{Disjoint LoRA routes in the ver4 multi-LoRA system.}
+\label{tab:lora-routing}
+\begin{tabular}{lll}
+\toprule
+Agent & LoRA residuals & Count\\
+\midrule
+Long-term & candidate, delta, gate, output & 4\\
+Short-term & candidate, delta, gate, output & 4\\
+Preference-transition & GRU-state transition, prototype-mixture state & 2\\
+Coordinator & temporal mixture, fused state, score state & 3\\
+\midrule
+Total & disjoint automatically routed adapters & 13\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The adapter bank operates only in the compact recommender. Cached Mamba-2.8B
+features are immutable inputs, while the shared projection, LightGCN embeddings,
+preference prototypes, GRU and task heads are ordinary trainable recommender
+parameters. Thus ``multi-LoRA'' denotes agent-specific low-rank residual routes;
+it does not imply adaptation of the Mamba-2.8B backbone.
 
 \subsection{Selective-State Specialists}
 
@@ -385,24 +420,15 @@ dataset. For normalized item vector $\bm e_t$, its soft pseudo-preference is
 where $T_p=0.2$ by default. These assignments are latent pseudo-preferences,
 not human-authored genres or categories.
 
-A GRU and a tiny selective-state Mamba branch read
-$(\bm q_1,\ldots,\bm q_t)$ in parallel. The tiny branch uses
-\begin{align}
-  \bm\delta_t^M&=\operatorname{softplus}(\bm b_M+W_\delta\bm q_t),\\
-  \bm a_t^M&=\exp(-\bm\delta_t^M),\\
-  \bm m_t&=\bm a_t^M\odot\bm m_{t-1}
-    +(1-\bm a_t^M)\odot\tanh(W_M\bm q_t).
-\end{align}
-If $\bm h_t^G$ is the last GRU state, the fused representation is
+A GRU reads $(\bm q_1,\ldots,\bm q_t)$. If $\bm h_t^G$ is the last valid GRU
+state, an agent-specific LoRA residual produces
 \begin{equation}
   \bm h_t^{(P)}
   =\operatorname{LayerNorm}
-    (\bm h_t^G+\sigmoid(g_M)W_o\bm m_t).
+    \left(\bm h_t^G+\operatorname{LoRA}_{\mathrm{transition}}(\bm h_t^G)\right).
 \end{equation}
-$g_M$ is initialized to $-4.595$, giving approximately $0.01$ residual
-weight. This preserves the original GRU behavior at initialization while
-allowing selective linear-time memory to grow when supported by training.
-The current and predicted-next distributions and the
+The LoRA residual begins as an exact no-op because its second matrix is
+zero-initialized. The current and predicted-next distributions and the
 transition probability are
 \begin{align}
   \bm q_t^{\mathrm{current}} &= \bm q_t,\\
@@ -416,11 +442,13 @@ The next-preference state and candidate logits are
 \begin{align}
   \bm v_t&=\widehat{\bm q}_{t+1}\operatorname{norm}(P),\\
   \bm s_u^{(P)}
-    &=\operatorname{norm}(\bm v_t+W_{\mathrm{res}}\bm v_t),\\
+    &=\operatorname{norm}\!\left(\bm v_t+
+      \operatorname{LoRA}_{\mathrm{state}}(\bm v_t)\right),\\
   z_i^{(P)}&=\exp(\tau_P)\langle\bm s_u^{(P)},\bm e_i\rangle.
 \end{align}
-$W_{\mathrm{res}}$ begins at zero. The raw change logit is used for
-AMP-safe binary cross entropy with logits; $\rho_t$ is used for analysis.
+The state adapter also begins as a no-op. The raw change logit is used for
+AMP-safe binary cross entropy with logits; $\rho_t$ is used for analysis and
+for the coordinator's context-dependent preference gate.
 
 \begin{figure}[H]
 \centering
@@ -431,7 +459,7 @@ AMP-safe binary cross entropy with logits; $\rho_t$ is used for analysis.
 ]
 \node[pbox] (items) {hybrid item vectors\\$\bm e_1,\ldots,\bm e_t$};
 \node[pbox,right=7mm of items] (assign) {prototype assignment\\$\bm q_1,\ldots,\bm q_t$};
-\node[pbox,right=7mm of assign] (gru) {GRU + Tiny Mamba\\$\bm h_t^{(P)}$};
+\node[pbox,right=7mm of assign] (gru) {GRU + transition LoRA\\$\bm h_t^{(P)}$};
 \node[pbox,right=7mm of gru] (next) {next preference\\$\widehat{\bm q}_{t+1}$};
 \node[pbox,below=7mm of gru] (change) {change detector\\$\rho_t$};
 \node[pbox,right=7mm of next] (score) {prototype mixture\\$z_i^{(P)}$};
@@ -537,7 +565,7 @@ Seen non-target items are masked after calibration. The coefficients $\alpha$
 and $\beta$ are selected using validation ranking only; the held-out test set
 is evaluated once after the choice is fixed. A negative $\alpha$ suppresses
 over-popular items, while a positive $\beta$ reinforces locally plausible
-next-item transitions. This module is not a fourth RL agent and does not update
+next-item transitions. This calibration is not an agent and does not update
 model weights. Both coefficients default to zero, so existing runs retain the
 original neural ranking exactly.
 
@@ -555,7 +583,7 @@ Validation and test targets are never used to construct these labels. A random
 pool four times larger than the required negative set is scored by the current
 coordinator. Items occurring in that user's training history are masked, and
 the highest-scoring remaining items become model-aware hard negatives. For
-policy $j$, the soft listwise loss is
+agent $j$, the soft listwise loss is
 \begin{equation}
   \mathcal L_{\mathrm{rank}}^{(j)}
   =-\sum_{h=1}^{H_u}\omega_h
@@ -616,31 +644,34 @@ and every specialist receives its own listwise ranking loss.
 
 \begin{table}[H]
 \centering
-\caption{Default optimization.}
-\begin{tabular}{lcl}
+\caption{Optimization used by the ver4 Amazon multi-LoRA suite.}
+\begin{tabular}{lccl}
 \toprule
-Stage & Learning rate & Trainable components\\
+Stage & Epochs & Learning rate & Trainable components\\
 \midrule
-Specialists & $2\times10^{-4}$ & long, short, preference, projection\\
-Coordinator & $2\times10^{-4}$ & coordinator and preference score gate\\
-Joint ranking & $5\times10^{-5}$ & all components\\
+Specialists & 4 & $1\times10^{-4}$ & long, short, preference, projection, LightGCN\\
+Coordinator & 4 & $1\times10^{-4}$ & coordinator and preference score gate\\
+Joint ranking & 10 & $5\times10^{-5}$ & all recommender components\\
 \bottomrule
 \end{tabular}
 \end{table}
-AdamW uses weight decay $10^{-5}$. CUDA uses FP16 autocast, GradScaler, and gradient clipping at 1.0. Validation runs every 1,000 optimizer steps by default. A \texttt{ReduceLROnPlateau} scheduler halves the coordinator or joint learning rate after a configurable number of non-improving checks, and joint training supports early stopping. Each improvement is atomically saved as \texttt{best\_validation.pt}; final metrics are computed only after restoring that validation-selected state.
+AdamW uses weight decay $10^{-5}$. CUDA uses FP16 autocast, GradScaler, and gradient clipping at 1.0. The Amazon suite uses batch size 128, evaluation batch size 64, dataset-specific candidate counts and validation intervals, and caps the effective interval at one epoch so every epoch is validated. A \texttt{ReduceLROnPlateau} scheduler halves the coordinator or joint learning rate after two non-improving checks, and joint training stops after six non-improving checks. Because the Amazon launcher sets \texttt{SAVE\_MODEL\_WEIGHTS=0}, the best validation state is retained in memory rather than written as a checkpoint; final metrics are computed only after restoring that state.
 
 \section{Full-Catalog Evaluation and Throughput}
 
-Evaluation always projects the complete catalog once, irrespective of whether
-training used sampled or full-catalog supervision:
+Evaluation projects the complete catalog once even though the reported Amazon
+runs train with bounded hard-negative slates:
 \begin{equation}
-  E=W_pE_{\mathrm{text}}\in\R^{N\times d},
-  \qquad Z^{\mathrm{neural}}=SE^\top\in\R^{B\times N}.
+  E=\operatorname{HybridProject}(E_{\mathrm{text}},E_{\mathrm{gcn}})
+  \in\R^{N\times d},
+  \qquad Z^{(j)}=S^{(j)}E^\top\in\R^{B\times N}.
 \end{equation}
-This GEMM avoids a $B\times N\times d$ expansion. Optional popularity and
-transition vectors are then added by broadcasting and sparse row updates to
-obtain $\widetilde Z$; they do not require another model forward pass. Seen
-non-target items receive $-\infty$.
+Each agent applies its learned temperature, and the coordinator combines
+$Z^{(L)}$, $Z^{(S)}$, $Z^{(P)}$, and its own adapted-state score to obtain
+$Z^{\mathrm{final}}$. Matrix multiplication avoids a $B\times N\times d$
+expansion. Popularity and transition vectors are then added by broadcasting
+and sparse row updates to obtain $\widetilde Z$; they do not require another
+model forward pass. Seen non-target items receive $-\infty$.
 
 \begin{align}
   \operatorname{rank}_u
@@ -656,9 +687,9 @@ non-target items receive $-\infty$.
 The code reports $K=5,10$, users/s, and scores/s.
 
 Throughput comes from cached Mamba vectors, shared semantics, linear
-recurrences, capped history, bounded listwise candidate sets with model-aware
-hard negatives, optional batched full-catalog supervision, FP16, GEMM ranking,
-sparse prior updates, and delayed generator loading.
+selective recurrences, a GRU over 64-dimensional preference assignments, capped
+history, bounded listwise candidate sets with model-aware hard negatives, FP16,
+GEMM ranking, sparse prior updates, and delayed generator loading.
 
 \section{Recommendation Explanation}
 
@@ -669,14 +700,14 @@ Long-term agent weight=<wL>; short-term agent weight=<wS>.
 History: <recent item texts>.
 Recommended item: <recommended item text>. Reason:
 \end{lstlisting}
-Mamba greedily generates at most 40 tokens after ranking. The explanation is grounded but post-hoc; it is not a causal proof and does not affect reward.
+When enabled, Mamba greedily generates at most 40 tokens after ranking. The explanation is grounded but post-hoc; it is not a causal proof and does not affect training or ranking. The Amazon suite used in this report disables reason generation.
 
 \section{Experimental Design}
 
-Required ablations include removal of each of the four policies, identical
+Required ablations include removal of each of the four agents, identical
 versus 100/10 windows, fixed versus learned fusion, random versus model-hard
 negatives, one-step versus future soft labels, fixed versus per-epoch prefix
-sampling, and sampled versus full-catalog supervision.
+sampling, disjoint versus shared LoRA routes, and alternative LoRA ranks.
 Catalog calibration must be ablated as neural-only, popularity-only,
 transition-only, and combined scoring, with $\alpha$ and $\beta$ selected on
 validation for every dataset. Semantic features should compare Mamba vectors,
@@ -690,26 +721,28 @@ cosine similarity, transitions/s, users/s, scores/s, peak GPU memory, and
 explanation latency. Because the priors can change exposure concentration,
 coverage and popularity-stratified Recall should accompany aggregate Recall.
 
-\subsection{ver4 Preference-Agent Result Available at Writing Time}
+\subsection{Completed ver4 Multi-LoRA Result}
 
-Table~\ref{tab:ver4-current} reports only the completed ver4 run found in the
-version-local output directory when this document was generated. It uses the
-project's Amazon Reviews 2023 All Beauty adapter, chronological leave-two-out
-split, one held-out item per user, and full-catalog ranking. Consequently,
-Recall and Hit Ratio are identical. Other subset jobs were not copied from
-partial logs into this table.
+Table~\ref{tab:ver4-current} reports the completed multi-LoRA run present in
+the version-local output directory at writing time. It uses Amazon Reviews 2023
+All Beauty with 1,620 users, 6,982 items, and 11,744 training interactions,
+chronological leave-two-out splitting, one held-out item per user, and
+full-catalog evaluation. Consequently, Recall and Hit Ratio are identical.
+The run uses all 13 LoRA adapters with $r=16$, $\alpha=32$, and dropout $0.05$;
+four specialist-stage, four coordinator-stage, and ten joint-stage epochs; 64 training candidates;
+and validation-selected catalog coefficients $\alpha_p=-0.25$ and $\beta=4.0$.
 
 \begin{table}[H]
 \centering
-\caption{Completed ver4 Preference-Transition Mamba-RL result.}
+\caption{Completed ver4 Preference-Transition Multi-LoRA result.}
 \label{tab:ver4-current}
 \footnotesize
 \begin{tabular}{@{}llrrrrrr@{}}
 \toprule
 Split & Run & $R@5$ & $R@10$ & $H@5$ & $H@10$ & $N@5$ & $N@10$\\
 \midrule
-Validation & 20260828\_212617 & .09938 & .11790 & .09938 & .11790 & .08798 & .09384\\
-Test & 20260828\_212617 & .12346 & .13519 & .12346 & .13519 & .11062 & .11440\\
+Validation & 20260830\_011259 & .09012 & .10123 & .09012 & .10123 & .08258 & .08610\\
+Test & 20260830\_011259 & .11358 & .11914 & .11358 & .11914 & .10254 & .10431\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -719,69 +752,9 @@ Published results may use different Amazon releases, category definitions,
 core filters, and candidate protocols. A controlled comparison requires
 rerunning baselines through the same loader and evaluator.
 
-\subsection{Amazon All Beauty Iterative Study}
-
-The predecessor ver3 changes were tested on the Amazon Reviews 2023 All Beauty
-5-core split with 1,620 users, 6,982 items, 11,744 training interactions,
-chronological leave-two-out splitting, and full-catalog evaluation. Table
-\ref{tab:amazon-iterations} reports the held-out results recorded by that
-training pipeline. They are development history, not a controlled preference
-agent ablation.
-
-\begin{table}[H]
-\centering
-\caption{Iterative Amazon All Beauty results. Rounds are an engineering
-sequence rather than independent causal ablations.}
-\label{tab:amazon-iterations}
-\begin{tabularx}{\textwidth}{cXcc}
-\toprule
-Round & Main change & Valid Recall@10 & Test Recall@10\\
-\midrule
-1 & Sampled-slate baseline & 0.11173 & 0.13519\\
-2 & Full-catalog CE warm-up and joint CE anchor & 0.11481 & 0.13827\\
-3 & Continued joint RL from the Round-2 checkpoint & 0.11605 & 0.13395\\
-4 & Frozen Round-2 neural checkpoint plus training-only calibrated priors &
-0.13086 & \textbf{0.15432}\\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-Round 2 changes the supervised action space and Round 4 changes the deployed
-scoring rule, so these are algorithmic modifications rather than only different
-hyperparameters. For Round 4, validation selected $\alpha=-0.25$ and
-$\beta=4.0$. The neural checkpoint was not updated, and the test set remained
-held out until the coefficients were fixed. The resulting Test Recall@10 of
-0.15432 exceeded the predefined target of 0.15. This comparison does not by
-itself isolate causal contributions; the prior components and the full-catalog
-anchor should still be reported as separate controlled ablations.
-
-\subsection{Predecessor MovieLens-1M and Yelp19 Held-Out Results}
-
-Table~\ref{tab:ml-yelp-project} records selected ver3 best-validation
-checkpoints; they are not newly measured ver4 results. Both runs use rating $\geq4$,
-chronological leave-two-out, one test target per user, and full-catalog ranking;
-therefore Recall and Hit Ratio coincide. LightGCN is enabled and its edges, as
-well as the popularity and transition calibration statistics, come only from
-training histories. These rows are directly comparable to each other only at a
-metric-definition level: the catalogs and calibrated coefficients differ.
-
-\begin{table}[H]
-\centering
-\caption{Current project full-catalog test results.}
-\label{tab:ml-yelp-project}
-\begin{tabular}{@{}llrrrr@{}}
-\toprule
-Dataset & Run & $R@5$ & $R@10$ & $N@5$ & $N@10$ \\
-\midrule
-MovieLens-1M & 20260827\_011510 & .14899 & .21793 & .10257 & .12476 \\
-Yelp19 & 20260827\_030443 & .06940 & .09685 & .04656 & .05545 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The published tables in Section~\ref{sec:baselines} remain contextual
-references rather than evidence of superiority because AMIM and Yelp2018 use
-different preprocessing and, in Yelp's case, a different corpus and cutoff.
+The active Beauty and Personal Care job is not included because its log does
+not yet contain final validation and test artifacts. Results from predecessor
+versions are deliberately excluded from the ver4 result table.
 
 \section{Implementation and Reproducibility}
 
@@ -792,9 +765,10 @@ different preprocessing and, in Yelp's case, a different corpus and cutoff.
 \toprule
 File & Responsibility\\
 \midrule
-run\_mamba\_rl.sh & launcher\\
+run\_mamba\_rl.sh & single-dataset multi-LoRA launcher\\
+run\_amazons\_full\_rl.sh & Amazon multi-LoRA suite and subset settings\\
 src/data\_mamba\_rl.py & dataset adapters\\
-src/model\_mamba\_rl.py & agents and LoRA\\
+src/model\_mamba\_rl.py & four agents and disjoint LoRA routing\\
 src/train\_mamba\_rl.py & training, evaluation, explanations\\
 tests/test\_mamba\_rl.py & tests\\
 outputs\_mamba\_rl/ & artifacts\\
@@ -814,12 +788,13 @@ bash run_mamba_rl.sh yelp23 0 /data/yelp-2023
 Environment variables include \texttt{CACHE\_DIR},
 \texttt{BATCH\_SIZE}, \texttt{EVAL\_BATCH\_SIZE},
 \texttt{SPECIALIST\_EPOCHS}, \texttt{COORDINATOR\_EPOCHS},
-\texttt{RL\_EPOCHS}, \texttt{VALIDATE\_EVERY\_STEPS},
+\texttt{JOINT\_EPOCHS}, \texttt{VALIDATE\_EVERY\_STEPS},
 \texttt{MONITOR\_METRIC}, \texttt{EARLY\_STOPPING\_PATIENCE},
 \texttt{LR\_PATIENCE}, \texttt{MAX\_TRANSITIONS}, \texttt{SEED},
 \texttt{POPULARITY\_ALPHA}, \texttt{TRANSITION\_BETA},
 \texttt{USE\_GRAPH\_EMBEDDINGS}, \texttt{GRAPH\_DEVICE},
 \texttt{TARGET\_RECALL\_AT\_10}, \texttt{EXPERIMENT\_NOTE},
+\texttt{LORA\_RANK}, \texttt{LORA\_ALPHA}, \texttt{LORA\_DROPOUT},
 \texttt{PREFERENCE\_COUNT}, \texttt{PREFERENCE\_HIDDEN},
 \texttt{PREFERENCE\_TEMPERATURE}, \texttt{PREFERENCE\_SCORE\_WEIGHT},
 \texttt{PREFERENCE\_COEF}, \texttt{PREFERENCE\_TRANSITION\_COEF},
@@ -840,31 +815,32 @@ The Amazon suite deliberately disables weight persistence. Its outputs are
 \texttt{train\_<run-id>.log}, subset score JSON, \texttt{loss.png},
 \texttt{metrics.json}, \texttt{recommendations.json}, and
 \texttt{preference\_analysis.json} under
-\texttt{outputs\_mamba\_rl/<dataset>/<run-id>/}. Every log begins with
+\texttt{outputs\_mamba\_rl/amazons\_lora/<subset>/rl\_<timestamp>/}. Every log begins with
 \texttt{EXPERIMENT\_NOTE} and the complete serialized
 \texttt{EXPERIMENT\_CONFIG}; calibrated runs additionally record
-\texttt{CATALOG\_PRIORS}, vector provenance, resumed checkpoint,
+\texttt{ADAPTATION\_MODE mode=multi\_lora}, \texttt{ADAPTER\_ROUTES},
+\texttt{CATALOG\_PRIORS}, vector provenance, an optional resumed checkpoint,
 \texttt{VALID\_BEST}, \texttt{TEST\_FINAL}, and
 \texttt{TARGET\_RESULT}. Legacy training paths do not import this pipeline.
 
 \section{Limitations}
 
 \begin{enumerate}
-  \item The $+1/-0.05$ next-item reward is not online feedback from the learned policy.
-  \item Static logs contain no action-dependent user transition, so this is not a complete long-horizon MDP.
+  \item Static logs contain no action-dependent user response, so the current
+  multi-LoRA system is an offline sequential ranker rather than a complete
+  long-horizon MDP.
   \item Random negatives may be unexposed; no propensity correction is used.
-  \item Credit assignment uses local rewards rather than a centralized critic.
   \item Model-mined negatives reduce but do not eliminate the mismatch between
   sampled training and full-catalog evaluation.
   \item Popularity and first-order transition counts are simple, dataset-dependent priors and may not transfer across domains or temporal shifts.
-  \item Calibrated gains must be separated from gains in the learned neural policy; the priors are deterministic post-training score corrections.
+  \item Calibrated gains must be separated from gains in the learned neural ranker; the priors are deterministic post-training score corrections.
   \item Explanations are post-hoc and not optimized for faithfulness.
   \item Latent preference IDs have no guaranteed human semantic label and may
   permute across independent runs or datasets.
   \item A high predicted transition probability identifies a learned embedding
   shift, not a causal change in a person's underlying taste.
-  \item Mamba-2.8B supplies semantics; policy agents use compact modules rather
-  than full 2.8B adapters.
+  \item Mamba-2.8B supplies frozen item semantics; the agent-specific LoRA bank
+  adapts compact recommendation modules rather than the language-model backbone.
 \end{enumerate}
 
 Recall/NDCG gains therefore mean improved offline ranking, not proven long-term satisfaction.
@@ -893,17 +869,17 @@ A simulator can support centralized critics and retention reward. Item selection
 \section{Conclusion}
 
 The pipeline combines Mamba item semantics, linear selective-state modeling,
-agent-specific LoRA, and policy gradients without placing three large models in
-the RL loop. Mamba-2.8B establishes a reusable semantic catalog; long and short
-agents model different time scales; and a coordinator learns context-dependent
-fusion. Staged training establishes specialists, calibrates coordination, and
-performs joint adaptation, while optional full-catalog CE aligns the supervised
-anchor with the evaluation action space. Training-only popularity and transition
-priors provide a leakage-controlled calibration layer whose effect remains
-explicitly separable from learned model quality. Periodic validation,
-best-checkpoint restoration, auditable experiment logs, full-catalog evaluation,
-and isolated explanation generation make ranking quality and systems cost
-measurable.
+a GRU preference-transition model, and 13 agent-specific LoRA adapters without
+fine-tuning or duplicating the Mamba-2.8B backbone. The frozen backbone
+establishes a reusable semantic catalog; long and short agents model different
+time scales; the preference agent predicts latent preference transitions; and
+the coordinator learns context-dependent fusion. Staged multi-step listwise
+training establishes the specialists, calibrates coordination, and jointly
+adapts the multi-LoRA recommender. Training-only popularity and transition priors
+provide a leakage-controlled calibration layer whose effect remains explicitly
+separable from learned model quality. Periodic validation, best-state
+restoration, auditable experiment logs, and full-catalog evaluation make ranking
+quality and systems cost measurable.
 
 \begin{thebibliography}{99}
 \bibitem{LORA} E. Hu, Y. Shen, P. Wallis, et al. LoRA: Low-Rank Adaptation of Large Language Models. \emph{ICLR}, 2022.
