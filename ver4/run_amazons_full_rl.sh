@@ -6,11 +6,11 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$PROJECT_ROOT/../.." && pwd)"
-PYTHON_BIN="${PYTHON_BIN:-/home/P78123011/miniforge3/envs/py31014/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-/dataspace/P78123011/miniconda3/envs/py31014/bin/python}"
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 # 手動設定要使用的實體 GPU："0"、"1"、"0,1" 或 "1,0"
 # 使用兩張卡時，第一張供主模型使用，第二張供 graph/preference 模型使用。
-GPU_IDS="0,1"
+GPU_IDS="0"
 
 # ================= 手動調整：訓練模式與三階段超參數 =================
 # 1: LoRA；0: full-rank finetuning（推薦模型內的 dense adaptation）
@@ -105,7 +105,7 @@ run_subset() {
 REPEATS="${REPEATS:-1}"
 for ((run_number = 1; run_number <= REPEATS; run_number++)); do
   # name dataset validation_steps max_samples candidates popularity transition
-  run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
+  # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
   run_subset "Beauty_and_Personal_Care" "amazon:Beauty_and_Personal_Care" 12000 2000000 256 0.35 0.5
   run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
   run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
