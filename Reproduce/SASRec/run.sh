@@ -23,7 +23,7 @@ REPEATS="${REPEATS:-1}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$PROJECT_ROOT/outputs}"
 
 # SASRec defaults, all overridable from the environment.
-EPOCHS="${EPOCHS:-200}"
+EPOCHS="${EPOCHS:-7}"
 BATCH_SIZE="${BATCH_SIZE:-128}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-64}"
 LEARNING_RATE="${LEARNING_RATE:-1e-3}"
@@ -108,8 +108,8 @@ run_subset() {
 mkdir -p "$OUTPUT_ROOT"
 for ((repeat_number = 1; repeat_number <= REPEATS; repeat_number++)); do
   # Keep this list synchronized with ver4/run_amazons_full_rl.sh.
-  run_subset "Full_Beauty" "amazon-all-beauty" "$repeat_number"
-  run_subset "Beauty_and_Personal_Care" "amazon:Beauty_and_Personal_Care" "$repeat_number"
+  # run_subset "Full_Beauty" "amazon-all-beauty" "$repeat_number"
+  # run_subset "Beauty_and_Personal_Care" "amazon:Beauty_and_Personal_Care" "$repeat_number"
   run_subset "Baby_Products" "amazon:Baby_Products" "$repeat_number"
   run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" "$repeat_number"
   run_subset "Books" "amazon-books" "$repeat_number"
