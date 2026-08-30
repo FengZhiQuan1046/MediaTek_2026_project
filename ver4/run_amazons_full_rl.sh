@@ -12,6 +12,18 @@ CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 # 使用兩張卡時，第一張供主模型使用，第二張供 graph/preference 模型使用。
 GPU_IDS="0"
 
+# True: use SASRec's one-pass 5-core user/item filtering before leave-two-out.
+# False: preserve ver4's original user-only filtering.
+USE_SASREC_FILTERING="${USE_SASREC_FILTERING:-True}"
+case "$USE_SASREC_FILTERING" in
+  True) SASREC_FILTER_OPTION="--sasrec-filtering" ;;
+  False) SASREC_FILTER_OPTION="--no-sasrec-filtering" ;;
+  *)
+    echo "USE_SASREC_FILTERING must be True or False, got: $USE_SASREC_FILTERING" >&2
+    exit 2
+    ;;
+esac
+
 # ================= 手動調整：訓練模式與三階段超參數 =================
 # 1: LoRA；0: full-rank finetuning（推薦模型內的 dense adaptation）
 ENABLE_LORA=1
@@ -88,6 +100,7 @@ run_subset() {
     --validate-every-steps "$validate_every_steps" \
     --validation-user-limit 0 \
     --periodic-test-user-limit 0 \
+    "$SASREC_FILTER_OPTION" \
     --max-transitions "$max_transitions" \
     --candidates "$candidates" \
     --specialist-epochs "$SPECIALISTS_EPOCH" \
@@ -98,14 +111,14 @@ run_subset() {
     --joint-lr "$JOINT_LR" \
     --popularity-alpha "$popularity_alpha" \
     --transition-beta "$transition_beta" \
-    --experiment-note "$OUTPUT_GROUP subset=$subset_name; common architecture; periodic validation/test"
+    --experiment-note "$OUTPUT_GROUP subset=$subset_name; sasrec_filtering=$USE_SASREC_FILTERING; common architecture; periodic validation/test"
 }
 
 # One command per requested subset. Set REPEATS=5 to repeat the whole suite five times.
 REPEATS="${REPEATS:-1}"
 for ((run_number = 1; run_number <= REPEATS; run_number++)); do
   # name dataset validation_steps max_samples candidates popularity transition
-  # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
+  run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
   run_subset "Beauty_and_Personal_Care" "amazon:Beauty_and_Personal_Care" 12000 2000000 256 0.35 0.5
   run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
   run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5

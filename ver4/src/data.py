@@ -146,12 +146,42 @@ def synthetic_events() -> list[tuple[str, str, int, str]]:
     return rows
 
 
-def build_data(events: Iterable[tuple[str, str, int, str]], min_user_events: int = 3) -> InteractionData:
+SASREC_MIN_INTERACTIONS = 5
+
+
+def build_data(
+    events: Iterable[tuple[str, str, int, str]],
+    min_user_events: int = 3,
+    sasrec_filtering: bool = False,
+) -> InteractionData:
     per_user: dict[str, list[tuple[int, str, str]]] = defaultdict(list)
+    item_counts: dict[str, int] = defaultdict(int)
     total_events = len(events) if hasattr(events, "__len__") else None
     for user, item, ts, text in tqdm(events, total=total_events, desc="Grouping interactions by user", unit="interaction", disable=not _show_progress()):
         per_user[user].append((ts, item, text))
-    per_user = {u: sorted(xs) for u, xs in per_user.items() if len(xs) >= min_user_events}
+        item_counts[item] += 1
+
+    if sasrec_filtering:
+        # Match SASRec/data/DataProcessing.py: count on the raw interactions,
+        # then apply user/item >= 5 once (this is not an iterative k-core).
+        per_user = {
+            user: sorted(
+                (
+                    entry for entry in entries
+                    if item_counts[entry[1]] >= SASREC_MIN_INTERACTIONS
+                ),
+                key=lambda entry: entry[0],
+            )
+            for user, entries in per_user.items()
+            if len(entries) >= SASREC_MIN_INTERACTIONS
+        }
+        per_user = {user: entries for user, entries in per_user.items() if entries}
+    else:
+        per_user = {
+            user: sorted(entries)
+            for user, entries in per_user.items()
+            if len(entries) >= min_user_events
+        }
     if not per_user:
         raise RuntimeError("No users have enough events after filtering.")
 
@@ -167,8 +197,13 @@ def build_data(events: Iterable[tuple[str, str, int, str]], min_user_events: int
     for user, entries in tqdm(per_user.items(), total=len(per_user), desc="Creating chronological train/valid/test split", unit="user", disable=not _show_progress()):
         ids = [item_map[item] for _, item, _ in entries]
         uid = user_map[user]
-        train_by_user[uid] = ids[:-2]
-        valid[uid], test[uid] = ids[-2], ids[-1]
+        if sasrec_filtering and len(ids) < 3:
+            # SASRec retains these users for training but skips evaluation
+            # because they do not receive validation/test targets.
+            train_by_user[uid] = ids
+        else:
+            train_by_user[uid] = ids[:-2]
+            valid[uid], test[uid] = ids[-2], ids[-1]
     item_texts = [""] * len(item_map)
     for item, iid in tqdm(item_map.items(), total=len(item_map), desc="Finalising item text array", unit="item", disable=not _show_progress()):
         item_texts[iid] = item_text[item]

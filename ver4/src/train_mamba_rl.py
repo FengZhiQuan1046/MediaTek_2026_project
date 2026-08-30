@@ -88,6 +88,7 @@ def load_recommendation_data_cached(args, logger):
         "max_events": args.max_events,
         "min_rating": args.min_rating,
         "min_user_events": args.min_user_events,
+        "sasrec_filtering": args.sasrec_filtering,
         "schema_version": 1,
     }
     digest = hashlib.sha1(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:12]
@@ -101,7 +102,7 @@ def load_recommendation_data_cached(args, logger):
 
     data = load_recommendation_data(
         args.dataset, args.data_path, args.cache_dir, args.max_events,
-        args.min_rating, args.min_user_events,
+        args.min_rating, args.min_user_events, args.sasrec_filtering,
     )
     artifact.parent.mkdir(parents=True, exist_ok=True)
     temporary = artifact.with_suffix(".tmp")
@@ -743,6 +744,16 @@ def parse_args():
     parser.add_argument("--max-transitions", type=int, default=500_000)
     parser.add_argument("--min-rating", type=float, default=4.0)
     parser.add_argument("--min-user-events", type=int, default=5)
+    parser.add_argument(
+        "--sasrec-filtering",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Use SASRec's one-pass 5-core user/item filter before chronological "
+            "leave-two-out; users left with fewer than three interactions remain "
+            "training-only. Disabled preserves the original user-only filter."
+        ),
+    )
     parser.add_argument("--specialist-epochs", type=int, default=3)
     parser.add_argument("--coordinator-epochs", type=int, default=2)
     parser.add_argument(

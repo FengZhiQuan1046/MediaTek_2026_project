@@ -286,6 +286,7 @@ def load_recommendation_data(
     max_events: int | None = None,
     min_rating: float = 4.0,
     min_user_events: int = 5,
+    sasrec_filtering: bool = False,
 ) -> InteractionData:
     name = dataset.lower()
     if name == "synthetic":
@@ -303,4 +304,8 @@ def load_recommendation_data(
         raise ValueError(f"Unknown dataset {dataset!r}. Supported values: {supported}")
     if not events:
         raise RuntimeError(f"No positive interactions loaded for {dataset!r}; check --min-rating and --data-path")
-    return build_data(events, min_user_events=min_user_events)
+    return build_data(
+        events,
+        min_user_events=min_user_events,
+        sasrec_filtering=sasrec_filtering,
+    )
