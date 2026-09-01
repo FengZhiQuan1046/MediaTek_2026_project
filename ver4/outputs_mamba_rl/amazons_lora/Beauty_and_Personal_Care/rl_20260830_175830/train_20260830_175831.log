@@ -11,3 +11,27 @@
 2026-08-30 20:54:59,845 | INFO | agent_parameters={'long': 16513, 'short': 16513, 'preference': 99330, 'coordinator': 14373, 'shared_projection': 327680, 'graph': 161964416}
 2026-08-30 20:55:11,053 | INFO | training_transitions=2000000
 2026-08-30 20:55:11,054 | INFO | schedule specialist_epochs=4 coordinator_epochs=4 joint_ranking_epochs=10 validate_every_steps=12000 validation_users=0 periodic_test_users=0 monitor=ndcg@10 early_stopping_patience=6
+2026-08-31 00:23:34,425 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=specialists | epoch=1 | step=12000 | users=886701/886701
+NDCG  | @5 0.014606 | @10 0.017257
+Recall| @5 0.020107 | @10 0.028356
+Hit   | @5 0.020107 | @10 0.028356
+================================
+2026-08-31 00:43:58,898 | INFO | 
+========== PERIODIC TEST ==========
+stage=specialists | epoch=1 | step=12000 | users=886701/886701
+NDCG  | @5 0.014909 | @10 0.017375
+Recall| @5 0.020275 | @10 0.027962
+Hit   | @5 0.020275 | @10 0.027962
+================================
+2026-08-31 00:43:58,898 | INFO | VALID_STEP step=12000 stage=specialists epoch=1 ndcg@10=0.017257 recall@10=0.028356 improved=True
+2026-08-31 00:43:59,269 | INFO | BEST_MODEL_IN_MEMORY step=12000 stage=specialists ndcg@10=0.017257
+2026-08-31 01:06:28,436 | INFO | stage=specialists epoch=1 loss=14.508033 steps=15625 transitions/s=171.72
+2026-08-31 02:30:58,470 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=specialists | epoch=2 | step=27625 | users=886701/886701
+NDCG  | @5 0.023286 | @10 0.026845
+Recall| @5 0.031168 | @10 0.042241
+Hit   | @5 0.031168 | @10 0.042241
+================================
