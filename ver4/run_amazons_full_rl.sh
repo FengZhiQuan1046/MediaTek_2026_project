@@ -119,9 +119,9 @@ REPEATS="${REPEATS:-1}"
 for ((run_number = 1; run_number <= REPEATS; run_number++)); do
   # name dataset validation_steps max_samples candidates popularity transition
   # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
-  run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
-  run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
-  run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5
+  # run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
+  # run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
+  # run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5
   run_subset "Toys_and_Games" "amazon-toys" 6000 1500000 192 0.30 0.5
   run_subset "Video_Games" "amazon-video-games" 4000 1000000 128 0.20 0.5
   run_subset "Clothing_Shoes_and_Jewelry" "amazon-clothing-shoes-and-jewelry" 12000 2000000 256 0.35 0.5
