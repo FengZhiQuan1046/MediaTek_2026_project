@@ -4,3 +4,10 @@
 2026-09-02 17:33:31,494 | INFO | INTERACTION_CACHE hit path=/workspace/P78123011/cache/mamba_multi_agent_data/amazon-clothing-shoes-and-jewelry_a54d281900fb.pkl
 2026-09-02 17:33:31,564 | INFO | users=3429222 items=1321134 train_interactions=21787630
 2026-09-02 17:36:57,938 | INFO | CATALOG_PRIORS popularity_alpha=0.350000 transition_beta=0.500000 source=train_histories_only enabled=True
+2026-09-02 23:35:15,045 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/amazon-clothing-shoes-and-jewelry_1321134_c23695a391bd_prompt_tok32.pt fingerprint=c23695a391bd
+2026-09-02 23:35:26,477 | INFO | GRAPH_EMBEDDINGS enabled=True source=train_histories_only main_device=cuda:0 graph_device=cuda:0
+2026-09-02 23:35:33,959 | INFO | ADAPTATION_MODE mode=multi_lora enable_lora=1
+2026-09-02 23:35:33,960 | INFO | ADAPTER_ROUTES {'long': ('candidate_lora', 'delta_lora', 'gate_lora', 'output_lora'), 'short': ('candidate_lora', 'delta_lora', 'gate_lora', 'output_lora'), 'preference': ('transition_lora', 'state_lora'), 'coordinator': ('state_lora', 'mix_lora', 'score_lora')}
+2026-09-02 23:35:33,960 | INFO | agent_parameters={'long': 16513, 'short': 16513, 'preference': 99330, 'coordinator': 14373, 'shared_projection': 327680, 'graph': 608045568}
+2026-09-02 23:35:44,182 | INFO | training_transitions=2000000
+2026-09-02 23:35:44,182 | INFO | schedule specialist_epochs=4 coordinator_epochs=4 joint_ranking_epochs=10 validate_every_steps=12000 validation_users=0 periodic_test_users=0 monitor=ndcg@10 early_stopping_patience=6

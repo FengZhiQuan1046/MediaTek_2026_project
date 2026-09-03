@@ -1,0 +1,46 @@
+2026-09-03 18:18:22,528 | INFO | run_id=20260903_181822 dataset=amazon-toys-and-games device=cuda:0
+2026-09-03 18:18:22,528 | INFO | EXPERIMENT_NOTE amazons_lora subset=Toys_and_Games; common preprocessing; common architecture; periodic validation/test
+2026-09-03 18:18:22,528 | INFO | EXPERIMENT_CONFIG {"batch_size": 128, "cache_dir": "/workspace/P78123011/cache", "candidates": 192, "coordinator_epochs": 4, "coordinator_lr": 0.0001, "data_path": null, "dataset": "amazon-toys-and-games", "device": "cuda:0", "dim": 128, "early_stopping_patience": 6, "enable_lora": 1, "eval_batch_size": 64, "experiment_note": "amazons_lora subset=Toys_and_Games; common preprocessing; common architecture; periodic validation/test", "full_catalog_supervised": false, "future_decay": 0.5, "future_horizon": 3, "generate_reasons": false, "graph_device": "cuda:0", "hard_negative_pool_multiplier": 4, "item_prompt_prefix": "Preference-aware product representation: ", "item_vector_artifact": null, "joint_epochs": 10, "joint_lr": 5e-05, "lora_alpha": 32.0, "lora_dropout": 0.05, "lora_rank": 16, "lr_patience": 2, "mamba_encode_batch_size": 32, "mamba_max_tokens": 32, "max_events": null, "max_history": 100, "max_transitions": 1500000, "min_rating": 4.0, "monitor_metric": "ndcg@10", "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora", "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora/Toys_and_Games/rl_20260903_181821", "periodic_test_user_limit": 0, "popularity_alpha": 0.3, "preference_balance_coef": 0.01, "preference_coef": 0.2, "preference_contrastive_coef": 0.05, "preference_count": 64, "preference_hidden": 128, "preference_score_weight": 0.2, "preference_separation_coef": 0.01, "preference_temperature": 0.2, "preference_transition_coef": 0.1, "reason_count": 20, "reason_max_new_tokens": 40, "refresh_data_cache": false, "resume_checkpoint": null, "save_model_weights": false, "score_file": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora/Toys_and_Games/rl_20260903_181821/Toys_and_Games_scores.json", "seed": 25252, "short_window": 10, "skip_mamba": false, "specialist_epochs": 4, "specialist_lr": 0.0001, "target_recall_at_10": 0.15, "transition_beta": 0.5, "use_graph_embeddings": true, "validate_every_steps": 6000, "validation_user_limit": 0}
+2026-09-03 18:51:19,520 | INFO | INTERACTION_CACHE miss_saved path=/workspace/P78123011/cache/mamba_multi_agent_data/amazon-toys-and-games_2cc47abc910b.pkl
+2026-09-03 18:51:19,533 | INFO | users=568262 items=333160 train_interactions=3734374
+2026-09-03 18:51:57,595 | INFO | CATALOG_PRIORS popularity_alpha=0.300000 transition_beta=0.500000 source=train_histories_only enabled=True
+2026-09-03 20:11:31,060 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/amazon-toys-and-games_333160_f086274d20d3_prompt_tok32.pt fingerprint=f086274d20d3
+2026-09-03 20:11:33,691 | INFO | GRAPH_EMBEDDINGS enabled=True source=train_histories_only main_device=cuda:0 graph_device=cuda:0
+2026-09-03 20:11:35,199 | INFO | ADAPTATION_MODE mode=multi_lora enable_lora=1
+2026-09-03 20:11:35,199 | INFO | ADAPTER_ROUTES {'long': ('candidate_lora', 'delta_lora', 'gate_lora', 'output_lora'), 'short': ('candidate_lora', 'delta_lora', 'gate_lora', 'output_lora'), 'preference': ('transition_lora', 'state_lora'), 'coordinator': ('state_lora', 'mix_lora', 'score_lora')}
+2026-09-03 20:11:35,200 | INFO | agent_parameters={'long': 16513, 'short': 16513, 'preference': 99330, 'coordinator': 14373, 'shared_projection': 327680, 'graph': 115382016}
+2026-09-03 20:11:44,169 | INFO | training_transitions=1500000
+2026-09-03 20:11:44,169 | INFO | schedule specialist_epochs=4 coordinator_epochs=4 joint_ranking_epochs=10 validate_every_steps=6000 validation_users=0 periodic_test_users=0 monitor=ndcg@10 early_stopping_patience=6
+2026-09-03 22:08:04,905 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=specialists | epoch=1 | step=6000 | users=564666/564666
+NDCG  | @5 0.018187 | @10 0.020442
+Recall| @5 0.024074 | @10 0.031068
+Hit   | @5 0.024074 | @10 0.031068
+================================
+2026-09-03 22:54:10,793 | INFO | 
+========== PERIODIC TEST ==========
+stage=specialists | epoch=1 | step=6000 | users=564666/564666
+NDCG  | @5 0.017246 | @10 0.019210
+Recall| @5 0.022581 | @10 0.028686
+Hit   | @5 0.022581 | @10 0.028686
+================================
+2026-09-03 22:54:10,793 | INFO | VALID_STEP step=6000 stage=specialists epoch=1 ndcg@10=0.020442 recall@10=0.031068 improved=True
+2026-09-03 22:54:10,940 | INFO | BEST_MODEL_IN_MEMORY step=6000 stage=specialists ndcg@10=0.020442
+2026-09-03 23:59:57,404 | INFO | stage=specialists epoch=1 loss=13.971734 steps=11719 transitions/s=186.33
+2026-09-04 01:40:08,262 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=specialists | epoch=2 | step=17719 | users=564666/564666
+NDCG  | @5 0.027988 | @10 0.031657
+Recall| @5 0.036822 | @10 0.048216
+Hit   | @5 0.036822 | @10 0.048216
+================================
+2026-09-04 02:13:39,431 | INFO | 
+========== PERIODIC TEST ==========
+stage=specialists | epoch=2 | step=17719 | users=564666/564666
+NDCG  | @5 0.025786 | @10 0.028987
+Recall| @5 0.033374 | @10 0.043312
+Hit   | @5 0.033374 | @10 0.043312
+================================
+2026-09-04 02:13:39,432 | INFO | VALID_STEP step=17719 stage=specialists epoch=2 ndcg@10=0.031657 recall@10=0.048216 improved=True
+2026-09-04 02:13:39,735 | INFO | BEST_MODEL_IN_MEMORY step=17719 stage=specialists ndcg@10=0.031657

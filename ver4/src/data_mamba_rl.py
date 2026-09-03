@@ -259,7 +259,8 @@ def load_yelp(
 
 
 def amazon_subset(name: str) -> str:
-    if name.lower() in {"amazon-games", "amazon-toys"}:
+    # Backward-compatible aliases all refer to the complete official category.
+    if name.lower() in {"amazon-games", "amazon-toys", "amazon-toys-and-games"}:
         return "raw_review_Toys_and_Games"
     if name.startswith("amazon:"):
         subset = name.split(":", 1)[1]
@@ -274,19 +275,12 @@ def amazon_subset(name: str) -> str:
     return f"raw_review_{category}"
 
 
-def amazon_item_group(name: str) -> str | None:
-    """Return the deterministic split for aliases of Amazon's combined category."""
-    return {"amazon-games": "games", "amazon-toys": "toys"}.get(name.lower())
-
-
 def load_recommendation_data(
     dataset: str,
     data_path: str | None,
     cache_dir: str,
     max_events: int | None = None,
     min_rating: float = 4.0,
-    min_user_events: int = 5,
-    sasrec_filtering: bool = False,
 ) -> InteractionData:
     name = dataset.lower()
     if name == "synthetic":
@@ -295,7 +289,7 @@ def load_recommendation_data(
         events = load_movielens(name, data_path, cache_dir, max_events, min_rating)
     elif name.startswith("amazon-") or name.startswith("amazon:"):
         events = load_amazon(
-            amazon_subset(dataset), max_events, cache_dir, item_group=amazon_item_group(dataset)
+            amazon_subset(dataset), max_events, cache_dir
         )
     elif name in {"yelp19", "yelp-2019", "yelp23", "yelp-2023"}:
         events = load_yelp(data_path, max_events, min_rating)
@@ -304,8 +298,4 @@ def load_recommendation_data(
         raise ValueError(f"Unknown dataset {dataset!r}. Supported values: {supported}")
     if not events:
         raise RuntimeError(f"No positive interactions loaded for {dataset!r}; check --min-rating and --data-path")
-    return build_data(
-        events,
-        min_user_events=min_user_events,
-        sasrec_filtering=sasrec_filtering,
-    )
+    return build_data(events)

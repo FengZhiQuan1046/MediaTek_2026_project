@@ -1,13 +1,17 @@
 import csv
 import importlib.util
 from pathlib import Path
+import sys
 import tempfile
+import types
 import unittest
+from unittest.mock import patch
 
 HAS_TORCH = importlib.util.find_spec("torch") is not None
 if HAS_TORCH:
     import torch
-    from src.data_mamba_rl import amazon_item_group, amazon_subset, load_movielens, load_recommendation_data
+    from src.data import load_amazon
+    from src.data_mamba_rl import amazon_subset, load_movielens, load_recommendation_data
     from src.model_mamba_rl import FullRankUpdate, LoRAUpdate, MultiAgentMambaRecommender
     from src.train_mamba_rl import (
         build_transitions, candidate_slates, evaluate, evaluation_interval, history_batch,
@@ -141,7 +145,7 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertTrue(all(parameter.grad is not None for parameter in model.graph.parameters()))
 
     def test_synthetic_transition_batch(self):
-        data = load_recommendation_data("synthetic", None, "/tmp", min_user_events=5)
+        data = load_recommendation_data("synthetic", None, "/tmp")
         transitions = build_transitions(data, maximum=10, seed=1)
         histories, lengths, targets = history_batch(data, transitions[:4], 10, "cpu")
         slates = candidate_slates(targets, data.num_items, 4)
@@ -150,13 +154,13 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertTrue(torch.equal(slates[:, 0], targets))
 
     def test_transition_budget_prioritises_user_coverage(self):
-        data = load_recommendation_data("synthetic", None, "/tmp", min_user_events=5)
+        data = load_recommendation_data("synthetic", None, "/tmp")
         eligible_users = {user for user, history in data.train_by_user.items() if len(history) > 1}
         transitions = build_transitions(data, maximum=len(eligible_users), seed=7)
         self.assertEqual({row.user for row in transitions}, eligible_users)
 
     def test_future_soft_targets_use_training_sequence_only(self):
-        data = load_recommendation_data("synthetic", None, "/tmp", min_user_events=5)
+        data = load_recommendation_data("synthetic", None, "/tmp")
         transition = build_transitions(data, maximum=1, seed=3)
         ids, weights = future_target_batch(data, transition, 3, 0.5, "cpu")
         row = transition[0]
@@ -187,12 +191,38 @@ class MultiAgentMambaRLTest(unittest.TestCase):
         self.assertEqual(amazon_subset("amazon-movies-and-tv"), "raw_review_Movies_and_TV")
         self.assertEqual(amazon_subset("amazon-games"), "raw_review_Toys_and_Games")
         self.assertEqual(amazon_subset("amazon-toys"), "raw_review_Toys_and_Games")
-        self.assertEqual(amazon_item_group("amazon-games"), "games")
-        self.assertEqual(amazon_item_group("amazon-toys"), "toys")
-        self.assertIsNone(amazon_item_group("amazon-toys-and-games"))
+        self.assertEqual(amazon_subset("amazon-toys-and-games"), "raw_review_Toys_and_Games")
+
+    def test_toys_and_games_keeps_the_complete_official_subset(self):
+        reviews = {
+            "full": [
+                {"user_id": "u1", "parent_asin": "toy", "timestamp": 1, "title": "Toy review"},
+                {"user_id": "u2", "parent_asin": "game", "timestamp": 2, "title": "Game review"},
+                {"user_id": "u3", "parent_asin": "no-meta", "timestamp": 3, "title": "Fallback review"},
+            ]
+        }
+        metadata = [
+            {"parent_asin": "toy", "title": "Building blocks", "main_category": "Toys & Games"},
+            {"parent_asin": "game", "title": "Board game", "main_category": "Toys & Games"},
+        ]
+        datasets_module = types.ModuleType("datasets")
+        datasets_module.__version__ = "3.6.0"
+
+        def fake_load_dataset(_repository, subset, **kwargs):
+            if subset == "raw_review_Toys_and_Games":
+                return reviews
+            if subset == "raw_meta_Toys_and_Games" and kwargs.get("split") == "full":
+                return metadata
+            raise AssertionError((subset, kwargs))
+
+        datasets_module.load_dataset = fake_load_dataset
+        with patch.dict(sys.modules, {"datasets": datasets_module}):
+            rows = load_amazon("raw_review_Toys_and_Games", None, "/tmp")
+
+        self.assertEqual({item for _, item, _, _ in rows}, {"toy", "game", "no-meta"})
 
     def test_evaluation_reports_hit_at_5_and_10(self):
-        data = load_recommendation_data("synthetic", None, "/tmp", min_user_events=5)
+        data = load_recommendation_data("synthetic", None, "/tmp")
         model = MultiAgentMambaRecommender(
             torch.randn(data.num_items, 8), dim=4, lora_rank=2, use_graph_embeddings=False,
         )

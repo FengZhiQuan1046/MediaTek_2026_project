@@ -10,19 +10,10 @@ PYTHON_BIN="${PYTHON_BIN:-/dataspace/P78123011/miniconda3/envs/py31014/bin/pytho
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 # 手動設定要使用的實體 GPU："0"、"1"、"0,1" 或 "1,0"
 # 使用兩張卡時，第一張供主模型使用，第二張供 graph/preference 模型使用。
-GPU_IDS="0"
+GPU_IDS="1"
 
-# True: use SASRec's one-pass 5-core user/item filtering before leave-two-out.
-# False: preserve ver4's original user-only filtering.
-USE_SASREC_FILTERING="${USE_SASREC_FILTERING:-True}"
-case "$USE_SASREC_FILTERING" in
-  True) SASREC_FILTER_OPTION="--sasrec-filtering" ;;
-  False) SASREC_FILTER_OPTION="--no-sasrec-filtering" ;;
-  *)
-    echo "USE_SASREC_FILTERING must be True or False, got: $USE_SASREC_FILTERING" >&2
-    exit 2
-    ;;
-esac
+# Project preprocessing always applies the one-pass user/item threshold from
+# src/data.py before the chronological leave-two-out split.
 
 # ================= 手動調整：訓練模式與三階段超參數 =================
 # 1: LoRA；0: full-rank finetuning（推薦模型內的 dense adaptation）
@@ -100,7 +91,6 @@ run_subset() {
     --validate-every-steps "$validate_every_steps" \
     --validation-user-limit 0 \
     --periodic-test-user-limit 0 \
-    "$SASREC_FILTER_OPTION" \
     --max-transitions "$max_transitions" \
     --candidates "$candidates" \
     --specialist-epochs "$SPECIALISTS_EPOCH" \
@@ -111,7 +101,7 @@ run_subset() {
     --joint-lr "$JOINT_LR" \
     --popularity-alpha "$popularity_alpha" \
     --transition-beta "$transition_beta" \
-    --experiment-note "$OUTPUT_GROUP subset=$subset_name; sasrec_filtering=$USE_SASREC_FILTERING; common architecture; periodic validation/test"
+    --experiment-note "$OUTPUT_GROUP subset=$subset_name; common preprocessing; common architecture; periodic validation/test"
 }
 
 # One command per requested subset. Set REPEATS=5 to repeat the whole suite five times.
@@ -122,8 +112,8 @@ for ((run_number = 1; run_number <= REPEATS; run_number++)); do
   # run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
   # run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
   # run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5
-  run_subset "Toys_and_Games" "amazon-toys" 6000 1500000 192 0.30 0.5
-  run_subset "Video_Games" "amazon-video-games" 4000 1000000 128 0.20 0.5
-  run_subset "Clothing_Shoes_and_Jewelry" "amazon-clothing-shoes-and-jewelry" 12000 2000000 256 0.35 0.5
-  run_subset "Beauty_and_Personal_Care" "amazon:Beauty_and_Personal_Care" 12000 2000000 256 0.35 0.5
+  run_subset "Toys_and_Games" "amazon-toys-and-games" 6000 1500000 192 0.30 0.5
+  # run_subset "Video_Games" "amazon-video-games" 4000 1000000 128 0.20 0.5
+  # run_subset "Clothing_Shoes_and_Jewelry" "amazon-clothing-shoes-and-jewelry" 12000 2000000 256 0.35 0.5
+  # run_subset "Beauty_and_Personal_Care" "amazon:Beauty_and_Personal_Care" 12000 2000000 256 0.35 0.5
 done

@@ -52,7 +52,7 @@ SUBSETS=Full_Beauty,Video_Games bash run.sh 0
 
 ## 資料處理
 
-`USE_SASREC_FILTERING=True`（預設）使用 SASRec 原始 preprocessing：
+所有模型固定使用本專案的 preprocessing：
 
 1. 在未過濾互動上計算 user/item frequency。
 2. 一次性保留互動數至少 5 的 user 及 item（不是 iterative k-core）。
@@ -60,13 +60,7 @@ SUBSETS=Full_Beauty,Video_Games bash run.sh 0
 4. 最後兩筆分別作為 validation/test。
 5. 過濾後少於三筆的 user 僅留在 training。
 
-若要使用 ver4 原本只有 user threshold 的方法：
-
-```bash
-USE_SASREC_FILTERING=False bash run.sh 0
-```
-
-兩種模式會使用不同的 cache key。
+此規則沒有替代的 user-only 模式；`MIN_INTERACTIONS = 5` 是共用且唯一的資料過濾門檻。
 
 ## 常用超參數
 

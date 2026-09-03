@@ -21,7 +21,7 @@ from train import evaluate, sample_training_batch
 
 class SASRecTest(unittest.TestCase):
     def setUp(self):
-        self.data = build_data(synthetic_events(), min_user_events=5, sasrec_filtering=True)
+        self.data = build_data(synthetic_events())
 
     def test_forward_shapes_and_finite_logits(self):
         model = SASRec(

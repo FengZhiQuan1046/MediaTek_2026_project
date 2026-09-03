@@ -10,7 +10,7 @@ class DataTest(unittest.TestCase):
         self.assertEqual(data.num_users, 24)
         self.assertTrue(all(len(history) == 3 for history in data.train_by_user.values()))
 
-    def test_sasrec_filtering_matches_one_pass_five_core_and_split(self):
+    def test_project_filtering_matches_one_pass_five_core_and_split(self):
         events = []
         common_items = [f"i{index}" for index in range(5)]
         for user_index in range(5):
@@ -20,7 +20,7 @@ class DataTest(unittest.TestCase):
             events.append((user, f"rare_{user}", 10, f"rare_{user}"))
 
         # Passes the raw user threshold, but only two interactions survive the
-        # item filter, so SASRec keeps this user for training only.
+        # item filter, so the project keeps this user for training only.
         events.extend([
             ("u_short", "i0", 0, "i0"),
             ("u_short", "i1", 1, "i1"),
@@ -31,7 +31,7 @@ class DataTest(unittest.TestCase):
         # Four raw interactions are insufficient despite using common items.
         events.extend(("u_low", item, index, item) for index, item in enumerate(common_items[:4]))
 
-        data = build_data(events, min_user_events=5, sasrec_filtering=True)
+        data = build_data(events)
 
         self.assertEqual(data.num_users, 6)
         self.assertEqual(data.num_items, 5)

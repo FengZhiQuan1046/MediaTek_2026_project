@@ -19,7 +19,7 @@ import torch
 from torch.nn import functional as F
 from tqdm.auto import tqdm
 
-from src.data import edge_index
+from src.data import MIN_INTERACTIONS, edge_index
 from src.data_mamba_rl import load_recommendation_data
 from src.model import MAMBA_MODEL_ID, load_or_encode_text
 from src.model_mamba_rl import MultiAgentMambaRecommender
@@ -87,9 +87,8 @@ def load_recommendation_data_cached(args, logger):
         "data_path": str(Path(args.data_path).resolve()) if args.data_path else None,
         "max_events": args.max_events,
         "min_rating": args.min_rating,
-        "min_user_events": args.min_user_events,
-        "sasrec_filtering": args.sasrec_filtering,
-        "schema_version": 1,
+        "min_interactions": MIN_INTERACTIONS,
+        "schema_version": 2,
     }
     digest = hashlib.sha1(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:12]
     safe_dataset = args.dataset.replace(":", "_").replace("/", "_")
@@ -102,7 +101,7 @@ def load_recommendation_data_cached(args, logger):
 
     data = load_recommendation_data(
         args.dataset, args.data_path, args.cache_dir, args.max_events,
-        args.min_rating, args.min_user_events, args.sasrec_filtering,
+        args.min_rating,
     )
     artifact.parent.mkdir(parents=True, exist_ok=True)
     temporary = artifact.with_suffix(".tmp")
@@ -154,7 +153,7 @@ def build_transitions(data, maximum: int | None, seed: int) -> list[Transition]:
                         reservoir[replacement] = transition
         result.extend(reservoir)
     if not result:
-        raise RuntimeError("No train prefixes exist; load more interactions or lower --min-user-events.")
+        raise RuntimeError("No train prefixes exist after interaction filtering; load more interactions.")
     rng.shuffle(result)
     return result
 
@@ -743,17 +742,6 @@ def parse_args():
     parser.add_argument("--max-events", type=int, default=None)
     parser.add_argument("--max-transitions", type=int, default=500_000)
     parser.add_argument("--min-rating", type=float, default=4.0)
-    parser.add_argument("--min-user-events", type=int, default=5)
-    parser.add_argument(
-        "--sasrec-filtering",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help=(
-            "Use SASRec's one-pass 5-core user/item filter before chronological "
-            "leave-two-out; users left with fewer than three interactions remain "
-            "training-only. Disabled preserves the original user-only filter."
-        ),
-    )
     parser.add_argument("--specialist-epochs", type=int, default=3)
     parser.add_argument("--coordinator-epochs", type=int, default=2)
     parser.add_argument(

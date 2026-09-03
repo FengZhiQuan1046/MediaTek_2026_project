@@ -26,6 +26,7 @@ VER4_ROOT = MEDIATEK_ROOT / "ver4"
 if str(VER4_ROOT) not in sys.path:
     sys.path.insert(0, str(VER4_ROOT))
 
+from src.data import MIN_INTERACTIONS  # noqa: E402
 from src.data_mamba_rl import load_recommendation_data  # noqa: E402
 from model import SASRec  # noqa: E402
 
@@ -57,9 +58,8 @@ def load_data_cached(args, logger):
         "data_path": str(Path(args.data_path).resolve()) if args.data_path else None,
         "max_events": args.max_events,
         "min_rating": args.min_rating,
-        "min_user_events": args.min_user_events,
-        "sasrec_filtering": args.sasrec_filtering,
-        "schema_version": 1,
+        "min_interactions": MIN_INTERACTIONS,
+        "schema_version": 2,
     }
     digest = hashlib.sha1(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:12]
     safe_dataset = args.dataset.replace(":", "_").replace("/", "_")
@@ -76,8 +76,6 @@ def load_data_cached(args, logger):
         args.cache_dir,
         args.max_events,
         args.min_rating,
-        args.min_user_events,
-        args.sasrec_filtering,
     )
     artifact.parent.mkdir(parents=True, exist_ok=True)
     temporary = artifact.with_suffix(".tmp")
@@ -202,8 +200,6 @@ def parse_args():
     parser.add_argument("--refresh-data-cache", action="store_true")
     parser.add_argument("--max-events", type=int, default=None)
     parser.add_argument("--min-rating", type=float, default=4.0)
-    parser.add_argument("--min-user-events", type=int, default=5)
-    parser.add_argument("--sasrec-filtering", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--maxlen", type=int, default=100)
     parser.add_argument("--hidden-units", type=int, default=128)
     parser.add_argument("--num-blocks", type=int, default=2)
@@ -363,7 +359,6 @@ def main() -> None:
         "num_items": data.num_items,
         "train_interactions": sum(map(len, data.train_by_user.values())),
         "visible_gpus": visible_gpus,
-        "sasrec_filtering": args.sasrec_filtering,
         "history": history,
     }
     (output / "metrics.json").write_text(

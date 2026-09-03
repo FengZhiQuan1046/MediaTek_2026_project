@@ -44,30 +44,10 @@ def _metadata_text(row: dict) -> str:
     return " ".join(str(part).strip() for part in parts if part and str(part).strip())
 
 
-_GAME_METADATA_TERMS = (
-    "game", "gaming", "puzzle", "chess", "checkers", "domino", "dice",
-    "playing card", "board game", "tabletop", "mahjong", "bingo",
-)
-
-
-def _amazon_toys_and_games_group(row: dict) -> str:
-    """Split the combined catalog deterministically using stable metadata fields."""
-    categories = row.get("categories") or []
-    if isinstance(categories, str):
-        categories = [categories]
-    haystack = " ".join(
-        str(value).lower()
-        for value in (row.get("title"), row.get("subtitle"), row.get("main_category"), *categories)
-        if value
-    )
-    return "games" if any(term in haystack for term in _GAME_METADATA_TERMS) else "toys"
-
-
 def load_amazon(
     subset: str,
     max_events: int | None,
     cache_dir: str | None = None,
-    item_group: str | None = None,
 ) -> list[tuple[str, str, int, str]]:
     """Load reviews and item metadata from matching Amazon Reviews 2023 configs.
 
@@ -86,10 +66,6 @@ def load_amazon(
 
     if not subset.startswith("raw_review_"):
         raise ValueError("--subset must start with 'raw_review_', e.g. raw_review_All_Beauty")
-    if item_group not in {None, "games", "toys"}:
-        raise ValueError(f"Unsupported Amazon item group: {item_group!r}")
-    if item_group is not None and subset != "raw_review_Toys_and_Games":
-        raise ValueError("Games/Toys item grouping is only valid for raw_review_Toys_and_Games")
     # Keep the DatasetDict form used in the official review-loading example.
     with tqdm(total=1, desc="Loading full review dataset", unit="dataset", disable=not _show_progress()) as progress:
         reviews = load_dataset(
@@ -118,15 +94,12 @@ def load_amazon(
         parent_asin = row.get("parent_asin")
         if (
             parent_asin in required_items
-            and (item_group is None or _amazon_toys_and_games_group(row) == item_group)
             and (text := _metadata_text(row))
         ):
             item_texts[str(parent_asin)] = text
 
     rows = []
     for row in tqdm(limited_reviews, total=len(limited_reviews), desc="Normalising review interactions", unit="review", disable=not _show_progress()):
-        if item_group is not None and str(row.get("parent_asin") or "") not in item_texts:
-            continue
         normal = _normalise_row(row, item_texts)
         if normal is not None:
             rows.append(normal)
@@ -146,13 +119,11 @@ def synthetic_events() -> list[tuple[str, str, int, str]]:
     return rows
 
 
-SASREC_MIN_INTERACTIONS = 5
+MIN_INTERACTIONS = 5
 
 
 def build_data(
     events: Iterable[tuple[str, str, int, str]],
-    min_user_events: int = 3,
-    sasrec_filtering: bool = False,
 ) -> InteractionData:
     per_user: dict[str, list[tuple[int, str, str]]] = defaultdict(list)
     item_counts: dict[str, int] = defaultdict(int)
@@ -161,27 +132,20 @@ def build_data(
         per_user[user].append((ts, item, text))
         item_counts[item] += 1
 
-    if sasrec_filtering:
-        # Match SASRec/data/DataProcessing.py: count on the raw interactions,
-        # then apply user/item >= 5 once (this is not an iterative k-core).
-        per_user = {
-            user: sorted(
-                (
-                    entry for entry in entries
-                    if item_counts[entry[1]] >= SASREC_MIN_INTERACTIONS
-                ),
-                key=lambda entry: entry[0],
-            )
-            for user, entries in per_user.items()
-            if len(entries) >= SASREC_MIN_INTERACTIONS
-        }
-        per_user = {user: entries for user, entries in per_user.items() if entries}
-    else:
-        per_user = {
-            user: sorted(entries)
-            for user, entries in per_user.items()
-            if len(entries) >= min_user_events
-        }
+    # Project preprocessing: count raw interactions, then apply the user/item
+    # threshold once. This deliberately is not an iterative k-core.
+    per_user = {
+        user: sorted(
+            (
+                entry for entry in entries
+                if item_counts[entry[1]] >= MIN_INTERACTIONS
+            ),
+            key=lambda entry: entry[0],
+        )
+        for user, entries in per_user.items()
+        if len(entries) >= MIN_INTERACTIONS
+    }
+    per_user = {user: entries for user, entries in per_user.items() if entries}
     if not per_user:
         raise RuntimeError("No users have enough events after filtering.")
 
@@ -197,9 +161,9 @@ def build_data(
     for user, entries in tqdm(per_user.items(), total=len(per_user), desc="Creating chronological train/valid/test split", unit="user", disable=not _show_progress()):
         ids = [item_map[item] for _, item, _ in entries]
         uid = user_map[user]
-        if sasrec_filtering and len(ids) < 3:
-            # SASRec retains these users for training but skips evaluation
-            # because they do not receive validation/test targets.
+        if len(ids) < 3:
+            # Users with fewer than three surviving interactions remain
+            # training-only because they cannot receive both held-out targets.
             train_by_user[uid] = ids
         else:
             train_by_user[uid] = ids[:-2]

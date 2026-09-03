@@ -1,0 +1,4 @@
+# Reuse the validated CUDA/PyTorch/Hugging Face environment used by ver4.
+-r ../../ver4/requirements.txt
+scikit-learn>=1.4,<2
+scipy>=1.11,<2
