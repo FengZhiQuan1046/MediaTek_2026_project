@@ -36,20 +36,23 @@ class LightGCN(nn.Module):
 
 
 class MambaTextEncoder:
-    """Frozen product-text encoder backed by the official HF Mamba 2.8B checkpoint."""
-    def __init__(self, device: str, cache_dir: str, max_tokens: int = 48):
+    """Frozen product-text encoder backed by a Hugging Face Mamba checkpoint."""
+    def __init__(
+        self, device: str, cache_dir: str, max_tokens: int = 48,
+        model_id: str = MAMBA_MODEL_ID,
+    ):
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        self.device, self.max_tokens = device, max_tokens
+        self.device, self.max_tokens, self.model_id = device, max_tokens, model_id
         # The original mamba-2.8b repository has no complete HF tokenizer files.
         # Its official -hf companion keeps the same checkpoint and adds GPT-NeoX
         # tokenizer/config assets required by AutoTokenizer and Transformers.
         with tqdm(total=1, desc="Loading Mamba tokenizer", unit="component") as progress:
-            self.tokenizer = AutoTokenizer.from_pretrained(MAMBA_MODEL_ID, cache_dir=cache_dir)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir)
             progress.update(1)
-        with tqdm(total=1, desc="Loading Mamba 2.8B weights", unit="model") as progress:
+        with tqdm(total=1, desc=f"Loading Mamba weights ({model_id})", unit="model") as progress:
             self.model = AutoModelForCausalLM.from_pretrained(
-                MAMBA_MODEL_ID, cache_dir=cache_dir,
+                model_id, cache_dir=cache_dir,
                 torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32,
             ).to(device).eval()
             progress.update(1)
@@ -130,6 +133,7 @@ class HybridRecommender(nn.Module):
 def load_or_encode_text(
     texts: list[str], artifact: str, device: str, skip_mamba: bool, cache_dir: str,
     batch_size: int = 4, max_tokens: int = 48, prompt_prefix: str = "",
+    model_id: str = MAMBA_MODEL_ID,
 ) -> torch.Tensor | None:
     path = Path(artifact)
     if skip_mamba:
@@ -140,9 +144,9 @@ def load_or_encode_text(
             progress.update(1)
         return vectors
     path.parent.mkdir(parents=True, exist_ok=True)
-    vectors = MambaTextEncoder(device, cache_dir, max_tokens=max_tokens).encode(
-        texts, batch_size=batch_size, prompt_prefix=prompt_prefix
-    )
+    vectors = MambaTextEncoder(
+        device, cache_dir, max_tokens=max_tokens, model_id=model_id
+    ).encode(texts, batch_size=batch_size, prompt_prefix=prompt_prefix)
     with tqdm(total=1, desc="Saving Mamba item-vector cache", unit="artifact") as progress:
         torch.save(vectors, path)
         progress.update(1)

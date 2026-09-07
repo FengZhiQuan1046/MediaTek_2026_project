@@ -227,13 +227,17 @@ def preference_contrastive_loss(states, target_vectors, target_ids, temperature=
 
 def model_hard_negative_slates(
     model, states, data, transitions, future_ids, count, pool_multiplier, graph_items,
+    hard_fraction=0.75, use_in_batch=True,
 ):
-    """Mine high-scoring negatives from a random pool while excluding train positives."""
+    """Mix model-mined, random and in-batch negatives without known positives."""
     negative_count = max(count - future_ids.size(1), 1)
     pool_size = max(negative_count * pool_multiplier, negative_count)
     pool = torch.randint(
         data.num_items, (len(transitions), pool_size), device=future_ids.device
     )
+    if use_in_batch and len(transitions) > 1:
+        in_batch = future_ids.reshape(1, -1).expand(len(transitions), -1)
+        pool = torch.cat((pool, in_batch), dim=1)
     with torch.no_grad():
         pool_vectors = model.project_ids(pool, graph_items)
         pool_scores = model.logits_from_states(states, pool_vectors)["coordinator"].float()
@@ -247,7 +251,19 @@ def model_hard_negative_slates(
                 pool_scores[row].masked_fill_(
                     (pool[row].unsqueeze(1) == known.unsqueeze(0)).any(1), -torch.inf
                 )
-        selected = pool_scores.topk(negative_count, dim=1).indices
+        hard_count = min(round(negative_count * hard_fraction), negative_count)
+        random_count = negative_count - hard_count
+        pieces = []
+        if hard_count:
+            hard_indices = pool_scores.topk(hard_count, dim=1).indices
+            pieces.append(hard_indices)
+            pool_scores.scatter_(1, hard_indices, -torch.inf)
+        if random_count:
+            random_scores = torch.rand_like(pool_scores).masked_fill(
+                ~torch.isfinite(pool_scores), -torch.inf
+            )
+            pieces.append(random_scores.topk(random_count, dim=1).indices)
+        selected = torch.cat(pieces, dim=1)
     negatives = pool.gather(1, selected)
     return torch.cat((future_ids, negatives), dim=1)
 
@@ -347,7 +363,8 @@ def log_metric_block(logger, label, metrics, stage, epoch, step) -> None:
 
 def preference_auxiliary_losses(model, output, target_vectors):
     """Supervise next-preference prediction and prevent prototype collapse."""
-    target_preference = model.preference_targets(target_vectors).detach()
+    target_assignment = model.preference_targets(target_vectors)
+    target_preference = target_assignment.detach()
     predicted = output["preference_next"].clamp_min(1e-8)
     current = output["preference_current"].detach().clamp_min(1e-8)
     prediction = F.kl_div(predicted.log(), target_preference, reduction="batchmean")
@@ -361,13 +378,28 @@ def preference_auxiliary_losses(model, output, target_vectors):
     transition = F.binary_cross_entropy_with_logits(
         output["preference_change_logit"], change_target
     )
-    mean_assignment = target_preference.mean(0).clamp_min(1e-8)
+    assignment = target_assignment.clamp_min(1e-8)
+    mean_assignment = assignment.mean(0).clamp_min(1e-8)
     balance = (mean_assignment * (mean_assignment.log() + math.log(mean_assignment.numel()))).sum()
+    sharpness = -(assignment * assignment.log()).sum(-1).mean() / math.log(
+        assignment.size(-1)
+    )
     prototypes = F.normalize(model.preference_agent.prototypes, dim=-1)
     gram = prototypes @ prototypes.T
     identity = torch.eye(gram.size(0), device=gram.device, dtype=gram.dtype)
     separation = ((gram - identity) ** 2).mean()
-    return prediction, transition, balance, separation
+    return prediction, transition, balance, separation, sharpness
+
+
+def agent_diversity_loss(states):
+    """Softly discourage long/short/preference specialists from identical states."""
+    specialists = [F.normalize(state, dim=-1) for state in (states[0], states[1], states[3])]
+    similarities = [
+        (specialists[left] * specialists[right]).sum(-1).square().mean()
+        for left in range(len(specialists))
+        for right in range(left + 1, len(specialists))
+    ]
+    return torch.stack(similarities).mean()
 
 
 def evaluation_interval(configured_steps: int, steps_per_epoch: int) -> int:
@@ -382,7 +414,10 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                 transition_beta, validation_user_limit, periodic_test_user_limit,
                 preference_coef, preference_transition_coef, preference_balance_coef,
                 preference_separation_coef, future_horizon, future_decay,
-                hard_negative_pool_multiplier, preference_contrastive_coef, seed):
+                hard_negative_pool_multiplier, hard_negative_fraction,
+                hard_negative_warmup_epochs, use_in_batch_negatives,
+                preference_contrastive_coef, preference_sharpness_coef,
+                agent_diversity_coef, seed):
     if epochs == 0:
         return []
     model.set_stage(stage)
@@ -427,6 +462,10 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                     slates = model_hard_negative_slates(
                         model, states, data, batch, future_ids, candidates,
                         hard_negative_pool_multiplier, graph_items,
+                        hard_fraction=hard_negative_fraction * min(
+                            1.0, epoch / max(hard_negative_warmup_epochs, 1)
+                        ),
+                        use_in_batch=use_in_batch_negatives,
                     )
                     candidate_vectors = model.project_ids(slates, graph_items)
                     output = model.logits_from_states(states, candidate_vectors)
@@ -440,6 +479,7 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                     + preference_transition_coef * preference_terms[1]
                     + preference_balance_coef * preference_terms[2]
                     + preference_separation_coef * preference_terms[3]
+                    + preference_sharpness_coef * preference_terms[4]
                 )
                 ranking_losses = {
                     name: soft_target_ranking_loss(
@@ -463,6 +503,7 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                     loss = (
                         supervised + preference_auxiliary
                         + preference_contrastive_coef * contrastive
+                        + agent_diversity_coef * agent_diversity_loss(output["states"])
                     )
             optimizer.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
@@ -559,6 +600,11 @@ def evaluate(
         "preference_current_entropy": 0.0,
         "preference_next_entropy": 0.0,
         "preference_ranking_weight": 0.0,
+        "long_agent_weight": 0.0,
+        "short_agent_weight": 0.0,
+        "long_short_state_cosine": 0.0,
+        "long_preference_state_cosine": 0.0,
+        "short_preference_state_cosine": 0.0,
     }
     samples = []
     with amp_context(device):
@@ -601,6 +647,18 @@ def evaluate(
             -(next_preference * next_preference.log()).sum(-1).sum().item()
         )
         totals["preference_ranking_weight"] += output["preference_weight"].float().sum().item()
+        totals["long_agent_weight"] += output["weights"][:, 0].float().sum().item()
+        totals["short_agent_weight"] += output["weights"][:, 1].float().sum().item()
+        long_state, short_state, _, preference_state = output["states"]
+        totals["long_short_state_cosine"] += F.cosine_similarity(
+            long_state.float(), short_state.float(), dim=-1
+        ).sum().item()
+        totals["long_preference_state_cosine"] += F.cosine_similarity(
+            long_state.float(), preference_state.float(), dim=-1
+        ).sum().item()
+        totals["short_preference_state_cosine"] += F.cosine_similarity(
+            short_state.float(), preference_state.float(), dim=-1
+        ).sum().item()
         for cutoff in (5, 10):
             hits = (ranks <= cutoff).sum().item()
             # There is one held-out target per user, so Recall and Hit are
@@ -648,11 +706,11 @@ def evaluate(
     return metrics, samples
 
 
-def generate_reasons(samples, data, cache_dir, device, max_new_tokens):
+def generate_reasons(samples, data, cache_dir, device, max_new_tokens, model_id=MAMBA_MODEL_ID):
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained(MAMBA_MODEL_ID, cache_dir=cache_dir)
+    tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir)
     generator = AutoModelForCausalLM.from_pretrained(
-        MAMBA_MODEL_ID, cache_dir=cache_dir,
+        model_id, cache_dir=cache_dir,
         torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32,
     ).to(device).eval()
     for sample in tqdm(samples, desc="Generating recommendation reasons", unit="user"):
@@ -767,7 +825,7 @@ def parse_args():
         ),
     )
     parser.add_argument("--short-window", type=int, default=10)
-    parser.add_argument("--preference-count", type=int, default=64)
+    parser.add_argument("--preference-count", type=int, default=32)
     parser.add_argument("--preference-hidden", type=int, default=128)
     parser.add_argument("--preference-temperature", type=float, default=0.2)
     parser.add_argument("--preference-score-weight", type=float, default=0.2)
@@ -783,10 +841,17 @@ def parse_args():
     parser.add_argument("--preference-transition-coef", type=float, default=0.1)
     parser.add_argument("--preference-balance-coef", type=float, default=0.01)
     parser.add_argument("--preference-separation-coef", type=float, default=0.01)
+    parser.add_argument("--preference-sharpness-coef", type=float, default=0.05)
     parser.add_argument("--future-horizon", type=int, default=3)
     parser.add_argument("--future-decay", type=float, default=0.5)
-    parser.add_argument("--hard-negative-pool-multiplier", type=int, default=4)
+    parser.add_argument("--hard-negative-pool-multiplier", type=int, default=12)
+    parser.add_argument("--hard-negative-fraction", type=float, default=0.75)
+    parser.add_argument("--hard-negative-warmup-epochs", type=int, default=2)
+    parser.add_argument(
+        "--use-in-batch-negatives", action=argparse.BooleanOptionalAction, default=True,
+    )
     parser.add_argument("--preference-contrastive-coef", type=float, default=0.05)
+    parser.add_argument("--agent-diversity-coef", type=float, default=0.02)
     parser.add_argument("--full-catalog-supervised", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--popularity-alpha", type=float, default=0.0)
     parser.add_argument("--transition-beta", type=float, default=0.0)
@@ -799,6 +864,10 @@ def parse_args():
     )
     parser.add_argument("--mamba-encode-batch-size", type=int, default=4)
     parser.add_argument("--mamba-max-tokens", type=int, default=48)
+    parser.add_argument(
+        "--mamba-model-id", default=MAMBA_MODEL_ID,
+        help="Hugging Face model ID used to encode item text, e.g. state-spaces/mamba-1.4b-hf.",
+    )
     parser.add_argument(
         "--item-prompt-prefix",
         default="Preference-aware product representation: ",
@@ -841,7 +910,7 @@ def parse_args():
         or args.preference_count < 2 or args.preference_hidden < 1
         or args.preference_temperature <= 0
         or args.future_horizon < 1 or args.candidates <= args.future_horizon
-        or args.hard_negative_pool_multiplier < 1
+        or args.hard_negative_pool_multiplier < 1 or args.hard_negative_warmup_epochs < 1
     ):
         parser.error("candidate count must be >=2 and batch/history sizes must be positive")
     if not 0.0 <= args.target_recall_at_10 <= 1.0:
@@ -851,11 +920,14 @@ def parse_args():
     if min(
         args.preference_coef, args.preference_transition_coef,
         args.preference_balance_coef, args.preference_separation_coef,
-        args.preference_contrastive_coef,
+        args.preference_contrastive_coef, args.preference_sharpness_coef,
+        args.agent_diversity_coef,
     ) < 0:
         parser.error("preference loss coefficients cannot be negative")
     if not 0.0 < args.future_decay <= 1.0:
         parser.error("--future-decay must be in (0, 1]")
+    if not 0.0 <= args.hard_negative_fraction <= 1.0:
+        parser.error("--hard-negative-fraction must be in [0, 1]")
     return args
 
 
@@ -868,6 +940,13 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     logger = configure_logging(output / f"train_{run_id}.log")
     logger.info("run_id=%s dataset=%s device=%s", run_id, args.dataset, args.device)
+    logger.info(
+        "MODEL recommender=%s semantic_encoder=%s semantic_model_id=%s graph_backbone=%s adaptation=%s",
+        "MultiAgentMambaRecommender", "MambaTextEncoder" if not args.skip_mamba else "random_features",
+        args.mamba_model_id if not args.skip_mamba else "none",
+        "LightGCN" if args.use_graph_embeddings else "none",
+        "multi_lora" if args.enable_lora else "full_rank",
+    )
     logger.info("EXPERIMENT_NOTE %s", args.experiment_note)
     logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
     data, interaction_artifact = load_recommendation_data_cached(args, logger)
@@ -884,7 +963,7 @@ def main():
         args.popularity_alpha, args.transition_beta, catalog_priors is not None,
     )
 
-    vector_identity = args.item_prompt_prefix + "\n" + "\n".join(data.item_texts)
+    vector_identity = args.mamba_model_id + "\n" + args.item_prompt_prefix + "\n" + "\n".join(data.item_texts)
     fingerprint = hashlib.sha1(vector_identity.encode("utf-8")).hexdigest()[:12]
     artifact = (
         Path(args.item_vector_artifact)
@@ -901,7 +980,7 @@ def main():
         item_features = load_or_encode_text(
             data.item_texts, str(artifact), args.device, False, args.cache_dir,
             batch_size=args.mamba_encode_batch_size, max_tokens=args.mamba_max_tokens,
-            prompt_prefix=args.item_prompt_prefix,
+            prompt_prefix=args.item_prompt_prefix, model_id=args.mamba_model_id,
         )
         assert item_features is not None
     if item_features.size(0) != data.num_items:
@@ -910,6 +989,12 @@ def main():
             "the explicit artifact is incompatible with this data split."
         )
     logger.info("ITEM_VECTOR_ARTIFACT path=%s fingerprint=%s", artifact, fingerprint)
+    logger.info(
+        "SEMANTIC_BACKBONE model_id=%s hidden_size=%d frozen=%s usage=%s",
+        args.mamba_model_id if not args.skip_mamba else "none", item_features.size(1),
+        not args.skip_mamba,
+        "shared_cached_item_vectors" if not args.skip_mamba else "smoke_test_random_features",
+    )
     item_features = item_features.to(dtype=torch.float16 if args.device.startswith("cuda") else torch.float32)
     graph_edges = edge_index(data) if args.use_graph_embeddings else None
     logger.info(
@@ -977,9 +1062,14 @@ def main():
         preference_transition_coef=args.preference_transition_coef,
         preference_balance_coef=args.preference_balance_coef,
         preference_separation_coef=args.preference_separation_coef,
+        preference_sharpness_coef=args.preference_sharpness_coef,
         future_horizon=args.future_horizon, future_decay=args.future_decay,
         hard_negative_pool_multiplier=args.hard_negative_pool_multiplier,
+        hard_negative_fraction=args.hard_negative_fraction,
+        hard_negative_warmup_epochs=args.hard_negative_warmup_epochs,
+        use_in_batch_negatives=args.use_in_batch_negatives,
         preference_contrastive_coef=args.preference_contrastive_coef,
+        agent_diversity_coef=args.agent_diversity_coef,
         seed=args.seed,
     )
     losses = {
@@ -1053,9 +1143,13 @@ def main():
             "prefix_sampling": "resampled_each_epoch",
             "future_horizon": args.future_horizon,
             "future_decay": args.future_decay,
-            "negative_mining": "model_hard_from_training_safe_random_pool",
+            "negative_mining": "curriculum_mixed_model_hard_random_and_in_batch",
             "hard_negative_pool_multiplier": args.hard_negative_pool_multiplier,
+            "hard_negative_fraction": args.hard_negative_fraction,
+            "hard_negative_warmup_epochs": args.hard_negative_warmup_epochs,
+            "use_in_batch_negatives": args.use_in_batch_negatives,
             "preference_contrastive_coef": args.preference_contrastive_coef,
+            "agent_diversity_coef": args.agent_diversity_coef,
         },
         "catalog_prior": {
             "popularity_alpha": args.popularity_alpha,
@@ -1077,18 +1171,33 @@ def main():
                 "transition_detection": args.preference_transition_coef,
                 "prototype_balance": args.preference_balance_coef,
                 "prototype_separation": args.preference_separation_coef,
+                "assignment_sharpness": args.preference_sharpness_coef,
             },
         },
         "validation_history": monitor.history,
+    }
+    model_summary = {
+        "recommender": "MultiAgentMambaRecommender",
+        "agents": ["long", "short", "preference_transition", "coordinator"],
+        "semantic_encoder": "MambaTextEncoder" if not args.skip_mamba else "random_features",
+        "huggingface_model_id": args.mamba_model_id if not args.skip_mamba else None,
+        "semantic_hidden_size": int(item_features.size(1)),
+        "semantic_encoder_frozen": not args.skip_mamba,
+        "semantic_usage": "shared_cached_item_vectors" if not args.skip_mamba else "smoke_test_random_features",
+        "graph_backbone": "LightGCN" if args.use_graph_embeddings else None,
+        "graph_layers": model.graph.layers if args.use_graph_embeddings else 0,
+        "recommendation_dim": args.dim,
+        "adaptation_mode": model.adaptation_mode,
     }
     if args.save_model_weights:
         checkpoint = {
             "model": {key: value.detach().cpu() for key, value in model.state_dict().items()},
             "config": vars(args), "valid_metrics": valid_metrics, "test_metrics": test_metrics,
-            "training": training_summary, "item_vector_artifact": str(artifact),
+            "training": training_summary, "model_info": model_summary,
+            "item_vector_artifact": str(artifact),
             "interaction_artifact": str(interaction_artifact),
             "semantic_backbone": {
-                "model_id": MAMBA_MODEL_ID,
+                "model_id": args.mamba_model_id,
                 "stored_in_checkpoint": False,
                 "usage": "shared_cached_item_vectors",
             },
@@ -1100,7 +1209,10 @@ def main():
         del model
         if args.device.startswith("cuda"):
             torch.cuda.empty_cache()
-        generate_reasons(samples, data, args.cache_dir, args.device, args.reason_max_new_tokens)
+        generate_reasons(
+            samples, data, args.cache_dir, args.device, args.reason_max_new_tokens,
+            model_id=args.mamba_model_id,
+        )
     else:
         for sample in samples:
             item = sample["top_items"][0]
@@ -1131,7 +1243,12 @@ def main():
         json.dumps(preference_report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     (output / "metrics.json").write_text(
-        json.dumps({"valid": valid_metrics, "test": test_metrics, "training": training_summary}, indent=2), encoding="utf-8"
+        json.dumps({
+            "model": model_summary,
+            "valid": valid_metrics,
+            "test": test_metrics,
+            "training": training_summary,
+        }, indent=2), encoding="utf-8"
     )
     if args.score_file:
         requested_names = ("ndcg@5", "ndcg@10", "recall@5", "recall@10", "hit@5", "hit@10")
@@ -1142,6 +1259,7 @@ def main():
                 {
                     "dataset": args.dataset,
                     "run_id": run_id,
+                    "model": model_summary,
                     "valid": {name: valid_metrics[name] for name in requested_names},
                     "test": {name: test_metrics[name] for name in requested_names},
                     "config": vars(args),

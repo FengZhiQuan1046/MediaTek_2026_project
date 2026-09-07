@@ -1,0 +1,4 @@
+-r ../../ver4/requirements.txt
+# mamba-ssm and causal-conv1d import torch while building. Use the installation
+# script so these packages build against torch from the active environment.
+mambapy==1.2.0

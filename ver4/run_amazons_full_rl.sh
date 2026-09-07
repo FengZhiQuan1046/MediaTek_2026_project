@@ -6,11 +6,17 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$PROJECT_ROOT/../.." && pwd)"
-PYTHON_BIN="${PYTHON_BIN:-/dataspace/P78123011/miniconda3/envs/py31014/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-/home/P78123011/miniforge3/envs/py31014/bin/python}"
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 # 手動設定要使用的實體 GPU："0"、"1"、"0,1" 或 "1,0"
 # 使用兩張卡時，第一張供主模型使用，第二張供 graph/preference 模型使用。
 GPU_IDS="1"
+
+# Hugging Face Mamba 規模：130m、370m、790m、1.4b、2.8b。
+# 也可直接覆寫完整 repo，例如：
+# MAMBA_MODEL_ID="state-spaces/mamba-1.4b-hf"
+MAMBA_MODEL_SIZE="${MAMBA_MODEL_SIZE:-130m}"
+MAMBA_MODEL_ID="${MAMBA_MODEL_ID:-state-spaces/mamba-${MAMBA_MODEL_SIZE}-hf}"
 
 # Project preprocessing always applies the one-pass user/item threshold from
 # src/data.py before the chronological leave-two-out split.
@@ -24,9 +30,9 @@ else
   OUTPUT_GROUP="amazons_full"
 fi
 OUTPUT_ROOT="$PROJECT_ROOT/outputs_mamba_rl/$OUTPUT_GROUP"
-SPECIALISTS_EPOCH=4
-COORDINATOR_EPOCH=4
-JOINT_EPOCH=10
+SPECIALISTS_EPOCH=3
+COORDINATOR_EPOCH=3
+JOINT_EPOCH=7
 SPECIALISTS_LR=1e-4
 COORDINATOR_LR=1e-4
 JOINT_LR=5e-5
@@ -51,7 +57,7 @@ COMMON_ENV=(
   "LORA_ALPHA=32.0"
   "LORA_DROPOUT=0.05"
   "SHORT_WINDOW=10"
-  "PREFERENCE_COUNT=64"
+  "PREFERENCE_COUNT=32"
   "PREFERENCE_HIDDEN=128"
   "PREFERENCE_TEMPERATURE=0.2"
   "PREFERENCE_SCORE_WEIGHT=0.2"
@@ -59,14 +65,20 @@ COMMON_ENV=(
   "PREFERENCE_TRANSITION_COEF=0.1"
   "PREFERENCE_BALANCE_COEF=0.01"
   "PREFERENCE_SEPARATION_COEF=0.01"
+  "PREFERENCE_SHARPNESS_COEF=0.05"
   "FUTURE_HORIZON=3"
   "FUTURE_DECAY=0.5"
-  "HARD_NEGATIVE_POOL_MULTIPLIER=4"
+  "HARD_NEGATIVE_POOL_MULTIPLIER=12"
+  "HARD_NEGATIVE_FRACTION=0.75"
+  "HARD_NEGATIVE_WARMUP_EPOCHS=2"
+  "USE_IN_BATCH_NEGATIVES=1"
   "PREFERENCE_CONTRASTIVE_COEF=0.05"
+  "AGENT_DIVERSITY_COEF=0.02"
   "USE_GRAPH_EMBEDDINGS=1"
   "MAX_HISTORY=100"
   "MAMBA_ENCODE_BATCH_SIZE=32"
   "MAMBA_MAX_TOKENS=32"
+  "MAMBA_MODEL_ID=$MAMBA_MODEL_ID"
   "ITEM_PROMPT_PREFIX=Preference-aware product representation: "
   "GENERATE_REASONS=0"
   "SAVE_MODEL_WEIGHTS=0"
@@ -108,9 +120,9 @@ run_subset() {
 REPEATS="${REPEATS:-1}"
 for ((run_number = 1; run_number <= REPEATS; run_number++)); do
   # name dataset validation_steps max_samples candidates popularity transition
-  # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
-  # run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
-  # run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
+  run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
+  run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
+  run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
   # run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5
   run_subset "Toys_and_Games" "amazon-toys-and-games" 6000 1500000 192 0.30 0.5
   # run_subset "Video_Games" "amazon-video-games" 4000 1000000 128 0.20 0.5
