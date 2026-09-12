@@ -6,7 +6,7 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$PROJECT_ROOT/../.." && pwd)"
-PYTHON_BIN="${PYTHON_BIN:-/home/P78123011/miniforge3/envs/py31014/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-/workspace/P78123011/miniconda3/envs/py31014/bin/python}"
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 # 手動設定要使用的實體 GPU："0"、"1"、"0,1" 或 "1,0"
 # 使用兩張卡時，第一張供主模型使用，第二張供 graph/preference 模型使用。
@@ -36,6 +36,25 @@ JOINT_EPOCH=7
 SPECIALISTS_LR=1e-4
 COORDINATOR_LR=1e-4
 JOINT_LR=5e-5
+
+# Agent ablations: 1 = enabled, 0 = disabled (also overridable via environment).
+# USE_LONG=0: all sequence agents (including preference) use only SHORT_WINDOW.
+USE_LONG="${USE_LONG:-1}"
+USE_SHORT="${USE_SHORT:-1}"
+USE_PREFERENCE="${USE_PREFERENCE:-1}"
+USE_GCN="${USE_GCN:-1}"
+for switch in "$USE_LONG" "$USE_SHORT" "$USE_PREFERENCE" "$USE_GCN"; do
+  if [[ "$switch" != 0 && "$switch" != 1 ]]; then
+    echo "USE_LONG/USE_SHORT/USE_PREFERENCE/USE_GCN must be 0 or 1" >&2
+    exit 2
+  fi
+done
+if (( USE_LONG + USE_SHORT + USE_PREFERENCE + USE_GCN == 0 )); then
+  echo "All agents disabled requires USE_GCN=1" >&2
+  exit 2
+fi
+ABLATION_TAG="L${USE_LONG}_S${USE_SHORT}_P${USE_PREFERENCE}_G${USE_GCN}"
+OUTPUT_ROOT="${OUTPUT_ROOT}_${ABLATION_TAG}"
 
 COMMON_ENV=(
   "PYTHON_BIN=$PYTHON_BIN"
@@ -74,7 +93,7 @@ COMMON_ENV=(
   "USE_IN_BATCH_NEGATIVES=1"
   "PREFERENCE_CONTRASTIVE_COEF=0.05"
   "AGENT_DIVERSITY_COEF=0.02"
-  "USE_GRAPH_EMBEDDINGS=1"
+  "USE_GRAPH_EMBEDDINGS=$USE_GCN"
   "MAX_HISTORY=100"
   "MAMBA_ENCODE_BATCH_SIZE=32"
   "MAMBA_MAX_TOKENS=32"
@@ -98,6 +117,7 @@ run_subset() {
   run_dir="$OUTPUT_ROOT/$subset_name/rl_$timestamp"
 
   env "${COMMON_ENV[@]}" bash "$PROJECT_ROOT/run_mamba_rl.sh" "$dataset" "$GPU_IDS" \
+    --use-long "$USE_LONG" --use-short "$USE_SHORT" --use-preference "$USE_PREFERENCE" \
     --output-run-dir "$run_dir" \
     --score-file "$run_dir/${subset_name}_scores.json" \
     --validate-every-steps "$validate_every_steps" \
@@ -120,8 +140,8 @@ run_subset() {
 REPEATS="${REPEATS:-1}"
 for ((run_number = 1; run_number <= REPEATS; run_number++)); do
   # name dataset validation_steps max_samples candidates popularity transition
-  run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
-  run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
+  # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
+  # run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
   run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
   # run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5
   run_subset "Toys_and_Games" "amazon-toys-and-games" 6000 1500000 192 0.30 0.5

@@ -1,12 +1,20 @@
 # EAGER reproduction
 
-This wrapper runs the upstream `P78123011/EAGER` implementation on the exact
+This wrapper runs the upstream [`yewzz/EAGER`](https://github.com/yewzz/EAGER) implementation on the exact
 ver4 Amazon-2023 preprocessing and chronological leave-two-out split.
 
+The upstream source must also be present; `lib` is supplied by that repository.
+From this wrapper directory, set up the default workspace layout with:
+
 ```bash
+git clone https://github.com/yewzz/EAGER.git ../../../EAGER
 pip install -r requirements.txt
 bash run.sh
 ```
+
+If upstream is checked out elsewhere, set `EAGER_UPSTREAM_DIR` to its inner
+`EAGER` directory containing `lib/` and `optimizers/`, for example
+`EAGER_UPSTREAM_DIR=/path/to/EAGER/EAGER bash run.sh`.
 
 `GPU_IDS=0,1` runs two subsets concurrently, one per GPU. Select subsets with
 `SUBSETS=Full_Beauty,Toys_and_Games`. Intermediate DIN weights, T5 vectors and

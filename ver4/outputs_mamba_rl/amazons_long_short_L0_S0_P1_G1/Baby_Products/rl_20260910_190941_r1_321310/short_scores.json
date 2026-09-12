@@ -1,0 +1,261 @@
+{
+  "dataset": "amazon:Baby_Products",
+  "run_id": "20260910_190942",
+  "group": "short",
+  "length_basis": "filtered_full_sequence",
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "specialists",
+      "epoch": 1,
+      "global_step": 6000,
+      "scores": {
+        "recall@5": 0.023606908520810082,
+        "recall@10": 0.03356193990851436,
+        "ndcg@5": 0.016961172154216195,
+        "ndcg@10": 0.020164076423536695,
+        "hit@5": 0.023606908520810082,
+        "hit@10": 0.03356193990851436
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    },
+    {
+      "stage": "specialists",
+      "epoch": 2,
+      "global_step": 13321,
+      "scores": {
+        "recall@5": 0.023452066814196405,
+        "recall@10": 0.03329741865971599,
+        "ndcg@5": 0.016877271743520186,
+        "ndcg@10": 0.020047512356066142,
+        "hit@5": 0.023452066814196405,
+        "hit@10": 0.03329741865971599
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    },
+    {
+      "stage": "specialists",
+      "epoch": 3,
+      "global_step": 20642,
+      "scores": {
+        "recall@5": 0.023755298489648188,
+        "recall@10": 0.033690974664025757,
+        "ndcg@5": 0.017038650289287537,
+        "ndcg@10": 0.020237782281761752,
+        "hit@5": 0.023755298489648188,
+        "hit@10": 0.033690974664025757
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    },
+    {
+      "stage": "joint",
+      "epoch": 1,
+      "global_step": 27963,
+      "scores": {
+        "recall@5": 0.023774653702974897,
+        "recall@10": 0.03386517158396614,
+        "ndcg@5": 0.017031496033655155,
+        "ndcg@10": 0.020275794683800745,
+        "hit@5": 0.023774653702974897,
+        "hit@10": 0.03386517158396614
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    },
+    {
+      "stage": "joint",
+      "epoch": 2,
+      "global_step": 35284,
+      "scores": {
+        "recall@5": 0.023800460654077177,
+        "recall@10": 0.03386517158396614,
+        "ndcg@5": 0.017067650153517425,
+        "ndcg@10": 0.020300605161526777,
+        "hit@5": 0.023800460654077177,
+        "hit@10": 0.03386517158396614
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    },
+    {
+      "stage": "joint",
+      "epoch": 3,
+      "global_step": 42605,
+      "scores": {
+        "recall@5": 0.02396820583624199,
+        "recall@10": 0.0341942102105202,
+        "ndcg@5": 0.017189605394495325,
+        "ndcg@10": 0.02046944336133365,
+        "hit@5": 0.02396820583624199,
+        "hit@10": 0.0341942102105202
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    },
+    {
+      "stage": "joint",
+      "epoch": 4,
+      "global_step": 49926,
+      "scores": {
+        "recall@5": 0.024187564920611367,
+        "recall@10": 0.034252275850500336,
+        "ndcg@5": 0.017280751116350763,
+        "ndcg@10": 0.020511467092611143,
+        "hit@5": 0.024187564920611367,
+        "hit@10": 0.034252275850500336
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    },
+    {
+      "stage": "joint",
+      "epoch": 5,
+      "global_step": 57247,
+      "scores": {
+        "recall@5": 0.024368213578327323,
+        "recall@10": 0.034413569294889576,
+        "ndcg@5": 0.01742996086544195,
+        "ndcg@10": 0.020654810728754306,
+        "hit@5": 0.024368213578327323,
+        "hit@10": 0.034413569294889576
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    },
+    {
+      "stage": "joint",
+      "epoch": 6,
+      "global_step": 64568,
+      "scores": {
+        "recall@5": 0.024323051413898334,
+        "recall@10": 0.034587766214829965,
+        "ndcg@5": 0.01744904095352953,
+        "ndcg@10": 0.02074990622605942,
+        "hit@5": 0.024323051413898334,
+        "hit@10": 0.034587766214829965
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    },
+    {
+      "stage": "joint",
+      "epoch": 7,
+      "global_step": 71889,
+      "scores": {
+        "recall@5": 0.024742414369310375,
+        "recall@10": 0.035078098285773275,
+        "ndcg@5": 0.017701719266356546,
+        "ndcg@10": 0.021023356960532015,
+        "hit@5": 0.024742414369310375,
+        "hit@10": 0.035078098285773275
+      },
+      "evaluated_users": 154997,
+      "total_users": 154997
+    }
+  ],
+  "length_rule": "length <= threshold",
+  "length_threshold": 10,
+  "config": {
+    "dataset": "amazon:Baby_Products",
+    "data_path": null,
+    "cache_dir": "/workspace/P78123011/cache",
+    "refresh_data_cache": false,
+    "max_events": null,
+    "max_transitions": 1500000,
+    "min_rating": 4.0,
+    "specialist_epochs": 3,
+    "coordinator_epochs": 3,
+    "joint_epochs": 7,
+    "batch_size": 128,
+    "eval_batch_size": 64,
+    "validate_every_steps": 6000,
+    "monitor_metric": "ndcg@10",
+    "early_stopping_patience": 6,
+    "lr_patience": 2,
+    "candidates": 192,
+    "dim": 128,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "enable_lora": 1,
+    "short_window": 10,
+    "preference_count": 32,
+    "preference_hidden": 128,
+    "preference_temperature": 0.2,
+    "preference_score_weight": 0.2,
+    "use_graph_embeddings": true,
+    "max_history": 100,
+    "specialist_lr": 0.0001,
+    "coordinator_lr": 0.0001,
+    "joint_lr": 5e-05,
+    "preference_coef": 0.2,
+    "preference_transition_coef": 0.1,
+    "preference_balance_coef": 0.01,
+    "preference_separation_coef": 0.01,
+    "preference_sharpness_coef": 0.05,
+    "future_horizon": 3,
+    "future_decay": 0.5,
+    "hard_negative_pool_multiplier": 12,
+    "hard_negative_fraction": 0.75,
+    "hard_negative_warmup_epochs": 2,
+    "use_in_batch_negatives": true,
+    "preference_contrastive_coef": 0.05,
+    "agent_diversity_coef": 0.02,
+    "full_catalog_supervised": false,
+    "popularity_alpha": 0.3,
+    "transition_beta": 0.5,
+    "seed": 25252,
+    "device": "cuda:0",
+    "skip_mamba": false,
+    "graph_device": "cuda:0",
+    "mamba_encode_batch_size": 32,
+    "mamba_max_tokens": 32,
+    "mamba_model_id": "state-spaces/mamba-130m-hf",
+    "item_prompt_prefix": "Preference-aware product representation: ",
+    "validation_user_limit": 0,
+    "periodic_test_user_limit": 0,
+    "generate_reasons": false,
+    "save_model_weights": false,
+    "reason_count": 20,
+    "reason_max_new_tokens": 40,
+    "item_vector_artifact": null,
+    "resume_checkpoint": null,
+    "eval_length_basis": "filtered_full_sequence",
+    "eval_length_threshold": 10,
+    "experiment_note": "amazons_long_short subset=Baby_Products; short filtered-full-sequence <= 10; long > 10; same model and full catalog",
+    "target_recall_at_10": 0.15,
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Baby_Products/rl_20260910_190941_r1_321310",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Baby_Products/rl_20260910_190941_r1_321310/Baby_Products_scores.json",
+    "use_long": 0,
+    "use_short": 0,
+    "use_preference": 1
+  },
+  "valid": {
+    "ndcg@5": 0.01744948277990166,
+    "ndcg@10": 0.02098546337612514,
+    "recall@5": 0.024529507022716567,
+    "recall@10": 0.03556197861894101,
+    "hit@5": 0.024529507022716567,
+    "hit@10": 0.03556197861894101
+  },
+  "valid_users": {
+    "total_users": 154997,
+    "evaluated_users": 154997
+  },
+  "test": {
+    "ndcg@5": 0.017668021266713217,
+    "ndcg@10": 0.021045954890575914,
+    "recall@5": 0.024523055284941,
+    "recall@10": 0.03503293612134428,
+    "hit@5": 0.024523055284941,
+    "hit@10": 0.03503293612134428
+  },
+  "test_users": {
+    "total_users": 154997,
+    "evaluated_users": 154997
+  }
+}

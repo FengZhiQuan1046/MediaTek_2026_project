@@ -110,9 +110,13 @@ class CoordinatorAgent(nn.Module):
         nn.init.zeros_(self.preference_context_gate.weight)
         nn.init.zeros_(self.preference_context_gate.bias)
 
-    def forward(self, long_state: torch.Tensor, short_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, long_state: torch.Tensor, short_state: torch.Tensor, active=(True, True)) -> tuple[torch.Tensor, torch.Tensor]:
         combined = torch.cat((long_state, short_state), dim=-1)
-        weights = torch.softmax(self.mix_lora(combined), dim=-1)
+        if all(active):
+            weights = torch.softmax(self.mix_lora(combined), dim=-1)
+        else:
+            # With only one active branch no mixing policy needs training.
+            weights = combined.new_tensor(active).expand(combined.size(0), -1)
         base = weights[:, :1] * long_state + weights[:, 1:] * short_state
         state = F.normalize(base + self.state_lora(combined), dim=-1)
         return state, weights
@@ -195,8 +199,17 @@ class MultiAgentMambaRecommender(nn.Module):
         preference_temperature: float = 0.2,
         preference_score_weight: float = 0.2,
         enable_lora: bool = True,
+        use_long: bool = True,
+        use_short: bool = True,
+        use_preference: bool = True,
     ):
         super().__init__()
+        if not (use_long or use_short or use_preference or use_graph_embeddings):
+            raise ValueError("Enable at least one agent or LightGCN")
+        self.active_agent_count = sum((use_long, use_short, use_preference))
+        self.graph_only = self.active_agent_count == 0
+        self.use_coordinator = self.active_agent_count > 1
+        self.use_long, self.use_short, self.use_preference = use_long, use_short, use_preference
         if item_features.ndim != 2:
             raise ValueError("item_features must have shape [items, feature_dim]")
         if use_graph_embeddings and (graph_edges is None or graph_users is None):
@@ -225,7 +238,7 @@ class MultiAgentMambaRecommender(nn.Module):
         self.coordinator = CoordinatorAgent(
             dim, lora_rank, lora_alpha, lora_dropout, preference_score_weight,
             enable_lora,
-        )
+        ) if self.use_coordinator else None
         self.short_window = short_window
 
     @property
@@ -235,16 +248,18 @@ class MultiAgentMambaRecommender(nn.Module):
     @property
     def adaptation_mode(self) -> str:
         """Name the two compatible update modes used by the launch scripts."""
-        return "multi_lora" if self.enable_lora else "full_rank"
+        return "graph_only" if self.graph_only else "multi_lora" if self.enable_lora else "full_rank"
 
     def adapter_routes(self) -> dict[str, tuple[str, ...]]:
         """Expose the disjoint adapter bank selected by each agent forward path."""
-        return {
+        routes = {
             "long": ("candidate_lora", "delta_lora", "gate_lora", "output_lora"),
             "short": ("candidate_lora", "delta_lora", "gate_lora", "output_lora"),
             "preference": ("transition_lora", "state_lora"),
             "coordinator": ("state_lora", "mix_lora", "score_lora"),
         }
+
+        return {name: route for name, route in routes.items() if getattr(self, f"use_{name}")}
 
     def place_devices(self, main_device: str, graph_device: str | None = None):
         """Place the dense agents and LightGCN on separate devices when requested."""
@@ -257,7 +272,8 @@ class MultiAgentMambaRecommender(nn.Module):
             self.preference_agent,
             self.coordinator,
         ):
-            module.to(main)
+            if module is not None:
+                module.to(main)
         if self.use_graph_embeddings:
             graph = torch.device(graph_device or main_device)
             self.graph.to(graph)
@@ -271,6 +287,10 @@ class MultiAgentMambaRecommender(nn.Module):
         """Propagate the graph once so all item lookups in a batch can share it."""
         if not self.use_graph_embeddings:
             return None
+        if self.graph_only:
+            users, items = self.graph(self.graph_edges)
+            self._graph_user_vectors = users
+            return items
         if self._show_graph_progress:
             with tqdm(
                 total=self.graph.layers + 1,
@@ -287,6 +307,10 @@ class MultiAgentMambaRecommender(nn.Module):
     def project_ids(
         self, item_ids: torch.Tensor, graph_items: torch.Tensor | None = None
     ) -> torch.Tensor:
+        if self.graph_only:
+            if graph_items is None:
+                graph_items = self.graph_item_vectors()
+            return graph_items[item_ids.to(graph_items.device)].to(self.item_features.device)
         features = self.item_features[item_ids]
         projected = self.item_projection(features.to(self.item_projection.weight.dtype))
         projected = F.normalize(projected, dim=-1)
@@ -320,21 +344,51 @@ class MultiAgentMambaRecommender(nn.Module):
     def encode_states(
         self, histories: torch.Tensor, lengths: torch.Tensor,
         graph_items: torch.Tensor | None = None,
+        user_ids: torch.Tensor | None = None,
     ):
         if self.use_graph_embeddings and graph_items is None:
             graph_items = self.graph_item_vectors()
+        if self.graph_only:
+            if user_ids is None:
+                raise ValueError("LightGCN-only scoring requires user_ids")
+            state = self._graph_user_vectors[user_ids.to(self._graph_user_vectors.device)].to(histories.device)
+            zero = torch.zeros_like(state)
+            preferences = zero.new_zeros((state.size(0), self.preference_agent.preference_count))
+            change = zero.new_zeros(state.size(0))
+            return (zero, zero, state, zero.new_zeros((state.size(0), 2)), zero,
+                    preferences, preferences, change, change)
+        # Disabling LONG also removes full-history input from preference/coordinator.
+        # Apply here so direct forward, hard-negative mining and evaluation agree.
+        if not self.use_long:
+            histories, lengths = self._short_histories(
+                histories, lengths, min(self.short_window, histories.size(1))
+            )
         long_sequence = self.project_ids(histories, graph_items)
-        long_state = self.long_agent.encode(long_sequence, lengths)
-        (
-            preference_state, current_preference, predicted_preference,
-            change_logit, change_probability,
-        ) = (
-            self.preference_agent.encode(long_sequence, lengths)
-        )
-        short_ids, short_lengths = self._short_histories(histories, lengths, min(self.short_window, histories.size(1)))
-        short_sequence = self.project_ids(short_ids, graph_items)
-        short_state = self.short_agent.encode(short_sequence, short_lengths)
-        coordinator_state, weights = self.coordinator(long_state, short_state)
+        zero = long_sequence.new_zeros((histories.size(0), long_sequence.size(-1)))
+        long_state = self.long_agent.encode(long_sequence, lengths) if self.use_long else zero
+        if self.use_preference:
+            (preference_state, current_preference, predicted_preference,
+             change_logit, change_probability) = self.preference_agent.encode(long_sequence, lengths)
+        else:
+            preference_state = zero
+            current_preference = zero.new_zeros((histories.size(0), self.preference_agent.preference_count))
+            predicted_preference = current_preference
+            change_logit = change_probability = zero.new_zeros(histories.size(0))
+        if self.use_short:
+            short_ids, short_lengths = self._short_histories(histories, lengths, min(self.short_window, histories.size(1)))
+            short_sequence = self.project_ids(short_ids, graph_items)
+            short_state = self.short_agent.encode(short_sequence, short_lengths)
+        else:
+            short_state = zero
+        if not self.use_coordinator:
+            coordinator_state = long_state if self.use_long else short_state if self.use_short else preference_state
+            weights = zero.new_tensor([int(self.use_long), int(self.use_short)]).expand(histories.size(0), -1)
+        elif self.use_long or self.use_short:
+            coordinator_state, weights = self.coordinator(long_state, short_state, (self.use_long, self.use_short))
+        else:
+            # Preference-only: keep a trainable coordinator on the remaining state.
+            coordinator_state, _ = self.coordinator(preference_state, zero, (True, False))
+            weights = zero.new_zeros((histories.size(0), 2))
         return (
             long_state, short_state, coordinator_state, weights, preference_state,
             current_preference, predicted_preference, change_logit, change_probability,
@@ -345,26 +399,38 @@ class MultiAgentMambaRecommender(nn.Module):
             long_state, short_state, coordinator_state, weights, preference_state,
             current_preference, predicted_preference, change_logit, change_probability,
         ) = states
-        long_logits = self.long_agent.logits(long_state, candidate_vectors)
-        short_logits = self.short_agent.logits(short_state, candidate_vectors)
-        coordinator_logits = self.coordinator.logits(coordinator_state, candidate_vectors)
-        preference_logits = self.preference_agent.logits(preference_state, candidate_vectors)
-        preference_entropy = -(
-            predicted_preference.clamp_min(1e-8)
-            * predicted_preference.clamp_min(1e-8).log()
-        ).sum(-1)
-        preference_entropy = preference_entropy / math.log(predicted_preference.size(-1))
-        preference_context = torch.stack(
-            (change_probability, 1.0 - preference_entropy), dim=-1
-        )
-        preference_weight = torch.sigmoid(
-            self.coordinator.preference_score_logit
-            + self.coordinator.preference_context_gate(preference_context).squeeze(-1)
-        ).unsqueeze(-1)
+        if self.use_coordinator:
+            coordinator_logits = self.coordinator.logits(coordinator_state, candidate_vectors)
+        elif candidate_vectors.ndim == 2:
+            coordinator_logits = coordinator_state @ candidate_vectors.T
+        else:
+            coordinator_logits = torch.einsum("bd,bcd->bc", coordinator_state, candidate_vectors)
+        zero_logits = torch.zeros_like(coordinator_logits)
+        long_logits = self.long_agent.logits(long_state, candidate_vectors) if self.use_long else zero_logits
+        short_logits = self.short_agent.logits(short_state, candidate_vectors) if self.use_short else zero_logits
+        preference_logits = self.preference_agent.logits(preference_state, candidate_vectors) if self.use_preference else zero_logits
+        if self.use_preference and self.use_coordinator:
+            preference_entropy = -(
+                predicted_preference.clamp_min(1e-8)
+                * predicted_preference.clamp_min(1e-8).log()
+            ).sum(-1)
+            preference_entropy = preference_entropy / math.log(predicted_preference.size(-1))
+            preference_context = torch.stack(
+                (change_probability, 1.0 - preference_entropy), dim=-1
+            )
+            preference_weight = torch.sigmoid(
+                self.coordinator.preference_score_logit
+                + self.coordinator.preference_context_gate(preference_context).squeeze(-1)
+            ).unsqueeze(-1)
+        else:
+            preference_weight = coordinator_logits.new_zeros((coordinator_logits.size(0), 1))
+            preference_entropy = coordinator_logits.new_zeros(coordinator_logits.size(0))
         final_logits = (
             coordinator_logits + weights[:, :1] * long_logits + weights[:, 1:] * short_logits
             + preference_weight * preference_logits
         )
+        if not self.use_coordinator and not self.graph_only:
+            final_logits = long_logits if self.use_long else short_logits if self.use_short else preference_logits
         return {
             "long": long_logits,
             "short": short_logits,
@@ -383,9 +449,9 @@ class MultiAgentMambaRecommender(nn.Module):
     def preference_targets(self, item_vectors: torch.Tensor) -> torch.Tensor:
         return self.preference_agent.assignments(item_vectors)
 
-    def forward(self, histories: torch.Tensor, lengths: torch.Tensor, candidates: torch.Tensor):
+    def forward(self, histories: torch.Tensor, lengths: torch.Tensor, candidates: torch.Tensor, user_ids=None):
         graph_items = self.graph_item_vectors()
-        states = self.encode_states(histories, lengths, graph_items)
+        states = self.encode_states(histories, lengths, graph_items, user_ids=user_ids)
         candidate_vectors = self.project_ids(candidates, graph_items)
         return self.logits_from_states(states, candidate_vectors)
 
@@ -393,10 +459,11 @@ class MultiAgentMambaRecommender(nn.Module):
         self, histories: torch.Tensor, lengths: torch.Tensor,
         item_vectors: torch.Tensor | None = None,
         graph_items: torch.Tensor | None = None,
+        user_ids: torch.Tensor | None = None,
     ):
         if self.use_graph_embeddings and graph_items is None:
             graph_items = self.graph_item_vectors()
-        states = self.encode_states(histories, lengths, graph_items)
+        states = self.encode_states(histories, lengths, graph_items, user_ids=user_ids)
         items = self.project_all(graph_items) if item_vectors is None else item_vectors
         return self.logits_from_states(states, items)
 
@@ -414,15 +481,28 @@ class MultiAgentMambaRecommender(nn.Module):
             else (self.long_agent, self.short_agent, self.preference_agent, self.coordinator, self.item_projection, *graph_modules)
         )
         for module in modules:
+            if module is None:
+                continue
             for parameter in module.parameters():
                 parameter.requires_grad_(True)
+
+        for name in ("long", "short", "preference"):
+            if not getattr(self, f"use_{name}"):
+                getattr(self, f"{name}_agent").requires_grad_(False)
+        if self.graph_only:
+            self.item_projection.requires_grad_(False)
+        if self.coordinator is not None and not (self.use_long and self.use_short):
+            self.coordinator.mix_lora.requires_grad_(False)
+        if self.coordinator is not None and not self.use_preference:
+            self.coordinator.preference_score_logit.requires_grad_(False)
+            self.coordinator.preference_context_gate.requires_grad_(False)
 
     def agent_parameter_counts(self) -> dict[str, int]:
         return {
             "long": sum(p.numel() for p in self.long_agent.parameters()),
             "short": sum(p.numel() for p in self.short_agent.parameters()),
             "preference": sum(p.numel() for p in self.preference_agent.parameters()),
-            "coordinator": sum(p.numel() for p in self.coordinator.parameters()),
+            "coordinator": sum(p.numel() for p in self.coordinator.parameters()) if self.coordinator is not None else 0,
             "shared_projection": sum(p.numel() for p in self.item_projection.parameters()),
             "graph": sum(p.numel() for p in self.graph.parameters()) if self.use_graph_embeddings else 0,
         }

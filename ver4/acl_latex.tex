@@ -1,0 +1,327 @@
+\documentclass[11pt]{article}
+\usepackage[review]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\newcommand{\norm}[1]{\operatorname{norm}(#1)}
+\newcommand{\softmax}{\operatorname{softmax}}
+\newcommand{\sg}{\operatorname{sg}}
+\title{Preference-Transition Modeling with Cached Mamba Semantics\\for Sequential Recommendation}
+\author{Anonymous ACL submission}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Large-scale recommendation requires models that capture evolving user preferences while supporting high throughput under limited memory budgets. Mamba offers an attractive foundation through selective state-space modeling and efficient recurrent inference. However, an efficient backbone alone does not resolve how persistent interests, recent intent, and preference transitions should be represented and combined. Using one sequence representation places these distinct demands on a shared state, whereas assigning a separate language model to each specialist would introduce substantial computational and memory overhead. In this work, we propose RIBS (\emph{R}ecommendation via \emph{I}ntegrated \emph{B}ehavioral \emph{S}pecialists), which formulate recommendation as coordinated specialization over a shared semantic space and propose a Mamba-powered multi-agent recommendation framework supported by multi-LoRA. A frozen Mamba encoder produces reusable item representations, while agent-specific low-rank modules support long-horizon, short-horizon, and preference-transition modeling without duplicating the language backbone. A coordinator integrates their evidence according to temporal context and predicted preference uncertainty. This design separates semantic encoding from repeated ranking computation and provides distinct adaptation paths for complementary recommendation roles. Under our evaluation on various recommendation senarios, the proposed framework outperforms single-agent variants and demonstrates the benefits of specialization and coordination.
+\end{abstract}
+
+\section{Introduction}
+Large-scale recommendation must reconcile two demands: understanding changing user preferences and serving personalized rankings within practical computation and memory budgets. Language models provide semantic information about items that can complement interaction histories, but their use must fit the repeated computation required by recommendation. State Space Models (SSMs) offers a promising foundation through efficient selective state-space modeling and recurrent inference \citep{gu2023mamba}. Yet backbone efficiency addresses only part of the problem. A recommender must also determine which aspects of a user's history remain relevant when recent behavior points in a different direction.
+
+Consider a user who repeatedly purchases running equipment and then begins browsing camping products. The new interactions may reflect a temporary shopping goal or a sustained change in interest. Preserving the historical preference too strongly can delay adaptation; emphasizing only the latest interactions can discard useful evidence. The difficulty is therefore not simply retaining a longer history. It is deciding when persistent interests should continue to guide the ranking and when recent evidence should override them. Item semantics can reveal that the products are related, but cannot by themselves resolve this temporal ambiguity.
+
+We formulate the central issue as \emph{context-dependent allocation of behavioral evidence under a shared semantic backbone}. Given a user's history, the ranker must preserve persistent interests, respond to recent intent, and estimate whether the next interaction is likely to reflect a preference transition. These responsibilities impose different requirements on how evidence is retained and used. A shared sequence state can learn to accommodate them, but does not explicitly separate their contributions. Conversely, assigning each responsibility to an independent language model would add backbone storage and repeated semantic computation. The challenge is to make behavioral specialization explicit while keeping the expensive semantic foundation shared.
+
+Our approach rests on a distinction between reusable item knowledge and context-dependent behavioral interpretation. The semantic representation of an item can be reused across users and prediction steps, whereas its relevance depends on the user's current behavioral context. This suggests allocating separate, compact adaptation paths to different behavioral roles and learning how their evidence should be combined. Low-rank adaptation provides a parameterization for such role-specific transformations \citep{hu2021lora}. Specialization supplies distinct views of the history; coordination determines how strongly those views should influence a particular prediction. Neither a fixed mixture nor backbone efficiency alone specifies this decision.
+
+Building on this perspective, we propose RIBS (\emph{R}ecommendation via \emph{I}ntegrated \emph{B}ehavioral \emph{S}pecialists), a Mamba-powered multi-agent recommendation framework supported by multi-LoRA. RIBS uses a frozen Mamba encoder to construct reusable item representations and assigns agent-specific low-rank modules to three behavioral roles: modeling persistent interests, capturing recent intent, and predicting preference transitions. These modules operate in the compact recommendation network over a shared item space. This separation allows agents to develop different behavioral functions while reusing the same semantic foundation, without duplicating the language backbone or invoking it repeatedly during ranking.
+
+RIBS makes the allocation of behavioral evidence explicit through a learned coordinator. The coordinator combines temporal evidence with transition predictions and their uncertainty, allowing the final ranking to reflect both what the user has preferred and how confidently the model expects that preference to change. Training develops the specialists and their cooperation through a shared ranking objective. The resulting framework connects the two sides of the central issue: multi-LoRA supplies distinct behavioral adaptation capacity, while shared semantic representations and adaptive coordination integrate that capacity into a single ranking pipeline.
+
+% We examine RIBS using full-catalog ranking, component comparisons, and history-length analysis on Amazon Reviews 2023. On All Beauty, the complete framework improves over the evaluated single-specialist variants, while a reduced configuration achieves nearly identical NDCG@10. Component experiments across four categories further characterize the relative strengths of temporal and preference modeling. These findings support investigating coordinated specialization while showing that the usefulness of each role depends on the setting. Our contributions are a formulation of the behavioral evidence-allocation problem, a multi-LoRA framework that separates shared semantics from behavioral specialization, and an empirical analysis of the resulting ranking behavior. The evaluation establishes offline ranking results; the throughput motivation remains distinct from an end-to-end efficiency claim.
+
+\section{Related Work}
+\paragraph{Sequential representation learning.}
+SASRec uses self-attention to identify relevant items in a user's history \citep{kang2018sasrec}. BERT4Rec instead uses bidirectional context with a Cloze objective \citep{sun2019bert4rec}. Both illustrate how architectural and training choices influence the representation of sequential context. Our temporal branches use different input windows and initial forgetting rates; our preference branch operates over soft prototype assignments rather than item identities alone.
+
+\paragraph{Selective state-space models.}
+Mamba introduces input-dependent state-space dynamics for sequence modeling \citep{gu2023mamba}. Mamba4Rec demonstrates their application to sequential recommendation \citep{liu2024mamba4rec}. Our implementation uses pretrained Mamba for text encoding and a simpler diagonal selective recurrence for user histories. It does not reproduce the full Mamba block or its optimized selective-scan implementation. Consequently, linear dependence on history length should not be read as a measured speedup over those models.
+
+\paragraph{Semantic and collaborative item representations.}
+BLaIR learns recommendation-oriented text representations by connecting item metadata with natural-language context and introduces Amazon Reviews 2023 \citep{hou2024bridging}. LightGCN learns collaborative representations through linear neighborhood propagation on the user--item graph \citep{he2020lightgcn}. We combine frozen text features with trainable graph item embeddings, allowing the temporal and preference specialists to share both sources of evidence. We do not assume that semantic similarity alone identifies the next interaction.
+
+\paragraph{Low-rank adaptation.}
+LoRA parameterizes weight updates through low-rank matrices \citep{hu2021lora}. We use this parameterization for branch-specific residual transformations in the recommendation space. This is a use of low-rank modules in a task model, not evidence that adapting a pretrained language backbone is necessary. The graph embeddings, text projection, GRU, and preference heads remain trainable where permitted by the optimization stage.
+
+\section{Method}
+\label{sec:method}
+\subsection{Task and Shared Item Space}
+Let $\mathcal I$ be the item catalog and $\mathcal H_{u,t}=(i_1,\ldots,i_t)$ a user's observed prefix. We learn scores $z(u,i)$ for ranking the next item over $\mathcal I$. Training may use several subsequent logged interactions as soft targets, but validation and test each contain one target per eligible user.
+
+For each item, we encode its text once with a frozen Mamba model. The input begins with ``Preference-aware product representation: ''. We mean-pool content-token hidden states, excluding padding and prefix tokens; if truncation leaves no content tokens, the implementation falls back to pooling non-padding tokens. The resulting vector $f_i$ is cached. A trainable projection maps it to the recommendation dimension $d$.
+
+A two-layer LightGCN \citep{he2020lightgcn} propagates user and item embeddings over training interactions. Let $g_i$ denote the propagated item vector. The shared item representation is
+\begin{equation}
+ e_i=\norm{\norm{W_f f_i}+\norm{g_i}},
+\end{equation}
+where $\norm{x}=x/\max(\lVert x\rVert_2,\epsilon)$. When graph embeddings are disabled, only the normalized text projection is used. Validation and test interactions are excluded from graph construction and from the count-based priors described below.
+
+\subsection{Temporal Specialists}
+Each temporal branch owns residual transformations of the form
+\begin{equation}
+ A(x)=\frac{\alpha_{\mathrm{LoRA}}}{r}B D\,\operatorname{Dropout}(x),
+\end{equation}
+where $D$ maps to rank $r$ and $B$ maps back to the desired output dimension. The second matrix is zero-initialized. For an item vector $x_t$, a branch updates its state as
+\begin{align}
+ \delta_t &= \min\{\operatorname{softplus}(b+A_\delta(x_t)),12\},\\
+ a_t &= \exp(-\delta_t),\\
+ h_t &= a_t\odot h_{t-1}+(1-a_t)\odot\tanh(x_t+A_v(x_t)),\\
+ o_t &= \sigma(A_g(x_t))\odot h_t
+       +(1-\sigma(A_g(x_t)))\odot x_t.
+\end{align}
+Padding leaves the state unchanged. The final branch representation is $s=\norm{o_T+A_o(o_T)}$. Each temporal branch has four independent low-rank modules. Long and short branches initialize $\delta$ to 0.08 and 0.5, respectively, encouraging slower and faster initial updates. These are learned initial conditions, not fixed retention guarantees.
+
+The long specialist uses the latest $H$ interactions and the short specialist uses the latest $W$, with $H=100$ and $W=10$ in the reported runs. A branch scores an item using a scaled inner product,
+\begin{equation}
+ z_b(u,i)=\min\{\exp(\theta_b),20\}\,s_b^\top e_i.
+\end{equation}
+The recurrence is linear in sequence length at fixed model dimension; full-catalog scoring still requires work proportional to catalog size.
+
+\subsection{Preference-Transition Specialist}
+Let $C\in\mathbb R^{M\times d}$ contain row-normalized learned prototypes. An interaction is represented by a soft assignment
+\begin{equation}
+ q_t=\softmax(Ce_{i_t}/\tau_p).
+\end{equation}
+A GRU reads $(q_1,\ldots,q_T)$, and its final hidden state receives a low-rank residual and layer normalization to yield $v_T$. The current preference is the last observed assignment $q_T$. Two heads predict the next distribution and transition probability:
+\begin{align}
+ \widehat q_{T+1}&=\softmax(W_n v_T+b_n),\\
+ \rho_T&=\sigma(w_c^\top[v_T;q_T]+b_c).
+\end{align}
+The predicted distribution reconstructs a preference vector,
+\begin{equation}
+ s_P=\norm{C^\top\widehat q_{T+1}+A_P(C^\top\widehat q_{T+1})},
+\end{equation}
+which scores candidates through a learned scaled inner product. Prototypes are shared among users and items within a run; separate categories train separate parameters. Prototype indices have no predefined semantic labels and need not align across runs.
+
+\subsection{Context-Dependent Coordination}
+When both temporal branches are active, the coordinator predicts weights
+\begin{equation}
+ (w_L,w_S)=\softmax(A_m([s_L;s_S])).
+\end{equation}
+It normalizes the weighted temporal state plus a low-rank residual, then applies a further residual before computing coordinator scores $z_C$. The preference contribution depends on transition probability and normalized predictive confidence:
+\begin{align}
+ c_T &=1-\frac{\mathcal H(\widehat q_{T+1})}{\log M},\\
+ \gamma_u&=\sigma(b_P+w_P^\top[\rho_T;c_T]),\\
+ z(u,i)&=z_C(u,i)+w_Lz_L(u,i)\nonumber\\
+       &\quad+w_Sz_S(u,i)+\gamma_u z_P(u,i).
+\end{align}
+The initial preference weight is 0.2. The complete architecture has 13 low-rank modules: four in each temporal specialist, two in the preference specialist, and three in the coordinator.
+
+The switches change both computation and learning. Disabled branches contribute neither scores nor their associated losses. If only one sequence specialist remains, its logits are used directly and the coordinator stage is skipped. If one temporal branch remains in a multi-specialist model, temporal mixing is fixed to that branch. Crucially, disabling the long branch also limits the preference branch to $\min(H,W)$ interactions. The graph continues to use all training interactions when enabled. Thus removing the long branch is a joint change in architecture and sequence input horizon.
+
+\subsection{Training Objectives}
+\paragraph{Multi-step ranking.}
+For each sampled prefix, we collect up to $F$ future items from the training history only. Their weights are $a_j=\eta^{j-1}/\sum_{k=1}^{F'}\eta^{k-1}$, where $F'\leq F$ is the available horizon. With candidate slate $\mathcal S$ and target position $p_j$, a ranking head minimizes
+\begin{equation}
+ \mathcal L_{\mathrm{rank}}(z)
+ =-\sum_{j=1}^{F'}a_j\log\softmax(z_{\mathcal S})_{p_j}.
+\end{equation}
+Bounded training prefixes are resampled each epoch. Candidate slates combine future targets with model-mined and random negatives drawn from an enlarged pool, augmented with in-batch future items. Known training positives are masked during negative scoring. The hard-negative fraction increases during warm-up. Sampling is over item positions and is not a guarantee that all candidate identities are unique.
+
+\paragraph{Preference supervision.}
+The immediate next item's prototype assignment supplies a detached target $q^+=\sg(q(i_{T+1}))$. We minimize $\mathcal L_{\mathrm{pred}}=D_{\mathrm{KL}}(q^+\Vert\widehat q_{T+1})$. The transition target is
+\begin{equation}
+ y_{\mathrm{shift}}=\frac{\operatorname{JS}(\sg(q_T),q^+)}{\log 2},
+\end{equation}
+and $\mathcal L_{\mathrm{shift}}$ is binary cross-entropy between this soft target and $\rho_T$. This target measures a change in learned item assignments, rather than an annotated change in user intent.
+
+Three additional terms control prototype learning: a KL penalty between batch-mean target assignments and the uniform distribution, a squared penalty on $CC^\top-I$, and normalized assignment entropy to encourage sharper individual assignments. Together,
+\begin{align}
+ \mathcal L_P={}&\lambda_p\mathcal L_{\mathrm{pred}}
+ +\lambda_t\mathcal L_{\mathrm{shift}}
+ +\lambda_b\mathcal L_{\mathrm{balance}}\nonumber\\
+ &+\lambda_s\mathcal L_{\mathrm{separation}}
+ +\lambda_h\mathcal L_{\mathrm{sharpness}}.
+\end{align}
+Unlike the prediction targets, the balance, separation, and sharpness terms propagate gradients through assignments or prototypes.
+
+\paragraph{Staged optimization.}
+Specialist warm-up minimizes the sum of active specialist ranking losses plus $\mathcal L_P$. Coordinator warm-up trains the coordinator using the fused ranking loss while freezing the specialists and shared representations. Joint training minimizes the mean ranking loss over active heads, $\mathcal L_P$, preference contrastive alignment, and pairwise squared cosine similarity among active specialist states. The contrastive numerator includes all batch targets with the same item identity, avoiding treating duplicate target identities as negatives. Preference-related terms disappear when that branch is disabled.
+
+\subsection{Catalog Calibration}
+At evaluation, training-only statistics adjust neural scores:
+\begin{equation}
+ \widetilde z(u,i)=z(u,i)+\alpha_p p_i+\beta_t\log(1+n_{i_T,i}),
+\end{equation}
+where $p_i$ is standardized log-one-plus training popularity and $n_{i_T,i}$ counts adjacent training transitions. Missing transitions contribute zero. These coefficients are configured by category. All reported results include these priors; the current experiments do not isolate their contribution from that of the neural model.
+
+\section{Experiments}
+\label{sec:experiments}
+\subsection{Data and Evaluation Protocol}
+We analyze completed Amazon Reviews 2023 runs on All Beauty, Baby Products, Sports and Outdoors, and Toys and Games \citep{hou2024bridging}. The local directory name \texttt{Full\_Beauty} refers to All Beauty, not Beauty and Personal Care. Item text concatenates available titles, subtitles, categories, features, and descriptions. Missing metadata can fall back to review text or an item identifier. The Amazon loader treats review events as implicit interactions and does not apply the rating threshold used by other dataset adapters.
+
+Preprocessing counts raw user and item interactions and applies a minimum count of five once. It is not iterative 5-core filtering: removing low-frequency items may leave a user with fewer than five interactions. Eligible sequences reserve their penultimate and final events for validation and test. Test histories include the validation item, but training targets, graph edges, and priors exclude both held-out events. Filtering and catalog indexing precede the split, so this is a transductive per-user chronological protocol, not a globally time-separated deployment simulation.
+
+Evaluation ranks against the complete processed catalog for every eligible user. Previously observed items are masked, except that a repeated gold item remains eligible. Ties use the pessimistic rank equal to the number of candidate scores greater than or equal to the gold score. With one relevant item per user, Recall@$K$ equals Hit@$K$, and NDCG@$K$ is $\mathbf 1[r\leq K]/\log_2(r+1)$ averaged over users. We report Recall and NDCG at 5 and 10, with no evaluation-user subsampling.
+
+\subsection{Configurations and Evidence Scope}
+The reported runs use \texttt{state-spaces/mamba-130m-hf}, frozen 768-dimensional text features, a maximum text length of 32 tokens including the prompt, a 128-dimensional ranker, two graph layers, 32 preference prototypes, a 128-dimensional GRU, and prototype temperature 0.2. Low-rank modules use rank 16, scale 32, and dropout 0.05. Training and evaluation batch sizes are 128 and 64. The configured schedule allows 3 specialist epochs, 3 coordinator epochs, and 7 joint epochs, with learning rates $10^{-4}$, $10^{-4}$, and $5\times10^{-5}$. Single-specialist variants skip coordinator training.
+
+Future targets use $F=3$ and $\eta=0.5$. The negative pool multiplier is 12, the target hard-negative fraction is 0.75, and its warm-up lasts two epochs per stage. Preference loss coefficients $(\lambda_p,\lambda_t,\lambda_b,\lambda_s,\lambda_h)$ are $(0.2,0.1,0.01,0.01,0.05)$; contrastive and diversity coefficients are 0.05 and 0.02. Validation NDCG@10 selects the restored best state. Joint-stage early stopping allows six unsuccessful validation checks. All included runs use seed 25252.
+
+Table~\ref{tab:config} gives category-specific settings and evaluated cohort counts. The runs are an existing experimental snapshot, not a newly executed benchmark. We use completed final score files, exclude periodic-only results, and use the latest completed run for each category and configuration when duplicate runs exist. This is an artifact-consistency rule, not selection by test performance. Run paths are listed in Appendix~\ref{app:runs}.
+
+\begin{table*}[t]
+\centering
+\begin{tabular}{lrrrrrr}
+\toprule
+Category & Short users & Long users & Prefix cap & Slate size & $\alpha_p$ & $\beta_t$\\
+\midrule
+All Beauty & 1,238 & 219 & 500,000 & 64 & $-0.25$ & 4.0\\
+Baby Products & 154,997 & 29,587 & 1,500,000 & 192 & 0.30 & 0.5\\
+Sports and Outdoors & 528,257 & 97,306 & 1,000,000 & 256 & 0.35 & 0.5\\
+Toys and Games & 460,753 & 103,913 & 1,500,000 & 192 & 0.30 & 0.5\\
+\bottomrule
+\end{tabular}
+\caption{Evaluated users and category-specific settings. Short and long groups use filtered full-sequence lengths $\leq10$ and $>10$. Prefix cap bounds training examples per epoch; slate size applies to training only.}
+\label{tab:config}
+\end{table*}
+
+\subsection{Overall Ranking Results}
+Table~\ref{tab:main} compares available configurations. $L$, $S$, $P$, and $G$ denote long, short, preference, and graph components. All listed variants include the same semantic encoding pipeline and enabled graph component. $L+G$ and $P+G$ are internal single-specialist variants, not reproductions of Mamba4Rec or standalone LightGCN. Complete-model runs with matching history-mode metadata are available for All Beauty; missing configurations on the other categories remain unreported.
+
+\begin{table*}[t]
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccrrrr}
+\toprule
+Category & L & S & P & Recall@5 & NDCG@5 & Recall@10 & NDCG@10\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Full_Beauty/rl_20260910_190927_r1_321310/Full_Beauty_scores.json
+All Beauty & -- & -- & $\checkmark$ & 0.0803 & 0.0765 & 0.0844 & 0.0779\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P0_G1/Full_Beauty/rl_20260912_154355_r1_630172/Full_Beauty_scores.json
+All Beauty & -- & $\checkmark$ & -- & 0.1119 & 0.1066 & 0.1160 & 0.1079\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Full_Beauty/rl_20260910_190900_r1_320995/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & -- & -- & 0.1132 & 0.1073 & 0.1167 & 0.1084\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Full_Beauty/rl_20260911_155827_r1_488206/Full_Beauty_scores.json
+All Beauty & -- & $\checkmark$ & $\checkmark$ & 0.1222 & 0.1118 & 0.1332 & 0.1153\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Full_Beauty/rl_20260911_155809_r1_488059/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & -- & $\checkmark$ & 0.1194 & 0.1106 & 0.1311 & 0.1144\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S1_P1_G1/Full_Beauty/rl_20260910_185419_r1_312334/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & $\checkmark$ & $\checkmark$ & 0.1222 & 0.1121 & 0.1318 & 0.1151\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Baby_Products/rl_20260910_190941_r1_321310/Baby_Products_scores.json
+Baby Products & -- & -- & $\checkmark$ & 0.0248 & 0.0179 & 0.0353 & 0.0213\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Baby_Products/rl_20260910_190948_r1_320995/Baby_Products_scores.json
+Baby Products & $\checkmark$ & -- & -- & 0.0430 & 0.0334 & 0.0557 & 0.0375\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Baby_Products/rl_20260911_155852_r1_488206/Baby_Products_scores.json
+Baby Products & -- & $\checkmark$ & $\checkmark$ & 0.0439 & 0.0344 & 0.0567 & 0.0385\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Baby_Products/rl_20260911_155908_r1_488059/Baby_Products_scores.json
+Baby Products & $\checkmark$ & -- & $\checkmark$ & 0.0437 & 0.0340 & 0.0566 & 0.0381\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Sports_and_Outdoors/rl_20260910_202901_r1_321310/Sports_and_Outdoors_scores.json
+Sports and Outdoors & -- & -- & $\checkmark$ & 0.0219 & 0.0162 & 0.0298 & 0.0188\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Sports_and_Outdoors/rl_20260910_213007_r1_320995/Sports_and_Outdoors_scores.json
+Sports and Outdoors & $\checkmark$ & -- & -- & 0.0318 & 0.0252 & 0.0404 & 0.0280\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Sports_and_Outdoors/rl_20260911_173821_r1_488206/Sports_and_Outdoors_scores.json
+Sports and Outdoors & -- & $\checkmark$ & $\checkmark$ & 0.0338 & 0.0271 & 0.0428 & 0.0300\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Sports_and_Outdoors/rl_20260911_185143_r1_488059/Sports_and_Outdoors_scores.json
+Sports and Outdoors & $\checkmark$ & -- & $\checkmark$ & 0.0334 & 0.0267 & 0.0421 & 0.0295\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Toys_and_Games/rl_20260911_001850_r1_321310/Toys_and_Games_scores.json
+Toys and Games & -- & -- & $\checkmark$ & 0.0326 & 0.0249 & 0.0425 & 0.0281\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Toys_and_Games/rl_20260911_021224_r1_320995/Toys_and_Games_scores.json
+Toys and Games & $\checkmark$ & -- & -- & 0.0456 & 0.0361 & 0.0569 & 0.0398\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Toys_and_Games/rl_20260911_221112_r1_488206/Toys_and_Games_scores.json
+Toys and Games & -- & $\checkmark$ & $\checkmark$ & 0.0467 & 0.0373 & 0.0579 & 0.0409\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Toys_and_Games/rl_20260912_003849_r1_488059/Toys_and_Games_scores.json
+Toys and Games & $\checkmark$ & -- & $\checkmark$ & 0.0460 & 0.0366 & 0.0572 & 0.0402\\
+\bottomrule
+\end{tabular}
+\caption{Completed full-catalog test results from ver4. All rows include graph features and category-specific priors. L, S, and P denote long-horizon, short-horizon, and preference specialists; a checkmark indicates an enabled branch and -- a disabled branch. Each row reports the final test evaluation of the validation-selected best model from the latest completed run for that category and configuration. Unavailable configurations are omitted; scores are rounded to four decimal places.}
+\label{tab:main}
+\end{table*}
+
+On All Beauty, the complete model reaches NDCG@10 of 0.115087 versus 0.108389 for $L+G$, a relative increase of approximately 6.18\%. Its Recall@10 increases from 0.116678 to 0.131778, or 12.94\% relative. These observations are consistent with a benefit from combining specialists in this configuration, but do not isolate the effect of preference supervision, extra parameters, or coordination.
+
+Removing the long branch gives NDCG@10 of 0.115315, approximately $2.3\times10^{-4}$ above the complete model, and a slightly higher Recall@10 of 0.133150. The current run therefore provides little evidence that the long branch is necessary on All Beauty. Across all four categories, $L+G$ outperforms $P+G$ on all four reported metrics. A preference prototype bottleneck alone is not a sufficiently strong replacement for the temporal branch in these runs. This comparison also changes the input horizon from 100 to 10 and the training objectives, so it cannot identify the cause of the difference.
+
+We do not combine published baseline scores with these measurements. Category identity, filtering, held-out items, candidate sets, tie handling, and seen-item masking must match for such a comparison to establish relative performance. SASRec, BERT4Rec, Mamba4Rec, and text-based methods are relevant literature comparators, but matched reruns are still required before making a state-of-the-art claim.
+
+\subsection{History-Length Analysis}
+We partition users using their complete filtered sequence length before leave-two-out splitting: short sequences have at most 10 events, and long sequences have more than 10. The same user remains in the same group for validation and test. Group assignment uses sequence length, not target identity, and does not change training or the model's input cap.
+
+\begin{table*}[t]
+\centering
+\begin{tabular}{llrrrr}
+\toprule
+& & \multicolumn{2}{c}{Short histories} & \multicolumn{2}{c}{Long histories}\\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Category & Configuration & Recall@10 & NDCG@10 & Recall@10 & NDCG@10\\
+\midrule
+All Beauty & $P+G$ & 0.0937 & 0.0875 & 0.0320 & 0.0235\\
+All Beauty & $L+G$ & 0.1292 & 0.1214 & 0.0457 & 0.0349\\
+All Beauty & $S+P+G$ & 0.1446 & 0.1277 & 0.0685 & 0.0453\\
+All Beauty & $L+S+P+G$ & 0.1430 & 0.1276 & 0.0685 & 0.0445\\
+Baby Products & $L+G$ & 0.0562 & 0.0380 & 0.0529 & 0.0346\\
+Sports and Outdoors & $L+G$ & 0.0419 & 0.0292 & 0.0324 & 0.0214\\
+Toys and Games & $L+G$ & 0.0594 & 0.0418 & 0.0459 & 0.0306\\
+\bottomrule
+\end{tabular}
+\caption{Test performance by filtered full-sequence length. Cohort sizes appear in Table~\ref{tab:config}. Each configuration is trained jointly on all users, not separately by cohort.}
+\label{tab:groups}
+\end{table*}
+
+Table~\ref{tab:groups} shows that the complete All Beauty model attains NDCG@10 of 0.1276 for short histories and 0.0445 for long histories. The latter group contains only 219 users, compared with 1,238 in the former. The $S+P+G$ variant is slightly higher in both groups, showing that access to older sequence events does not produce an observable advantage here. For $L+G$, short-history NDCG@10 also exceeds long-history NDCG@10 on the other three categories. These are descriptive cohort differences: interaction frequency, item distribution, and prediction difficulty may vary together with history length. They do not demonstrate that longer histories cause worse recommendations.
+
+\subsection{Interpretation and Remaining Controls}
+The most consistent result is the strength of the direct temporal branch relative to the preference-only branch. The complete model improves over that temporal variant on All Beauty, yet almost the same performance is obtained with the short and preference specialists plus coordination. A plausible hypothesis is that recent context already captures much of the useful evidence in this category; the present experiments do not test that hypothesis independently.
+
+To establish which mechanism produces gains, the next controlled comparisons should retain identical input horizons while removing preference supervision, the coordinator, graph features, text features, or catalog priors individually. Multiple seeds and per-user paired uncertainty estimates are also needed. In particular, the reported four-category single-specialist results should not be interpreted as a complete four-category evaluation of the proposed coordinated model.
+
+\section{Conclusion}
+We presented a sequential ranker that combines cached Mamba text representations, collaborative graph embeddings, temporal specialists, and explicit preference-transition prediction. The architecture keeps language encoding outside the ranking optimization loop and uses compact low-rank modules for branch-specific transformations. Completed experiments show that the coordinated model improves over single-specialist variants on All Beauty, while removing its long branch produces nearly identical NDCG@10. Across four categories, the temporal-only sequence variant consistently exceeds the preference-only variant. These results motivate controlled study of when preference prediction complements temporal ranking, rather than assuming that additional specialization necessarily improves recommendation.
+
+\section*{Limitations}
+The evidence is limited to existing offline runs with one recorded seed per configuration. There are no confidence intervals, significance tests, matched external baseline reruns, or complete-model results on every category under the selected protocol. Some duplicate runs predate explicit history-mode metadata; selecting the later auditable runs improves traceability but does not establish bitwise reproducibility. The saved artifacts do not pin every run to an immutable source revision, and the suite does not persist model weights.
+
+The ablations change more than parameter presence. Disabling the long branch truncates other sequence inputs, and single-specialist variants omit the coordinator stage. All reported variants retain graph information and category-specific ranking priors. Separate controls are needed to attribute improvements to semantic features, the preference objectives, coordination, or the priors. Although state updates scale linearly with sequence length, we have not measured end-to-end latency, peak memory, energy use, or training cost under matched hardware.
+
+The evaluation is transductive and based on per-user chronological splits. Count filtering and catalog construction use the full observed data before splitting. Missing metadata may fall back to review content assembled before the split, potentially exposing information unavailable at recommendation time; the frequency and impact of this fallback have not been audited. Thus excluding held-out events from graph and prior construction is not a complete temporal leakage audit. The single-pass count filter also differs from iterative 5-core protocols.
+
+Prototype transitions are self-supervised signals derived from learned item embeddings. Their identities are not human-interpretable categories, and high transition probability need not indicate a real change in personal taste. The experiments do not establish explanation faithfulness, conversational recommendation quality, cold-start generalization, or multilingual robustness. Finally, logged reviews do not describe exposure propensities or responses to alternative recommendations. Offline ranking gains do not establish causal improvements in satisfaction, retention, fairness, or user welfare.
+
+\bibliography{custom}
+\appendix
+\section{Result Provenance}
+\label{app:runs}
+Tables~\ref{tab:main} and~\ref{tab:groups} use the final \texttt{test} objects in category score JSON files under the version-local \texttt{outputs\_mamba\_rl} directory. The prefix \texttt{amazons\_long\_short\_} is followed by the component mask. Within each run directory, the source is \texttt{<category>\_scores.json}. Cohort metrics are read from \texttt{sequence\_length.test}; the split basis is \texttt{filtered\_full\_sequence}. Decimal values in tables are rounded to four places.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+Category directory & Mask & Run directory\\
+\midrule
+Full\_Beauty & L0\_S0\_P1\_G1 & \texttt{rl\_20260910\_190927\_r1\_321310}\\
+Full\_Beauty & L0\_S1\_P0\_G1 & \texttt{rl\_20260912\_154355\_r1\_630172}\\
+Full\_Beauty & L1\_S0\_P0\_G1 & \texttt{rl\_20260910\_190900\_r1\_320995}\\
+Full\_Beauty & L0\_S1\_P1\_G1 & \texttt{rl\_20260911\_155827\_r1\_488206}\\
+Full\_Beauty & L1\_S0\_P1\_G1 & \texttt{rl\_20260911\_155809\_r1\_488059}\\
+Full\_Beauty & L1\_S1\_P1\_G1 & \texttt{rl\_20260910\_185419\_r1\_312334}\\
+Baby\_Products & L0\_S0\_P1\_G1 & \texttt{rl\_20260910\_190941\_r1\_321310}\\
+Baby\_Products & L1\_S0\_P0\_G1 & \texttt{rl\_20260910\_190948\_r1\_320995}\\
+Baby\_Products & L0\_S1\_P1\_G1 & \texttt{rl\_20260911\_155852\_r1\_488206}\\
+Baby\_Products & L1\_S0\_P1\_G1 & \texttt{rl\_20260911\_155908\_r1\_488059}\\
+Sports\_and\_Outdoors & L0\_S0\_P1\_G1 & \texttt{rl\_20260910\_202901\_r1\_321310}\\
+Sports\_and\_Outdoors & L1\_S0\_P0\_G1 & \texttt{rl\_20260910\_213007\_r1\_320995}\\
+Sports\_and\_Outdoors & L0\_S1\_P1\_G1 & \texttt{rl\_20260911\_173821\_r1\_488206}\\
+Sports\_and\_Outdoors & L1\_S0\_P1\_G1 & \texttt{rl\_20260911\_185143\_r1\_488059}\\
+Toys\_and\_Games & L0\_S0\_P1\_G1 & \texttt{rl\_20260911\_001850\_r1\_321310}\\
+Toys\_and\_Games & L1\_S0\_P0\_G1 & \texttt{rl\_20260911\_021224\_r1\_320995}\\
+Toys\_and\_Games & L0\_S1\_P1\_G1 & \texttt{rl\_20260911\_221112\_r1\_488206}\\
+Toys\_and\_Games & L1\_S0\_P1\_G1 & \texttt{rl\_20260912\_003849\_r1\_488059}\\
+\bottomrule
+\end{tabular}
+\caption{Exact source runs for the reported measurements.}
+\label{tab:runs}
+\end{table*}
+
+The earlier unsuffixed history-length experiment used untruncated training-history length for grouping and is excluded. The older \texttt{amazons\_lora} and \texttt{amazons\_full} directories are not mixed into the tables. This keeps the presented cohort definition consistent and avoids treating historical runs as matched ablations.
+\end{document}

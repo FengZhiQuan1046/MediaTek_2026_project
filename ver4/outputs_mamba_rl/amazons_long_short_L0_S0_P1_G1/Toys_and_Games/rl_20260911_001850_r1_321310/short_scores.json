@@ -1,0 +1,261 @@
+{
+  "dataset": "amazon-toys-and-games",
+  "run_id": "20260911_001851",
+  "group": "short",
+  "length_basis": "filtered_full_sequence",
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "specialists",
+      "epoch": 1,
+      "global_step": 6000,
+      "scores": {
+        "recall@5": 0.021525633039828282,
+        "recall@10": 0.027674263651023434,
+        "ndcg@5": 0.016309645942355663,
+        "ndcg@10": 0.01829059655730533,
+        "hit@5": 0.021525633039828282,
+        "hit@10": 0.027674263651023434
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    },
+    {
+      "stage": "specialists",
+      "epoch": 2,
+      "global_step": 17719,
+      "scores": {
+        "recall@5": 0.023311839532243958,
+        "recall@10": 0.030528287390423937,
+        "ndcg@5": 0.01739960374427674,
+        "ndcg@10": 0.019720201395529834,
+        "hit@5": 0.023311839532243958,
+        "hit@10": 0.030528287390423937
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    },
+    {
+      "stage": "specialists",
+      "epoch": 3,
+      "global_step": 29438,
+      "scores": {
+        "recall@5": 0.025697065455895025,
+        "recall@10": 0.03413108541886868,
+        "ndcg@5": 0.019094300550867152,
+        "ndcg@10": 0.02180930570243873,
+        "hit@5": 0.025697065455895025,
+        "hit@10": 0.03413108541886868
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    },
+    {
+      "stage": "joint",
+      "epoch": 1,
+      "global_step": 41157,
+      "scores": {
+        "recall@5": 0.029362803931824645,
+        "recall@10": 0.03878216745197535,
+        "ndcg@5": 0.021794949599793955,
+        "ndcg@10": 0.024829940714202657,
+        "hit@5": 0.029362803931824645,
+        "hit@10": 0.03878216745197535
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    },
+    {
+      "stage": "joint",
+      "epoch": 2,
+      "global_step": 52876,
+      "scores": {
+        "recall@5": 0.030534798471198235,
+        "recall@10": 0.040205923781288455,
+        "ndcg@5": 0.02285578315814521,
+        "ndcg@10": 0.025970151547150783,
+        "hit@5": 0.030534798471198235,
+        "hit@10": 0.040205923781288455
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    },
+    {
+      "stage": "joint",
+      "epoch": 3,
+      "global_step": 64595,
+      "scores": {
+        "recall@5": 0.032156057583998365,
+        "recall@10": 0.042206995939255955,
+        "ndcg@5": 0.024233363940062716,
+        "ndcg@10": 0.027472293922213557,
+        "hit@5": 0.032156057583998365,
+        "hit@10": 0.042206995939255955
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    },
+    {
+      "stage": "joint",
+      "epoch": 4,
+      "global_step": 76314,
+      "scores": {
+        "recall@5": 0.03301986096672187,
+        "recall@10": 0.04324876886314359,
+        "ndcg@5": 0.02501802772521637,
+        "ndcg@10": 0.028313801022148692,
+        "hit@5": 0.03301986096672187,
+        "hit@10": 0.04324876886314359
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    },
+    {
+      "stage": "joint",
+      "epoch": 5,
+      "global_step": 88033,
+      "scores": {
+        "recall@5": 0.03344525157730932,
+        "recall@10": 0.04363509298908526,
+        "ndcg@5": 0.02554388588118812,
+        "ndcg@10": 0.028822337956914065,
+        "hit@5": 0.03344525157730932,
+        "hit@10": 0.04363509298908526
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    },
+    {
+      "stage": "joint",
+      "epoch": 6,
+      "global_step": 99752,
+      "scores": {
+        "recall@5": 0.03374259093266892,
+        "recall@10": 0.04354610821850319,
+        "ndcg@5": 0.025772013007485266,
+        "ndcg@10": 0.028926490853133036,
+        "hit@5": 0.03374259093266892,
+        "hit@10": 0.04354610821850319
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    },
+    {
+      "stage": "joint",
+      "epoch": 7,
+      "global_step": 111471,
+      "scores": {
+        "recall@5": 0.033538577068407585,
+        "recall@10": 0.043335583273467565,
+        "ndcg@5": 0.025711376027692658,
+        "ndcg@10": 0.028866543262808086,
+        "hit@5": 0.033538577068407585,
+        "hit@10": 0.043335583273467565
+      },
+      "evaluated_users": 460753,
+      "total_users": 460753
+    }
+  ],
+  "length_rule": "length <= threshold",
+  "length_threshold": 10,
+  "config": {
+    "dataset": "amazon-toys-and-games",
+    "data_path": null,
+    "cache_dir": "/workspace/P78123011/cache",
+    "refresh_data_cache": false,
+    "max_events": null,
+    "max_transitions": 1500000,
+    "min_rating": 4.0,
+    "specialist_epochs": 3,
+    "coordinator_epochs": 3,
+    "joint_epochs": 7,
+    "batch_size": 128,
+    "eval_batch_size": 64,
+    "validate_every_steps": 6000,
+    "monitor_metric": "ndcg@10",
+    "early_stopping_patience": 6,
+    "lr_patience": 2,
+    "candidates": 192,
+    "dim": 128,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "enable_lora": 1,
+    "short_window": 10,
+    "preference_count": 32,
+    "preference_hidden": 128,
+    "preference_temperature": 0.2,
+    "preference_score_weight": 0.2,
+    "use_graph_embeddings": true,
+    "max_history": 100,
+    "specialist_lr": 0.0001,
+    "coordinator_lr": 0.0001,
+    "joint_lr": 5e-05,
+    "preference_coef": 0.2,
+    "preference_transition_coef": 0.1,
+    "preference_balance_coef": 0.01,
+    "preference_separation_coef": 0.01,
+    "preference_sharpness_coef": 0.05,
+    "future_horizon": 3,
+    "future_decay": 0.5,
+    "hard_negative_pool_multiplier": 12,
+    "hard_negative_fraction": 0.75,
+    "hard_negative_warmup_epochs": 2,
+    "use_in_batch_negatives": true,
+    "preference_contrastive_coef": 0.05,
+    "agent_diversity_coef": 0.02,
+    "full_catalog_supervised": false,
+    "popularity_alpha": 0.3,
+    "transition_beta": 0.5,
+    "seed": 25252,
+    "device": "cuda:0",
+    "skip_mamba": false,
+    "graph_device": "cuda:0",
+    "mamba_encode_batch_size": 32,
+    "mamba_max_tokens": 32,
+    "mamba_model_id": "state-spaces/mamba-130m-hf",
+    "item_prompt_prefix": "Preference-aware product representation: ",
+    "validation_user_limit": 0,
+    "periodic_test_user_limit": 0,
+    "generate_reasons": false,
+    "save_model_weights": false,
+    "reason_count": 20,
+    "reason_max_new_tokens": 40,
+    "item_vector_artifact": null,
+    "resume_checkpoint": null,
+    "eval_length_basis": "filtered_full_sequence",
+    "eval_length_threshold": 10,
+    "experiment_note": "amazons_long_short subset=Toys_and_Games; short filtered-full-sequence <= 10; long > 10; same model and full catalog",
+    "target_recall_at_10": 0.15,
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Toys_and_Games/rl_20260911_001850_r1_321310",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Toys_and_Games/rl_20260911_001850_r1_321310/Toys_and_Games_scores.json",
+    "use_long": 0,
+    "use_short": 0,
+    "use_preference": 1
+  },
+  "valid": {
+    "ndcg@5": 0.030404992243834455,
+    "ndcg@10": 0.034328507291796526,
+    "recall@5": 0.040231968104385646,
+    "recall@10": 0.05240768915232239,
+    "hit@5": 0.040231968104385646,
+    "hit@10": 0.05240768915232239
+  },
+  "valid_users": {
+    "total_users": 460753,
+    "evaluated_users": 460753
+  },
+  "test": {
+    "ndcg@5": 0.025873546815634835,
+    "ndcg@10": 0.029083822622471445,
+    "recall@5": 0.0337729759762823,
+    "recall@10": 0.04373927028147402,
+    "hit@5": 0.0337729759762823,
+    "hit@10": 0.04373927028147402
+  },
+  "test_users": {
+    "total_users": 460753,
+    "evaluated_users": 460753
+  }
+}

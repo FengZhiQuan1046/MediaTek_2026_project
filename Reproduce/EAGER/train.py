@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import logging
 import math
+import os
 from pathlib import Path
 import random
 import sys
@@ -13,11 +14,24 @@ import time
 
 import numpy as np
 import torch
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm.auto import tqdm
 
 ROOT = Path(__file__).resolve().parent
-UPSTREAM = ROOT.parents[2] / "EAGER" / "EAGER"
+UPSTREAM = Path(os.environ.get(
+    "EAGER_UPSTREAM_DIR", str(ROOT.parents[2] / "EAGER" / "EAGER")
+)).expanduser().resolve()
+if not all((UPSTREAM / package / "__init__.py").is_file()
+           for package in ("lib", "optimizers")):
+    raise RuntimeError(
+        f"EAGER upstream packages not found in {UPSTREAM}. "
+        "Clone https://github.com/yewzz/EAGER.git into the workspace's EAGER "
+        "directory, or set EAGER_UPSTREAM_DIR to the directory containing "
+        "lib/ and optimizers/."
+    )
 if str(UPSTREAM) not in sys.path:
     sys.path.insert(0, str(UPSTREAM))
 
@@ -28,6 +42,50 @@ from optimizers.lr_schedulers import InverseSquareRootSchedule  # noqa: E402
 
 from data_adapter import evaluation_tensors, load_data, training_tensors  # noqa: E402
 from semantic_features import load_or_encode  # noqa: E402
+
+
+def distributed():
+    return dist.is_available() and dist.is_initialized()
+
+
+def rank():
+    return dist.get_rank() if distributed() else 0
+
+
+def world_size():
+    return dist.get_world_size() if distributed() else 1
+
+
+def barrier():
+    if distributed():
+        dist.barrier()
+
+
+def wrap_distributed(model):
+    if not distributed():
+        return model
+    return DDP(model, device_ids=[torch.cuda.current_device()],
+               find_unused_parameters=True, broadcast_buffers=False,
+               gradient_as_bucket_view=True)
+
+
+class EagerLoss(torch.nn.Module):
+    """One DDP graph for both streams, including their shared encoder."""
+    def __init__(self, streams, features, args):
+        super().__init__()
+        self.models = torch.nn.ModuleList([stream.trm_model for stream in streams])
+        self.streams, self.features, self.args = streams, features, args
+
+    def forward(self, batch_x, batch_y):
+        loss, guide = 0.0, None
+        for stream_id in range(len(self.streams) - 1, -1, -1):
+            stream_loss, _, guide = self.streams[stream_id].update_model(
+                batch_x, batch_y, self.features[stream_id], type=stream_id,
+                use_con=self.args.use_contrastive, use_guide=self.args.use_guide,
+                guide_feat=guide,
+            )
+            loss = loss + stream_loss
+        return loss
 
 
 def _device_safe_kmeans(self, index):
@@ -67,11 +125,18 @@ def seed_everything(seed):
 
 
 def cycle_batches(histories, labels, batch_size):
+    dataset = TensorDataset(histories, labels)
+    if not len(dataset):
+        raise ValueError("No training examples")
+    sampler = DistributedSampler(dataset, seed=2024) if distributed() else None
+    loader = DataLoader(dataset, batch_size=batch_size // world_size(),
+                        sampler=sampler, shuffle=sampler is None, num_workers=0)
+    epoch = 0
     while True:
-        yield from DataLoader(
-            TensorDataset(histories, labels), batch_size=batch_size, shuffle=True,
-            drop_last=False, num_workers=0,
-        )
+        if sampler is not None:
+            sampler.set_epoch(epoch)
+        yield from loader
+        epoch += 1
 
 
 def train_din(args, data, histories, labels, cache, logger):
@@ -86,17 +151,22 @@ def train_din(args, data, histories, labels, cache, logger):
         trainer.DINModel.load_state_dict(torch.load(cache, map_location=args.device, weights_only=True))
         logger.info("DIN_CACHE hit path=%s", cache)
         return trainer.DINModel
+    trainer.DINModel = wrap_distributed(trainer.DINModel)
     iterator = cycle_batches(histories, labels, args.din_batch_size)
     trainer.DINModel.train()
     losses = []
-    for step in tqdm(range(1, args.din_steps + 1), desc="DIN pretraining", unit="step"):
+    for step in tqdm(range(1, args.din_steps + 1), desc="DIN pretraining", unit="step", disable=rank() != 0):
         batch_x, batch_y = next(iterator)
         loss = trainer.update_DIN(batch_x, batch_y)
         losses.append(float(loss.detach()))
         if step % args.log_every_steps == 0:
             logger.info("DIN step=%d loss=%.6f", step, float(np.mean(losses[-args.log_every_steps:])))
     cache.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(trainer.DINModel.state_dict(), cache)
+    if distributed():
+        trainer.DINModel = trainer.DINModel.module
+    if rank() == 0:
+        torch.save(trainer.DINModel.state_dict(), cache)
+    barrier()
     logger.info("DIN_CACHE saved path=%s", cache)
     return trainer.DINModel
 
@@ -134,7 +204,7 @@ def build_streams(args, data, behavior_features, semantic_features, cache_root):
     return streams, feature_sets, k
 
 
-def rerank(streams, histories, candidates, topk):
+def rerank(streams, histories, candidates, topk, chunk_size=64):
     rows = []
     for candidate_row in candidates:
         rows.append(list(dict.fromkeys(int(item) for item in candidate_row)))
@@ -144,13 +214,16 @@ def rerank(streams, histories, candidates, topk):
     for row, values in enumerate(rows):
         labels[row, :len(values)] = torch.tensor(values, device=histories.device)
         valid[row, :len(values)] = True
-    expanded_history = histories.repeat_interleave(width, dim=0)
     expanded_items = labels.reshape(-1)
-    scores = torch.zeros_like(labels, dtype=torch.float32).masked_fill(~valid, -torch.inf)
-    for stream_id, stream in enumerate(streams):
-        scores += stream.compute_scores(
-            expanded_history, expanded_items, type=stream_id
-        ).sum(-1).view(len(rows), width).masked_fill(~valid, 0.0)
+    flat_scores = torch.zeros(len(expanded_items), device=histories.device)
+    for start in range(0, len(expanded_items), chunk_size):
+        stop = min(start + chunk_size, len(expanded_items))
+        user_rows = torch.arange(start, stop, device=histories.device) // width
+        for stream_id, stream in enumerate(streams):
+            flat_scores[start:stop] += stream.compute_scores(
+                histories[user_rows], expanded_items[start:stop], type=stream_id,
+            ).sum(-1)
+    scores = flat_scores.view_as(labels).masked_fill(~valid, -torch.inf)
     indices = scores.topk(min(topk, width), dim=-1).indices
     return labels.gather(1, indices)
 
@@ -161,16 +234,22 @@ def evaluate(streams, data, split, args, collect=False):
     users, histories, labels, raw_histories = evaluation_tensors(
         data, split, args.maxlen, args.eval_user_limit
     )
+    lo = len(users) * rank() // world_size()
+    hi = len(users) * (rank() + 1) // world_size()
+    users, histories, labels, raw_histories = (
+        users[lo:hi], histories[lo:hi], labels[lo:hi], raw_histories[lo:hi]
+    )
+    local_batch_size = max(1, args.eval_batch_size // world_size())
     totals = {f"{metric}@{cutoff}": 0.0 for metric in ("recall", "hit", "ndcg") for cutoff in (5, 10)}
     recommendations = []
     started = time.perf_counter()
-    for start in tqdm(range(0, len(users), args.eval_batch_size), desc=f"EAGER {split}", unit="batch"):
-        batch_x = histories[start:start + args.eval_batch_size].to(args.device)
+    for start in tqdm(range(0, len(users), local_batch_size), desc=f"EAGER {split}", unit="batch", disable=rank() != 0):
+        batch_x = histories[start:start + local_batch_size].to(args.device)
         generated = [
             stream.predict(batch_x, topk=args.predict_candidates, type=stream_id)
             for stream_id, stream in enumerate(streams)
         ]
-        ranked = rerank(streams, batch_x, torch.cat(generated, dim=-1), args.predict_candidates)
+        ranked = rerank(streams, batch_x, torch.cat(generated, dim=-1), args.predict_candidates, args.rerank_batch_size)
         for row in range(len(batch_x)):
             seen = set(raw_histories[start + row])
             filtered = []
@@ -189,8 +268,20 @@ def evaluate(streams, data, split, args, collect=False):
             if collect:
                 recommendations.append({"user": users[start + row], "target": gold, "top10": filtered})
     seconds = max(time.perf_counter() - started, 1e-9)
-    metrics = {name: value / len(users) for name, value in totals.items()}
-    metrics.update({"evaluated_users": len(users), "users_per_second": len(users) / seconds})
+    counts = torch.tensor([*totals.values(), len(users)], dtype=torch.float64, device=args.device)
+    elapsed = torch.tensor(seconds, dtype=torch.float64, device=args.device)
+    if distributed():
+        dist.all_reduce(counts)
+        dist.all_reduce(elapsed, op=dist.ReduceOp.MAX)
+        if collect:
+            gathered = [None] * world_size() if rank() == 0 else None
+            dist.gather_object(recommendations, gathered, dst=0)
+            recommendations = [row for part in gathered for row in part] if rank() == 0 else []
+    count = int(counts[-1].item())
+    if not count:
+        raise ValueError(f"No users available for {split} evaluation")
+    metrics = {name: counts[i].item() / count for i, name in enumerate(totals)}
+    metrics.update({"evaluated_users": count, "users_per_second": count / elapsed.item()})
     return metrics, recommendations
 
 
@@ -203,6 +294,7 @@ def train_eager(args, data, histories, labels, streams, features, logger):
         parameters += list(stream.trm_model.trans_d_rec.parameters())
         parameters += list(stream.trm_model.fc_comp.parameters())
         parameters += [stream.trm_model.start_vec, stream.trm_model.mask_vec]
+    loss_model = wrap_distributed(EagerLoss(streams, features, args))
     optimizer_args = {"lr": 1e-3, "weight_decay": 1e-7, "warmup_updates": 2000, "warmup_init_lr": 1e-7}
     optimizer = AdamOptimizer(optimizer_args, parameters)
     scheduler = InverseSquareRootSchedule(optimizer_args, optimizer)
@@ -210,16 +302,16 @@ def train_eager(args, data, histories, labels, streams, features, logger):
     best_score, best_step, best_valid, best_states = -math.inf, 0, None, None
     history, recent = [], []
     for stream in streams: stream.trm_model.train()
-    for step in tqdm(range(1, args.train_steps + 1), desc="EAGER training", unit="step"):
-        batch_x, batch_y = next(iterator); optimizer.zero_grad(); loss = 0.0; guide = None
-        for stream_id in range(len(streams) - 1, -1, -1):
-            stream_loss, _, guide = streams[stream_id].update_model(
-                batch_x, batch_y, features[stream_id], type=stream_id,
-                use_con=args.use_contrastive, use_guide=args.use_guide, guide_feat=guide,
-            )
-            loss = loss + stream_loss
+    for step in tqdm(range(1, args.train_steps + 1), desc="EAGER training", unit="step", disable=rank() != 0):
+        batch_x, batch_y = next(iterator)
+        optimizer.zero_grad()
+        loss = loss_model(batch_x, batch_y)
         loss.backward(); optimizer.step(); learning_rate = scheduler.step_update(step)
-        recent.append(float(loss.detach()))
+        mean_loss = loss.detach().clone()
+        if distributed():
+            dist.all_reduce(mean_loss)
+            mean_loss /= world_size()
+        recent.append(float(mean_loss))
         if step % args.log_every_steps == 0:
             logger.info("TRAIN step=%d loss=%.6f lr=%.8g", step, np.mean(recent[-args.log_every_steps:]), learning_rate)
         if args.eval_every_steps and (step % args.eval_every_steps == 0 or step == args.train_steps):
@@ -246,6 +338,7 @@ def parse_args():
     parser.add_argument("--max-events", type=int); parser.add_argument("--min-rating", type=float, default=4.0)
     parser.add_argument("--din-steps", type=int, default=30000); parser.add_argument("--train-steps", type=int, default=60000)
     parser.add_argument("--din-batch-size", type=int, default=128); parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--rerank-batch-size", type=int, default=64)
     parser.add_argument("--eval-batch-size", type=int, default=50); parser.add_argument("--eval-every-steps", type=int, default=300)
     parser.add_argument("--log-every-steps", type=int, default=100); parser.add_argument("--maxlen", type=int, default=19)
     parser.add_argument("--min-history", type=int, default=4); parser.add_argument("--max-train-samples", type=int, default=0)
@@ -266,30 +359,62 @@ def parse_args():
     if args.d_model % args.num_heads: parser.error("d_model must be divisible by num_heads")
     if min(args.din_steps, args.train_steps, args.batch_size, args.din_batch_size, args.predict_candidates) < 1:
         parser.error("training steps, batch sizes and prediction candidates must be positive")
+    if min(args.eval_batch_size, args.rerank_batch_size, args.semantic_batch_size) < 1:
+        parser.error("evaluation, rerank and semantic batch sizes must be positive")
+    workers = int(os.environ.get("WORLD_SIZE", "1"))
+    if any(size % workers for size in (args.batch_size, args.din_batch_size)):
+        parser.error("global batch-size and din-batch-size must be divisible by WORLD_SIZE")
     return args
 
 
 def main():
-    args = parse_args(); seed_everything(args.seed)
+    args = parse_args()
+    if int(os.environ.get("WORLD_SIZE", "1")) > 1:
+        torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
+        args.device = f"cuda:{os.environ['LOCAL_RANK']}"
+        dist.init_process_group("nccl", timeout=timedelta(hours=4))
+    seed_everything(args.seed)
+    args.world_size = world_size()
     if args.device.startswith("cuda") and not torch.cuda.is_available(): raise RuntimeError("CUDA is required by upstream EAGER")
     output = Path(args.output_dir); output.mkdir(parents=True, exist_ok=True)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    logger = configure_logging(output / f"train_{run_id}.log")
+    logger = configure_logging(output / f"train_{run_id}.log") if rank() == 0 else logging.getLogger("eager_worker")
+    if rank() != 0:
+        logger.handlers.clear()
+        logger.addHandler(logging.NullHandler())
     logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
+    if rank() != 0:
+        barrier()
     data, interaction_cache = load_data(args, logger)
+    if rank() == 0:
+        barrier()
     histories, labels = training_tensors(data, args.maxlen, args.min_history, args.max_train_samples, args.seed)
     safe = args.dataset.replace(":", "_").replace("/", "_")
     eager_cache = Path(args.cache_dir) / "eager" / safe
     din_cache = eager_cache / f"din_steps{args.din_steps}_seed{args.seed}.pt"
     din = train_din(args, data, histories, labels, din_cache, logger)
     behavior_features = din.item_embedding.embed.weight.detach()[:data.num_items].cpu()
+    del din
+    torch.cuda.empty_cache()
+    if rank() != 0:
+        barrier()
     semantic, semantic_cache = load_or_encode(
         data.item_texts, args.cache_dir, args.dataset, args.semantic_model_id,
         args.semantic_batch_size, args.semantic_max_tokens, args.device, args.semantic_backend,
     )
-    streams, features, branch_factor = build_streams(args, data, behavior_features, semantic, eager_cache / "trees")
+    if rank() == 0:
+        barrier()
+    # Only one rank constructs/writes each shared tree cache.
+    for owner in range(world_size()):
+        if rank() == owner:
+            streams, features, branch_factor = build_streams(
+                args, data, behavior_features, semantic, eager_cache / "trees")
+        barrier()
+    seed_everything(args.seed + rank())
     history, best_step, best_score, validation = train_eager(args, data, histories, labels, streams, features, logger)
     test, recommendations = evaluate(streams, data, "test", args, collect=True)
+    if rank() != 0:
+        return
     score_path = output / f"{output.parent.name}_scores.json"
     score_path.write_text(json.dumps(recommendations, ensure_ascii=False, indent=2), encoding="utf-8")
     result = {
@@ -314,4 +439,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        if distributed():
+            dist.destroy_process_group()

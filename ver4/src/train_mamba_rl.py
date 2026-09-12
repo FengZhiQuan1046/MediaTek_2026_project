@@ -298,7 +298,8 @@ def record_validation(model, metrics, stage, epoch, monitor, logger) -> bool:
         "global_step": monitor.global_step,
         "stage": stage,
         "epoch": epoch,
-        **{name: float(value) for name, value in metrics.items()},
+        **{name: value if name == "sequence_length" else float(value)
+           for name, value in metrics.items()},
     })
     improved = score > monitor.best_score
     logger.info(
@@ -360,6 +361,9 @@ def log_metric_block(logger, label, metrics, stage, epoch, step) -> None:
         metrics["hit@5"], metrics["hit@10"],
     )
 
+    if "sequence_length" in metrics:
+        logger.info("%s SEQUENCE_LENGTH %s", label, json.dumps(metrics["sequence_length"], sort_keys=True))
+
 
 def preference_auxiliary_losses(model, output, target_vectors):
     """Supervise next-preference prediction and prevent prototype collapse."""
@@ -391,15 +395,15 @@ def preference_auxiliary_losses(model, output, target_vectors):
     return prediction, transition, balance, separation, sharpness
 
 
-def agent_diversity_loss(states):
+def agent_diversity_loss(states, active=(True, True, True)):
     """Softly discourage long/short/preference specialists from identical states."""
-    specialists = [F.normalize(state, dim=-1) for state in (states[0], states[1], states[3])]
+    specialists = [F.normalize(state, dim=-1) for state, enabled in zip((states[0], states[1], states[3]), active) if enabled]
     similarities = [
         (specialists[left] * specialists[right]).sum(-1).square().mean()
         for left in range(len(specialists))
         for right in range(left + 1, len(specialists))
     ]
-    return torch.stack(similarities).mean()
+    return torch.stack(similarities).mean() if similarities else states[0].new_zeros(())
 
 
 def evaluation_interval(configured_steps: int, steps_per_epoch: int) -> int:
@@ -418,11 +422,21 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                 hard_negative_warmup_epochs, use_in_batch_negatives,
                 preference_contrastive_coef, preference_sharpness_coef,
                 agent_diversity_coef, seed):
-    if epochs == 0:
+    if epochs == 0 or (stage == "coordinator" and not model.use_coordinator):
+        logger.info("SKIP_STAGE stage=%s epochs=%d use_coordinator=%s", stage, epochs, model.use_coordinator)
         return []
     model.set_stage(stage)
     trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
     optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-5)
+    logger.info(
+        "TRAINING_BRANCHES stage=%s long=%s short=%s preference=%s gcn=%s "
+        "preference_auxiliary=%s preference_contrastive=%s diversity_pairs=%d trainable_parameters=%d",
+        stage, model.use_long, model.use_short, model.use_preference, model.use_graph_embeddings,
+        model.use_preference and stage != "coordinator", model.use_preference and stage == "joint",
+        (sum((model.use_long, model.use_short, model.use_preference)) *
+         (sum((model.use_long, model.use_short, model.use_preference)) - 1) // 2) if stage == "joint" else 0,
+        sum(parameter.numel() for parameter in trainable),
+    )
     scheduler = None
     if stage in {"coordinator", "joint"} and validate_every_steps > 0:
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -446,13 +460,18 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                         desc=f"{stage} {epoch}/{epochs}", unit="step", dynamic_ncols=True)
         for start in progress:
             batch = epoch_transitions[start:start + batch_size]
-            histories, lengths, targets = history_batch(data, batch, max_history, device)
+            histories, lengths, targets = history_batch(
+                data, batch, max_history if model.use_long else min(max_history, model.short_window), device
+            )
             future_ids, future_weights = future_target_batch(
                 data, batch, future_horizon, future_decay, device
             )
             with amp_context(device):
                 graph_items = model.graph_item_vectors()
-                states = model.encode_states(histories, lengths, graph_items)
+                states = model.encode_states(
+                    histories, lengths, graph_items,
+                    user_ids=torch.tensor([row.user for row in batch], device=device),
+                )
                 if full_catalog_supervised:
                     candidate_vectors = model.project_all(graph_items)
                     output = model.logits_from_states(states, candidate_vectors)
@@ -473,7 +492,8 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                         future_horizon, device=device
                     ).unsqueeze(0).expand(len(batch), -1)
                     target_vectors = candidate_vectors[:, 0]
-                preference_terms = preference_auxiliary_losses(model, output, target_vectors)
+                preference_terms = (preference_auxiliary_losses(model, output, target_vectors)
+                                    if model.use_preference else (0.0,) * 5)
                 preference_auxiliary = (
                     preference_coef * preference_terms[0]
                     + preference_transition_coef * preference_terms[1]
@@ -486,11 +506,12 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                         output[name], target_positions, future_weights
                     )
                     for name in ("long", "short", "preference", "coordinator")
+                    if (name == "coordinator" and (model.use_coordinator or model.graph_only))
+                    or (name != "coordinator" and getattr(model, f"use_{name}"))
                 }
                 if stage == "specialists":
                     loss = (
-                        ranking_losses["long"] + ranking_losses["short"]
-                        + ranking_losses["preference"]
+                        sum(value for name, value in ranking_losses.items() if name != "coordinator" or model.graph_only)
                         + preference_auxiliary
                     )
                 elif stage == "coordinator":
@@ -499,11 +520,11 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                     supervised = sum(ranking_losses.values()) / len(ranking_losses)
                     contrastive = preference_contrastive_loss(
                         output["states"][3], target_vectors, targets
-                    )
+                    ) if model.use_preference else 0.0
                     loss = (
                         supervised + preference_auxiliary
                         + preference_contrastive_coef * contrastive
-                        + agent_diversity_coef * agent_diversity_loss(output["states"])
+                        + agent_diversity_coef * agent_diversity_loss(output["states"], (model.use_long, model.use_short, model.use_preference))
                     )
             optimizer.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
@@ -543,6 +564,8 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
                         logger, "PERIODIC TEST", test_metrics,
                         stage, epoch, monitor.global_step,
                     )
+                    if hasattr(data, "periodic_test_scores"):
+                        data.periodic_test_scores.record(test_metrics, stage, epoch, monitor.global_step)
                 validation_seconds += time.perf_counter() - validation_started
                 record_validation(model, valid_metrics, stage, epoch, monitor, logger)
                 if scheduler is not None:
@@ -606,6 +629,20 @@ def evaluate(
         "long_preference_state_cosine": 0.0,
         "short_preference_state_cosine": 0.0,
     }
+    length_threshold = getattr(data, "evaluation_length_threshold", None)
+    length_groups = None
+    if length_threshold is not None:
+        from .sequence_length_metrics import SequenceLengthMetrics
+        basis = getattr(data, "evaluation_length_basis", "untruncated_train_history")
+        sequence_lengths = None
+        if basis == "filtered_full_sequence":
+            sequence_lengths = {
+                user: len(data.train_by_user[user]) + int(user in data.valid_target) + int(user in data.test_target)
+                for user in targets
+            }
+        length_groups = SequenceLengthMetrics(
+            data.train_by_user, targets, length_threshold, lengths=sequence_lengths, basis=basis
+        )
     samples = []
     with amp_context(device):
         graph_items = model.graph_item_vectors()
@@ -618,7 +655,8 @@ def evaluate(
         histories, lengths, raw_histories = evaluation_history_batch(data, batch_users, split, max_history, device)
         with amp_context(device):
             output = model.full_catalog_scores(
-                histories, lengths, projected_items, graph_items
+                histories, lengths, projected_items, graph_items,
+                user_ids=torch.tensor(batch_users, device=device),
             )
         scores = output["coordinator"].float()
         gold = torch.tensor([targets[user] for user in batch_users], device=device)
@@ -637,6 +675,8 @@ def evaluate(
             if seen:
                 scores[row, list(seen)] = -torch.inf
         ranks = (scores >= scores.gather(1, gold.unsqueeze(1))).sum(1)
+        if length_groups is not None:
+            length_groups.update(batch_users, ranks.tolist())
         current_preference = output["preference_current"].float().clamp_min(1e-8)
         next_preference = output["preference_next"].float().clamp_min(1e-8)
         totals["preference_change_probability"] += output["preference_change"].float().sum().item()
@@ -703,6 +743,8 @@ def evaluate(
     metrics.update({"users_per_second": len(users) / seconds,
                     "scores_per_second": len(users) * data.num_items / seconds,
                     "evaluated_users": len(users), "total_users": total_users})
+    if length_groups is not None:
+        metrics["sequence_length"] = length_groups.report()
     return metrics, samples
 
 
@@ -887,6 +929,15 @@ def parse_args():
     parser.add_argument("--reason-max-new-tokens", type=int, default=40)
     parser.add_argument("--item-vector-artifact", default=None)
     parser.add_argument("--resume-checkpoint", default=None)
+    parser.add_argument(
+        "--eval-length-basis", choices=("untruncated_train_history", "filtered_full_sequence"),
+        default="untruncated_train_history",
+        help="Length grouping basis; full sequence includes both held-out positions, not their identities.",
+    )
+    parser.add_argument(
+        "--eval-length-threshold", type=int, default=None,
+        help="Opt-in length groups: short <= threshold, long > threshold; uses untruncated training history.",
+    )
     parser.add_argument("--experiment-note", default="No experiment note supplied.")
     parser.add_argument("--target-recall-at-10", type=float, default=0.15)
     parser.add_argument("--output-dir", default=str(PROJECT_ROOT / "outputs_mamba_rl"))
@@ -898,13 +949,19 @@ def parse_args():
         "--score-file", default=None,
         help="Optional JSON path for validation/test ranking scores.",
     )
+    for agent in ("long", "short", "preference"):
+        parser.add_argument(f"--use-{agent}", type=int, choices=(0, 1), default=1)
     args = parser.parse_args()
+    if not (args.use_long or args.use_short or args.use_preference or args.use_graph_embeddings):
+        parser.error("All agents disabled requires USE_GCN=1")
+    if args.eval_length_threshold is not None and args.eval_length_threshold < 1:
+        parser.error("--eval-length-threshold must be positive")
     if min(args.specialist_epochs, args.coordinator_epochs, args.joint_epochs) < 0:
         parser.error("stage epoch counts cannot be negative")
     if min(args.validate_every_steps, args.early_stopping_patience, args.lr_patience) < 0:
         parser.error("validation interval and patience values cannot be negative")
     if (
-        args.candidates < 2 or args.batch_size < 1 or args.max_history < 1
+        args.candidates < 2 or args.batch_size < 1 or args.max_history < 1 or args.short_window < 1
         or args.mamba_encode_batch_size < 1 or args.mamba_max_tokens < 1
         or args.validation_user_limit < 0 or args.periodic_test_user_limit < -1
         or args.preference_count < 2 or args.preference_hidden < 1
@@ -933,6 +990,11 @@ def parse_args():
 
 def main():
     args = parse_args()
+    graph_only = not (args.use_long or args.use_short or args.use_preference)
+    if graph_only:
+        # Pure user-item graph dot products, without semantic features or catalog priors.
+        args.popularity_alpha = args.transition_beta = 0.0
+        args.generate_reasons = False
     seed_everything(args.seed)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe_dataset = args.dataset.replace(":", "_").replace("/", "_")
@@ -942,14 +1004,31 @@ def main():
     logger.info("run_id=%s dataset=%s device=%s", run_id, args.dataset, args.device)
     logger.info(
         "MODEL recommender=%s semantic_encoder=%s semantic_model_id=%s graph_backbone=%s adaptation=%s",
-        "MultiAgentMambaRecommender", "MambaTextEncoder" if not args.skip_mamba else "random_features",
-        args.mamba_model_id if not args.skip_mamba else "none",
+        "LightGCN" if graph_only else "MultiAgentMambaRecommender",
+        "none" if graph_only else "MambaTextEncoder" if not args.skip_mamba else "random_features",
+        args.mamba_model_id if not args.skip_mamba and not graph_only else "none",
         "LightGCN" if args.use_graph_embeddings else "none",
         "multi_lora" if args.enable_lora else "full_rank",
     )
+    logger.info("ABLATION USE_LONG=%d USE_SHORT=%d USE_PREFERENCE=%d USE_GCN=%d",
+                args.use_long, args.use_short, args.use_preference, int(args.use_graph_embeddings))
+    logger.info("AGENT_HISTORY mode=%s effective_max_history=%d",
+                "none" if graph_only else "full_history" if args.use_long else "short_window_only",
+                0 if graph_only else args.max_history if args.use_long else min(args.max_history, args.short_window))
     logger.info("EXPERIMENT_NOTE %s", args.experiment_note)
     logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
     data, interaction_artifact = load_recommendation_data_cached(args, logger)
+    if args.eval_length_threshold is not None:
+        # Attach only after cache loading/writing; never change shared cached data.
+        data.evaluation_length_threshold = args.eval_length_threshold
+        data.evaluation_length_basis = args.eval_length_basis
+        from .sequence_length_metrics import PeriodicTestScores
+        data.periodic_test_scores = PeriodicTestScores(output, vars(args), run_id)
+        (output / "dataset_config.json").write_text(
+            json.dumps(vars(args), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        logger.info("LENGTH_SPLIT preprocessing=original_one_pass_user_item_min_%d basis=%s short<=%d long>%d",
+                    MIN_INTERACTIONS, args.eval_length_basis, args.eval_length_threshold, args.eval_length_threshold)
     logger.info("users=%d items=%d train_interactions=%d",
                 data.num_users, data.num_items, sum(map(len, data.train_by_user.values())))
     catalog_priors = (
@@ -972,7 +1051,10 @@ def main():
             f"{safe_dataset}_{data.num_items}_{fingerprint}_prompt_tok{args.mamba_max_tokens}.pt"
         )
     )
-    if args.skip_mamba:
+    if graph_only:
+        item_features = torch.zeros(data.num_items, 1)
+        logger.info("LIGHTGCN_ONLY: semantic encoder disabled; user/item graph dot-product scoring")
+    elif args.skip_mamba:
         generator = torch.Generator().manual_seed(args.seed)
         item_features = torch.randn(data.num_items, args.dim, generator=generator)
         logger.warning("--skip-mamba uses random item features; it is only a smoke-test mode")
@@ -991,7 +1073,7 @@ def main():
     logger.info("ITEM_VECTOR_ARTIFACT path=%s fingerprint=%s", artifact, fingerprint)
     logger.info(
         "SEMANTIC_BACKBONE model_id=%s hidden_size=%d frozen=%s usage=%s",
-        args.mamba_model_id if not args.skip_mamba else "none", item_features.size(1),
+        args.mamba_model_id if not args.skip_mamba and not graph_only else "none", item_features.size(1),
         not args.skip_mamba,
         "shared_cached_item_vectors" if not args.skip_mamba else "smoke_test_random_features",
     )
@@ -1011,6 +1093,8 @@ def main():
         preference_temperature=args.preference_temperature,
         preference_score_weight=args.preference_score_weight,
         enable_lora=bool(args.enable_lora),
+        use_long=bool(args.use_long), use_short=bool(args.use_short),
+        use_preference=bool(args.use_preference),
     )
     if args.resume_checkpoint:
         resume_path = Path(args.resume_checkpoint)
@@ -1025,6 +1109,8 @@ def main():
     )
     logger.info("ADAPTER_ROUTES %s", model.adapter_routes())
     logger.info("agent_parameters=%s", model.agent_parameter_counts())
+    logger.info("PREDICTION_PATH graph_only=%s active_agents=%d coordinator=%s",
+                model.graph_only, model.active_agent_count, model.use_coordinator)
     transitions = build_transitions(data, args.max_transitions, args.seed)
     logger.info("training_transitions=%d", len(transitions))
     logger.info(
@@ -1165,7 +1251,7 @@ def main():
             "adapter_alpha": args.lora_alpha if args.enable_lora else None,
             "learned_ranking_weight": float(
                 torch.sigmoid(model.coordinator.preference_score_logit).detach().cpu()
-            ),
+            ) if model.use_coordinator and model.use_preference else None,
             "objectives": {
                 "next_preference": args.preference_coef,
                 "transition_detection": args.preference_transition_coef,
@@ -1177,16 +1263,21 @@ def main():
         "validation_history": monitor.history,
     }
     model_summary = {
-        "recommender": "MultiAgentMambaRecommender",
-        "agents": ["long", "short", "preference_transition", "coordinator"],
-        "semantic_encoder": "MambaTextEncoder" if not args.skip_mamba else "random_features",
-        "huggingface_model_id": args.mamba_model_id if not args.skip_mamba else None,
-        "semantic_hidden_size": int(item_features.size(1)),
-        "semantic_encoder_frozen": not args.skip_mamba,
-        "semantic_usage": "shared_cached_item_vectors" if not args.skip_mamba else "smoke_test_random_features",
+        "recommender": "LightGCN" if graph_only else "MultiAgentMambaRecommender",
+        "agents": [name for name, enabled in (("long", args.use_long), ("short", args.use_short),
+                   ("preference_transition", args.use_preference), ("coordinator", model.use_coordinator)) if enabled],
+        "ablation": {"USE_LONG": args.use_long, "USE_SHORT": args.use_short,
+                     "USE_PREFERENCE": args.use_preference, "USE_GCN": int(args.use_graph_embeddings)},
+        "semantic_encoder": None if graph_only else "MambaTextEncoder" if not args.skip_mamba else "random_features",
+        "huggingface_model_id": args.mamba_model_id if not args.skip_mamba and not graph_only else None,
+        "semantic_hidden_size": None if graph_only else int(item_features.size(1)),
+        "semantic_encoder_frozen": not args.skip_mamba and not graph_only,
+        "semantic_usage": "disabled" if graph_only else "shared_cached_item_vectors" if not args.skip_mamba else "smoke_test_random_features",
         "graph_backbone": "LightGCN" if args.use_graph_embeddings else None,
         "graph_layers": model.graph.layers if args.use_graph_embeddings else 0,
         "recommendation_dim": args.dim,
+        "agent_history_mode": "none" if graph_only else "full_history" if args.use_long else "short_window_only",
+        "effective_agent_max_history": 0 if graph_only else args.max_history if args.use_long else min(args.max_history, args.short_window),
         "adaptation_mode": model.adaptation_mode,
     }
     if args.save_model_weights:
@@ -1250,6 +1341,38 @@ def main():
             "training": training_summary,
         }, indent=2), encoding="utf-8"
     )
+    if "sequence_length" in valid_metrics:
+        requested_names = ("ndcg@5", "ndcg@10", "recall@5", "recall@10", "hit@5", "hit@10")
+        (output / "dataset_config.json").write_text(
+            json.dumps(vars(args), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        for group in ("short", "long"):
+            group_report = {
+                "dataset": args.dataset, "run_id": run_id, "group": group,
+                "length_basis": args.eval_length_basis,
+                "status": "final_best_model",
+                "periodic_test_history": data.periodic_test_scores.history[group],
+                "length_rule": "length <= threshold" if group == "short" else "length > threshold",
+                "length_threshold": args.eval_length_threshold,
+                "config": vars(args),
+            }
+            for split, metrics in (("valid", valid_metrics), ("test", test_metrics)):
+                values = metrics["sequence_length"][group]
+                group_report[split] = {name: values[name] for name in requested_names}
+                group_report[f"{split}_users"] = {
+                    name: values[name] for name in ("total_users", "evaluated_users")
+                }
+                logger.info(
+                    "FINAL_LENGTH_SCORES dataset=%s group=%s split=%s threshold=%d users=%d/%d scores=%s",
+                    args.dataset, group, split, args.eval_length_threshold,
+                    values["evaluated_users"], values["total_users"],
+                    json.dumps(group_report[split], sort_keys=True),
+                )
+            group_path = output / f"{group}_scores.json"
+            group_path.write_text(
+                json.dumps(group_report, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            logger.info("%s_scores=%s", group, group_path)
     if args.score_file:
         requested_names = ("ndcg@5", "ndcg@10", "recall@5", "recall@10", "hit@5", "hit@10")
         score_path = Path(args.score_file)
@@ -1262,6 +1385,10 @@ def main():
                     "model": model_summary,
                     "valid": {name: valid_metrics[name] for name in requested_names},
                     "test": {name: test_metrics[name] for name in requested_names},
+                    **({"sequence_length": {
+                        "valid": valid_metrics["sequence_length"],
+                        "test": test_metrics["sequence_length"],
+                    }} if "sequence_length" in valid_metrics else {}),
                     "config": vars(args),
                     "artifacts": str(output),
                 },

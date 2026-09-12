@@ -1,0 +1,306 @@
+{
+  "dataset": "amazon-all-beauty",
+  "run_id": "20260910_184153",
+  "group": "short",
+  "length_basis": "filtered_full_sequence",
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "specialists",
+      "epoch": 1,
+      "global_step": 54,
+      "scores": {
+        "recall@5": 0.12520193861066237,
+        "recall@10": 0.13004846526655897,
+        "ndcg@5": 0.11992762314730471,
+        "ndcg@10": 0.1215580349139502,
+        "hit@5": 0.12520193861066237,
+        "hit@10": 0.13004846526655897
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "specialists",
+      "epoch": 2,
+      "global_step": 108,
+      "scores": {
+        "recall@5": 0.12681744749596122,
+        "recall@10": 0.13166397415185785,
+        "ndcg@5": 0.12058798612412856,
+        "ndcg@10": 0.12214283859250426,
+        "hit@5": 0.12681744749596122,
+        "hit@10": 0.13166397415185785
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "specialists",
+      "epoch": 3,
+      "global_step": 162,
+      "scores": {
+        "recall@5": 0.12924071082390953,
+        "recall@10": 0.13489499192245558,
+        "ndcg@5": 0.12163162883351482,
+        "ndcg@10": 0.12345295929696924,
+        "hit@5": 0.12924071082390953,
+        "hit@10": 0.13489499192245558
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 1,
+      "global_step": 216,
+      "scores": {
+        "recall@5": 0.12924071082390953,
+        "recall@10": 0.13489499192245558,
+        "ndcg@5": 0.12163162883351482,
+        "ndcg@10": 0.12345295929696924,
+        "hit@5": 0.12924071082390953,
+        "hit@10": 0.13489499192245558
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 2,
+      "global_step": 270,
+      "scores": {
+        "recall@5": 0.12924071082390953,
+        "recall@10": 0.13489499192245558,
+        "ndcg@5": 0.12163162883351482,
+        "ndcg@10": 0.12345295929696924,
+        "hit@5": 0.12924071082390953,
+        "hit@10": 0.13489499192245558
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 3,
+      "global_step": 324,
+      "scores": {
+        "recall@5": 0.12924071082390953,
+        "recall@10": 0.13489499192245558,
+        "ndcg@5": 0.12163162883351482,
+        "ndcg@10": 0.12345295929696924,
+        "hit@5": 0.12924071082390953,
+        "hit@10": 0.13489499192245558
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "joint",
+      "epoch": 1,
+      "global_step": 378,
+      "scores": {
+        "recall@5": 0.12924071082390953,
+        "recall@10": 0.13570274636510501,
+        "ndcg@5": 0.1217579854123995,
+        "ndcg@10": 0.12386981729954849,
+        "hit@5": 0.12924071082390953,
+        "hit@10": 0.13570274636510501
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "joint",
+      "epoch": 2,
+      "global_step": 432,
+      "scores": {
+        "recall@5": 0.12924071082390953,
+        "recall@10": 0.13893376413570274,
+        "ndcg@5": 0.12195513965015142,
+        "ndcg@10": 0.1250143117281149,
+        "hit@5": 0.12924071082390953,
+        "hit@10": 0.13893376413570274
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "joint",
+      "epoch": 3,
+      "global_step": 486,
+      "scores": {
+        "recall@5": 0.13004846526655897,
+        "recall@10": 0.13893376413570274,
+        "ndcg@5": 0.12256573985504893,
+        "ndcg@10": 0.12542432831750708,
+        "hit@5": 0.13004846526655897,
+        "hit@10": 0.13893376413570274
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "joint",
+      "epoch": 4,
+      "global_step": 540,
+      "scores": {
+        "recall@5": 0.12924071082390953,
+        "recall@10": 0.13974151857835218,
+        "ndcg@5": 0.1222532577813538,
+        "ndcg@10": 0.12569334017209854,
+        "hit@5": 0.12924071082390953,
+        "hit@10": 0.13974151857835218
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "joint",
+      "epoch": 5,
+      "global_step": 594,
+      "scores": {
+        "recall@5": 0.13166397415185785,
+        "recall@10": 0.1421647819063005,
+        "ndcg@5": 0.12345865589905836,
+        "ndcg@10": 0.1269489296981739,
+        "hit@5": 0.13166397415185785,
+        "hit@10": 0.1421647819063005
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "joint",
+      "epoch": 6,
+      "global_step": 648,
+      "scores": {
+        "recall@5": 0.13408723747980614,
+        "recall@10": 0.1429725363489499,
+        "ndcg@5": 0.12475021656954201,
+        "ndcg@10": 0.12758185848709963,
+        "hit@5": 0.13408723747980614,
+        "hit@10": 0.1429725363489499
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "joint",
+      "epoch": 7,
+      "global_step": 702,
+      "scores": {
+        "recall@5": 0.1332794830371567,
+        "recall@10": 0.14539579967689822,
+        "ndcg@5": 0.12440233566641327,
+        "ndcg@10": 0.12830059331419127,
+        "hit@5": 0.1332794830371567,
+        "hit@10": 0.14539579967689822
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    }
+  ],
+  "length_rule": "length <= threshold",
+  "length_threshold": 10,
+  "config": {
+    "dataset": "amazon-all-beauty",
+    "data_path": null,
+    "cache_dir": "/workspace/P78123011/cache",
+    "refresh_data_cache": false,
+    "max_events": null,
+    "max_transitions": 500000,
+    "min_rating": 4.0,
+    "specialist_epochs": 3,
+    "coordinator_epochs": 3,
+    "joint_epochs": 7,
+    "batch_size": 128,
+    "eval_batch_size": 64,
+    "validate_every_steps": 250,
+    "monitor_metric": "ndcg@10",
+    "early_stopping_patience": 6,
+    "lr_patience": 2,
+    "candidates": 64,
+    "dim": 128,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "enable_lora": 1,
+    "short_window": 10,
+    "preference_count": 32,
+    "preference_hidden": 128,
+    "preference_temperature": 0.2,
+    "preference_score_weight": 0.2,
+    "use_graph_embeddings": true,
+    "max_history": 100,
+    "specialist_lr": 0.0001,
+    "coordinator_lr": 0.0001,
+    "joint_lr": 5e-05,
+    "preference_coef": 0.2,
+    "preference_transition_coef": 0.1,
+    "preference_balance_coef": 0.01,
+    "preference_separation_coef": 0.01,
+    "preference_sharpness_coef": 0.05,
+    "future_horizon": 3,
+    "future_decay": 0.5,
+    "hard_negative_pool_multiplier": 12,
+    "hard_negative_fraction": 0.75,
+    "hard_negative_warmup_epochs": 2,
+    "use_in_batch_negatives": true,
+    "preference_contrastive_coef": 0.05,
+    "agent_diversity_coef": 0.02,
+    "full_catalog_supervised": false,
+    "popularity_alpha": -0.25,
+    "transition_beta": 4.0,
+    "seed": 25252,
+    "device": "cuda:0",
+    "skip_mamba": false,
+    "graph_device": "cuda:0",
+    "mamba_encode_batch_size": 32,
+    "mamba_max_tokens": 32,
+    "mamba_model_id": "state-spaces/mamba-130m-hf",
+    "item_prompt_prefix": "Preference-aware product representation: ",
+    "validation_user_limit": 0,
+    "periodic_test_user_limit": 0,
+    "generate_reasons": false,
+    "save_model_weights": false,
+    "reason_count": 20,
+    "reason_max_new_tokens": 40,
+    "item_vector_artifact": null,
+    "resume_checkpoint": null,
+    "eval_length_basis": "filtered_full_sequence",
+    "eval_length_threshold": 10,
+    "experiment_note": "amazons_long_short subset=Full_Beauty; short filtered-full-sequence <= 10; long > 10; same model and full catalog",
+    "target_recall_at_10": 0.15,
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L1_S1_P1_G1/Full_Beauty/rl_20260910_184152_r1_305035",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L1_S1_P1_G1/Full_Beauty/rl_20260910_184152_r1_305035/Full_Beauty_scores.json",
+    "use_long": 1,
+    "use_short": 1,
+    "use_preference": 1
+  },
+  "valid": {
+    "ndcg@5": 0.1041362174895352,
+    "ndcg@10": 0.10652696577626371,
+    "recall@5": 0.10823909531502424,
+    "recall@10": 0.11550888529886914,
+    "hit@5": 0.10823909531502424,
+    "hit@10": 0.11550888529886914
+  },
+  "valid_users": {
+    "total_users": 1238,
+    "evaluated_users": 1238
+  },
+  "test": {
+    "ndcg@5": 0.12440233566641327,
+    "ndcg@10": 0.12830059331419127,
+    "recall@5": 0.1332794830371567,
+    "recall@10": 0.14539579967689822,
+    "hit@5": 0.1332794830371567,
+    "hit@10": 0.14539579967689822
+  },
+  "test_users": {
+    "total_users": 1238,
+    "evaluated_users": 1238
+  }
+}

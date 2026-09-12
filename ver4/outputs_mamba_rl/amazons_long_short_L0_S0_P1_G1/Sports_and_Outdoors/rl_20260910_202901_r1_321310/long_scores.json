@@ -1,0 +1,261 @@
+{
+  "dataset": "amazon-sports-and-outdoors",
+  "run_id": "20260910_202902",
+  "group": "long",
+  "length_basis": "filtered_full_sequence",
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "specialists",
+      "epoch": 1,
+      "global_step": 7813,
+      "scores": {
+        "recall@5": 0.01296939551517892,
+        "recall@10": 0.01814893223439459,
+        "ndcg@5": 0.009478270067846751,
+        "ndcg@10": 0.011142698268693072,
+        "hit@5": 0.01296939551517892,
+        "hit@10": 0.01814893223439459
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "specialists",
+      "epoch": 2,
+      "global_step": 15626,
+      "scores": {
+        "recall@5": 0.014017635089305902,
+        "recall@10": 0.01983433703985366,
+        "ndcg@5": 0.010073321788582595,
+        "ndcg@10": 0.011939826770293888,
+        "hit@5": 0.014017635089305902,
+        "hit@10": 0.01983433703985366
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "specialists",
+      "epoch": 3,
+      "global_step": 23439,
+      "scores": {
+        "recall@5": 0.015117258956282244,
+        "recall@10": 0.02162251043101145,
+        "ndcg@5": 0.010670346630025819,
+        "ndcg@10": 0.012765585695061393,
+        "hit@5": 0.015117258956282244,
+        "hit@10": 0.02162251043101145
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 1,
+      "global_step": 31252,
+      "scores": {
+        "recall@5": 0.016741002610322075,
+        "recall@10": 0.023873142457813495,
+        "ndcg@5": 0.011832657346075668,
+        "ndcg@10": 0.014122870057137192,
+        "hit@5": 0.016741002610322075,
+        "hit@10": 0.023873142457813495
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 2,
+      "global_step": 39065,
+      "scores": {
+        "recall@5": 0.016864324913160544,
+        "recall@10": 0.02415061763920005,
+        "ndcg@5": 0.011939655355407202,
+        "ndcg@10": 0.014283019869014632,
+        "hit@5": 0.016864324913160544,
+        "hit@10": 0.02415061763920005
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 3,
+      "global_step": 46878,
+      "scores": {
+        "recall@5": 0.01688487863030029,
+        "recall@10": 0.024613076274844305,
+        "ndcg@5": 0.012003765213133209,
+        "ndcg@10": 0.014482397410229993,
+        "hit@5": 0.01688487863030029,
+        "hit@10": 0.024613076274844305
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 4,
+      "global_step": 54691,
+      "scores": {
+        "recall@5": 0.017254845538815695,
+        "recall@10": 0.025065258051918688,
+        "ndcg@5": 0.01229971046922236,
+        "ndcg@10": 0.01481574139624227,
+        "hit@5": 0.017254845538815695,
+        "hit@10": 0.025065258051918688
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 5,
+      "global_step": 62504,
+      "scores": {
+        "recall@5": 0.017963948780136886,
+        "recall@10": 0.0258051918689495,
+        "ndcg@5": 0.012682416902881848,
+        "ndcg@10": 0.015199503991151272,
+        "hit@5": 0.017963948780136886,
+        "hit@10": 0.0258051918689495
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 6,
+      "global_step": 70317,
+      "scores": {
+        "recall@5": 0.018446961132920887,
+        "recall@10": 0.02603128275748669,
+        "ndcg@5": 0.013248390995088904,
+        "ndcg@10": 0.015679533164362366,
+        "hit@5": 0.018446961132920887,
+        "hit@10": 0.02603128275748669
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 7,
+      "global_step": 78130,
+      "scores": {
+        "recall@5": 0.01914578751567221,
+        "recall@10": 0.027213121493022012,
+        "ndcg@5": 0.013717236528975232,
+        "ndcg@10": 0.016302276556198966,
+        "hit@5": 0.01914578751567221,
+        "hit@10": 0.027213121493022012
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    }
+  ],
+  "length_rule": "length > threshold",
+  "length_threshold": 10,
+  "config": {
+    "dataset": "amazon-sports-and-outdoors",
+    "data_path": null,
+    "cache_dir": "/workspace/P78123011/cache",
+    "refresh_data_cache": false,
+    "max_events": null,
+    "max_transitions": 1000000,
+    "min_rating": 4.0,
+    "specialist_epochs": 3,
+    "coordinator_epochs": 3,
+    "joint_epochs": 7,
+    "batch_size": 128,
+    "eval_batch_size": 64,
+    "validate_every_steps": 8000,
+    "monitor_metric": "ndcg@10",
+    "early_stopping_patience": 6,
+    "lr_patience": 2,
+    "candidates": 256,
+    "dim": 128,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "enable_lora": 1,
+    "short_window": 10,
+    "preference_count": 32,
+    "preference_hidden": 128,
+    "preference_temperature": 0.2,
+    "preference_score_weight": 0.2,
+    "use_graph_embeddings": true,
+    "max_history": 100,
+    "specialist_lr": 0.0001,
+    "coordinator_lr": 0.0001,
+    "joint_lr": 5e-05,
+    "preference_coef": 0.2,
+    "preference_transition_coef": 0.1,
+    "preference_balance_coef": 0.01,
+    "preference_separation_coef": 0.01,
+    "preference_sharpness_coef": 0.05,
+    "future_horizon": 3,
+    "future_decay": 0.5,
+    "hard_negative_pool_multiplier": 12,
+    "hard_negative_fraction": 0.75,
+    "hard_negative_warmup_epochs": 2,
+    "use_in_batch_negatives": true,
+    "preference_contrastive_coef": 0.05,
+    "agent_diversity_coef": 0.02,
+    "full_catalog_supervised": false,
+    "popularity_alpha": 0.35,
+    "transition_beta": 0.5,
+    "seed": 25252,
+    "device": "cuda:0",
+    "skip_mamba": false,
+    "graph_device": "cuda:0",
+    "mamba_encode_batch_size": 32,
+    "mamba_max_tokens": 32,
+    "mamba_model_id": "state-spaces/mamba-130m-hf",
+    "item_prompt_prefix": "Preference-aware product representation: ",
+    "validation_user_limit": 0,
+    "periodic_test_user_limit": 0,
+    "generate_reasons": false,
+    "save_model_weights": false,
+    "reason_count": 20,
+    "reason_max_new_tokens": 40,
+    "item_vector_artifact": null,
+    "resume_checkpoint": null,
+    "eval_length_basis": "filtered_full_sequence",
+    "eval_length_threshold": 10,
+    "experiment_note": "amazons_long_short subset=Sports_and_Outdoors; short filtered-full-sequence <= 10; long > 10; same model and full catalog",
+    "target_recall_at_10": 0.15,
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Sports_and_Outdoors/rl_20260910_202901_r1_321310",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Sports_and_Outdoors/rl_20260910_202901_r1_321310/Sports_and_Outdoors_scores.json",
+    "use_long": 0,
+    "use_short": 0,
+    "use_preference": 1
+  },
+  "valid": {
+    "ndcg@5": 0.014277032759712373,
+    "ndcg@10": 0.017259133866862477,
+    "recall@5": 0.020163196514089574,
+    "recall@10": 0.02942264608554457,
+    "hit@5": 0.020163196514089574,
+    "hit@10": 0.02942264608554457
+  },
+  "valid_users": {
+    "total_users": 97306,
+    "evaluated_users": 97306
+  },
+  "test": {
+    "ndcg@5": 0.013717236528975232,
+    "ndcg@10": 0.016302276556198966,
+    "recall@5": 0.01914578751567221,
+    "recall@10": 0.027213121493022012,
+    "hit@5": 0.01914578751567221,
+    "hit@10": 0.027213121493022012
+  },
+  "test_users": {
+    "total_users": 97306,
+    "evaluated_users": 97306
+  }
+}
