@@ -182,6 +182,41 @@ Toys and Games & 460,753 & 103,913 & 1,500,000 & 192 & 0.30 & 0.5\\
 \label{tab:config}
 \end{table*}
 
+\begin{table*}[t]
+    \centering
+    \caption{Performance comparison on Amazon Reviews 2023. Published results are taken from \citet{liang2026resid}, using 5-core preprocessing and leave-one-out evaluation on the complete processed test split. The authors additionally remove items lacking structured metadata; superscript $*$ denotes a sequential model augmented with these features. The paper evaluates Beauty and Personal Care rather than All Beauty, so All Beauty is left unreported. ``--'' denotes an unreported result. Higher is better.}
+    \label{tab:amazon2023_main}
+    \setlength{\tabcolsep}{3.2pt}
+    \renewcommand{\arraystretch}{1.12}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{l*{4}{rrrr}}
+        \toprule
+        & \multicolumn{4}{c}{\textbf{All Beauty}}
+        & \multicolumn{4}{c}{\textbf{Sports and Outdoors}}
+        & \multicolumn{4}{c}{\textbf{Baby Products}}
+        & \multicolumn{4}{c}{\textbf{Toys and Games}} \\
+        \cmidrule(lr){2-5}\cmidrule(lr){6-9}\cmidrule(lr){10-13}\cmidrule(lr){14-17}
+        \textbf{Baseline}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10} \\
+        \midrule
+        % SASRec & .1002 & .0925 & .1105 & .0958 & .0312 & \textbf{.0291} & .0343 & \textbf{.0301} & .0358 & \textbf{.0321} & .0422 & .0342 & .0309 & .0288 & .0341 & .0298 \\
+        EAGER & \\
+        
+        Mamba4Rec & .1057 & .1048 & .1057 & .1048 & .0251 & .0208 & .0310 & .0227 & .0375 & .0301 & .0489 & \textbf{.0337} & .0297 & .0251 & .0352 & .0268 \\
+        ReSID & .0398 & .0515 & .0289 & .0327 & .0093 & .0063 & .0144 & .0079 & .0156 & .0101 & .0255 & .0133 & .0132 & .0090 & .0194 & .0110 \\
+        SIGMA & .0899 & .0824 & .1042 & .0870 & 0112 & 0074 & .0177 & .0095 & .0270 & .0187 & .0402 & .0229 & .0195 & .0136 & .0280 & .0164 \\
+        LLaRA \\
+        LLMRec & .0851 & .0836 & .0892 & .0849 & .0178 & .0143 & .0228 & .0159 & .0170 & .0132 & .0228 & .0151 & .0299 & .0226 & .0395 & .0257 \\
+        \midrule
+        \textbf{Ours} & \textbf{.1222} & \textbf{.1121} & \textbf{.1318} & \textbf{.1151} & \textbf{.0337} & \textbf{.0269} & \textbf{.0426} & \textbf{.0298} & \textbf{.0383} & \textbf{.0296} & \textbf{.0513} & \textbf{.0337} & \textbf{.0401} & \textbf{.0317} & \textbf{.0512} & \textbf{.0354} \\
+        \bottomrule
+    \end{tabular}%
+    }
+\end{table*}
+
 \subsection{Overall Ranking Results}
 Table~\ref{tab:main} compares available configurations. $L$, $S$, $P$, and $G$ denote long, short, preference, and graph components. All listed variants include the same semantic encoding pipeline and enabled graph component. $L+G$ and $P+G$ are internal single-specialist variants, not reproductions of Mamba4Rec or standalone LightGCN. Complete-model runs with matching history-mode metadata are available for All Beauty; missing configurations on the other categories remain unreported.
 
