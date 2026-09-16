@@ -1,0 +1,264 @@
+{
+  "dataset": "amazon-sports-and-outdoors",
+  "run_id": "20260916_180136",
+  "group": "long",
+  "length_basis": "filtered_full_sequence",
+  "length_threshold": 10,
+  "length_rule": "length > threshold",
+  "config": {
+    "dataset": "amazon-sports-and-outdoors",
+    "data_path": null,
+    "cache_dir": "/workspace/P78123011/cache",
+    "refresh_data_cache": false,
+    "max_events": null,
+    "max_transitions": 1000000,
+    "min_rating": 4.0,
+    "specialist_epochs": 3,
+    "coordinator_epochs": 3,
+    "joint_epochs": 7,
+    "batch_size": 128,
+    "eval_batch_size": 64,
+    "validate_every_steps": 8000,
+    "monitor_metric": "ndcg@10",
+    "early_stopping_patience": 6,
+    "lr_patience": 2,
+    "candidates": 256,
+    "dim": 128,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "enable_lora": 1,
+    "short_window": 4,
+    "preference_count": 32,
+    "preference_hidden": 128,
+    "preference_temperature": 0.2,
+    "preference_score_weight": 0.2,
+    "use_graph_embeddings": true,
+    "max_history": 100,
+    "specialist_lr": 0.0001,
+    "coordinator_lr": 0.0001,
+    "joint_lr": 5e-05,
+    "preference_coef": 0.2,
+    "preference_transition_coef": 0.1,
+    "preference_balance_coef": 0.01,
+    "preference_separation_coef": 0.01,
+    "preference_sharpness_coef": 0.05,
+    "future_horizon": 3,
+    "future_decay": 0.5,
+    "hard_negative_pool_multiplier": 12,
+    "hard_negative_fraction": 0.75,
+    "hard_negative_warmup_epochs": 2,
+    "use_in_batch_negatives": true,
+    "preference_contrastive_coef": 0.05,
+    "agent_diversity_coef": 0.02,
+    "full_catalog_supervised": false,
+    "popularity_alpha": 0.35,
+    "transition_beta": 0.5,
+    "seed": 25252,
+    "device": "cuda:0",
+    "skip_mamba": false,
+    "graph_device": "cuda:0",
+    "mamba_encode_batch_size": 32,
+    "mamba_max_tokens": 32,
+    "mamba_model_id": "state-spaces/mamba-130m-hf",
+    "item_prompt_prefix": "Preference-aware product representation: ",
+    "validation_user_limit": 0,
+    "periodic_test_user_limit": 0,
+    "generate_reasons": false,
+    "save_model_weights": false,
+    "reason_count": 20,
+    "reason_max_new_tokens": 40,
+    "item_vector_artifact": null,
+    "resume_checkpoint": null,
+    "eval_length_basis": "filtered_full_sequence",
+    "eval_length_threshold": 10,
+    "experiment_note": "amazons_long_short subset=Sports_and_Outdoors; short filtered-full-sequence <= 10; long > 10; same model and full catalog",
+    "target_recall_at_10": 0.15,
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW4/Sports_and_Outdoors/rl_20260916_180134_r1_753621",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW4/Sports_and_Outdoors/rl_20260916_180134_r1_753621/Sports_and_Outdoors_scores.json",
+    "use_long": 0,
+    "use_short": 1,
+    "use_preference": 1
+  },
+  "status": "training",
+  "test": {
+    "recall@5": 0.034365815057653175,
+    "recall@10": 0.040655252502415064,
+    "ndcg@5": 0.029869665045991003,
+    "ndcg@10": 0.03189883298656425,
+    "hit@5": 0.034365815057653175,
+    "hit@10": 0.040655252502415064
+  },
+  "test_users": {
+    "evaluated_users": 97306,
+    "total_users": 97306
+  },
+  "periodic_test_history": [
+    {
+      "stage": "specialists",
+      "epoch": 1,
+      "global_step": 7813,
+      "scores": {
+        "recall@5": 0.025003596900499456,
+        "recall@10": 0.03291677799930117,
+        "ndcg@5": 0.019013281429648993,
+        "ndcg@10": 0.021550545856551504,
+        "hit@5": 0.025003596900499456,
+        "hit@10": 0.03291677799930117
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "specialists",
+      "epoch": 2,
+      "global_step": 15626,
+      "scores": {
+        "recall@5": 0.03472550510759871,
+        "recall@10": 0.04428298357758,
+        "ndcg@5": 0.028075870852122212,
+        "ndcg@10": 0.031161112168866557,
+        "hit@5": 0.03472550510759871,
+        "hit@10": 0.04428298357758
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "specialists",
+      "epoch": 3,
+      "global_step": 23439,
+      "scores": {
+        "recall@5": 0.03921649230263293,
+        "recall@10": 0.04742770229996095,
+        "ndcg@5": 0.03255424095123817,
+        "ndcg@10": 0.0351965390648388,
+        "hit@5": 0.03921649230263293,
+        "hit@10": 0.04742770229996095
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 1,
+      "global_step": 31252,
+      "scores": {
+        "recall@5": 0.03957618235257846,
+        "recall@10": 0.047787392349906484,
+        "ndcg@5": 0.032923288261240725,
+        "ndcg@10": 0.03556602395179721,
+        "hit@5": 0.03957618235257846,
+        "hit@10": 0.047787392349906484
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 2,
+      "global_step": 39065,
+      "scores": {
+        "recall@5": 0.03930898402976178,
+        "recall@10": 0.04734548743140197,
+        "ndcg@5": 0.03290826709525733,
+        "ndcg@10": 0.035508177301314704,
+        "hit@5": 0.03930898402976178,
+        "hit@10": 0.04734548743140197
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 3,
+      "global_step": 46878,
+      "scores": {
+        "recall@5": 0.03925759973691242,
+        "recall@10": 0.0471091196842949,
+        "ndcg@5": 0.03294006632150832,
+        "ndcg@10": 0.035472907928171225,
+        "hit@5": 0.03925759973691242,
+        "hit@10": 0.0471091196842949
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 1,
+      "global_step": 54691,
+      "scores": {
+        "recall@5": 0.0375927486485931,
+        "recall@10": 0.04456045875896656,
+        "ndcg@5": 0.03198170939012321,
+        "ndcg@10": 0.03421766104963086,
+        "hit@5": 0.0375927486485931,
+        "hit@10": 0.04456045875896656
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 2,
+      "global_step": 62504,
+      "scores": {
+        "recall@5": 0.03618481902452059,
+        "recall@10": 0.04247425646928247,
+        "ndcg@5": 0.031068050817471608,
+        "ndcg@10": 0.03309290929225177,
+        "hit@5": 0.03618481902452059,
+        "hit@10": 0.04247425646928247
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 3,
+      "global_step": 70317,
+      "scores": {
+        "recall@5": 0.035763467823155815,
+        "recall@10": 0.041682938359402295,
+        "ndcg@5": 0.030718543228554645,
+        "ndcg@10": 0.03261595559870409,
+        "hit@5": 0.035763467823155815,
+        "hit@10": 0.041682938359402295
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 4,
+      "global_step": 78130,
+      "scores": {
+        "recall@5": 0.034571352229050625,
+        "recall@10": 0.04114854171376894,
+        "ndcg@5": 0.03004750835969003,
+        "ndcg@10": 0.03215880384452777,
+        "hit@5": 0.034571352229050625,
+        "hit@10": 0.04114854171376894
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "joint",
+      "epoch": 5,
+      "global_step": 85943,
+      "scores": {
+        "recall@5": 0.034365815057653175,
+        "recall@10": 0.040655252502415064,
+        "ndcg@5": 0.029869665045991003,
+        "ndcg@10": 0.03189883298656425,
+        "hit@5": 0.034365815057653175,
+        "hit@10": 0.040655252502415064
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    }
+  ]
+}

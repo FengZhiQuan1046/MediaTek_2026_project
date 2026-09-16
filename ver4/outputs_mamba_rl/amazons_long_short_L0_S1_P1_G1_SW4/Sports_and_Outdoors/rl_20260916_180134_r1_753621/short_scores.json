@@ -1,0 +1,264 @@
+{
+  "dataset": "amazon-sports-and-outdoors",
+  "run_id": "20260916_180136",
+  "group": "short",
+  "length_basis": "filtered_full_sequence",
+  "length_threshold": 10,
+  "length_rule": "length <= threshold",
+  "config": {
+    "dataset": "amazon-sports-and-outdoors",
+    "data_path": null,
+    "cache_dir": "/workspace/P78123011/cache",
+    "refresh_data_cache": false,
+    "max_events": null,
+    "max_transitions": 1000000,
+    "min_rating": 4.0,
+    "specialist_epochs": 3,
+    "coordinator_epochs": 3,
+    "joint_epochs": 7,
+    "batch_size": 128,
+    "eval_batch_size": 64,
+    "validate_every_steps": 8000,
+    "monitor_metric": "ndcg@10",
+    "early_stopping_patience": 6,
+    "lr_patience": 2,
+    "candidates": 256,
+    "dim": 128,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "enable_lora": 1,
+    "short_window": 4,
+    "preference_count": 32,
+    "preference_hidden": 128,
+    "preference_temperature": 0.2,
+    "preference_score_weight": 0.2,
+    "use_graph_embeddings": true,
+    "max_history": 100,
+    "specialist_lr": 0.0001,
+    "coordinator_lr": 0.0001,
+    "joint_lr": 5e-05,
+    "preference_coef": 0.2,
+    "preference_transition_coef": 0.1,
+    "preference_balance_coef": 0.01,
+    "preference_separation_coef": 0.01,
+    "preference_sharpness_coef": 0.05,
+    "future_horizon": 3,
+    "future_decay": 0.5,
+    "hard_negative_pool_multiplier": 12,
+    "hard_negative_fraction": 0.75,
+    "hard_negative_warmup_epochs": 2,
+    "use_in_batch_negatives": true,
+    "preference_contrastive_coef": 0.05,
+    "agent_diversity_coef": 0.02,
+    "full_catalog_supervised": false,
+    "popularity_alpha": 0.35,
+    "transition_beta": 0.5,
+    "seed": 25252,
+    "device": "cuda:0",
+    "skip_mamba": false,
+    "graph_device": "cuda:0",
+    "mamba_encode_batch_size": 32,
+    "mamba_max_tokens": 32,
+    "mamba_model_id": "state-spaces/mamba-130m-hf",
+    "item_prompt_prefix": "Preference-aware product representation: ",
+    "validation_user_limit": 0,
+    "periodic_test_user_limit": 0,
+    "generate_reasons": false,
+    "save_model_weights": false,
+    "reason_count": 20,
+    "reason_max_new_tokens": 40,
+    "item_vector_artifact": null,
+    "resume_checkpoint": null,
+    "eval_length_basis": "filtered_full_sequence",
+    "eval_length_threshold": 10,
+    "experiment_note": "amazons_long_short subset=Sports_and_Outdoors; short filtered-full-sequence <= 10; long > 10; same model and full catalog",
+    "target_recall_at_10": 0.15,
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW4/Sports_and_Outdoors/rl_20260916_180134_r1_753621",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW4/Sports_and_Outdoors/rl_20260916_180134_r1_753621/Sports_and_Outdoors_scores.json",
+    "use_long": 0,
+    "use_short": 1,
+    "use_preference": 1
+  },
+  "status": "training",
+  "test": {
+    "recall@5": 0.03191439015479208,
+    "recall@10": 0.03793418733684551,
+    "ndcg@5": 0.0275945713663393,
+    "ndcg@10": 0.029528878709316697,
+    "hit@5": 0.03191439015479208,
+    "hit@10": 0.03793418733684551
+  },
+  "test_users": {
+    "evaluated_users": 528257,
+    "total_users": 528257
+  },
+  "periodic_test_history": [
+    {
+      "stage": "specialists",
+      "epoch": 1,
+      "global_step": 7813,
+      "scores": {
+        "recall@5": 0.02766267176771912,
+        "recall@10": 0.03620018286553704,
+        "ndcg@5": 0.021136065672810973,
+        "ndcg@10": 0.023878506436634053,
+        "hit@5": 0.02766267176771912,
+        "hit@10": 0.03620018286553704
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "specialists",
+      "epoch": 2,
+      "global_step": 15626,
+      "scores": {
+        "recall@5": 0.0373378866725855,
+        "recall@10": 0.0464660193807181,
+        "ndcg@5": 0.03012187964688686,
+        "ndcg@10": 0.03306485719001766,
+        "hit@5": 0.0373378866725855,
+        "hit@10": 0.0464660193807181
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "specialists",
+      "epoch": 3,
+      "global_step": 23439,
+      "scores": {
+        "recall@5": 0.0385323810190873,
+        "recall@10": 0.04690330653450877,
+        "ndcg@5": 0.03180735262368652,
+        "ndcg@10": 0.0345022660603797,
+        "hit@5": 0.0385323810190873,
+        "hit@10": 0.04690330653450877
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 1,
+      "global_step": 31252,
+      "scores": {
+        "recall@5": 0.03825410737576596,
+        "recall@10": 0.046600423657424325,
+        "ndcg@5": 0.03170486120001444,
+        "ndcg@10": 0.034399956869420316,
+        "hit@5": 0.03825410737576596,
+        "hit@10": 0.046600423657424325
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 2,
+      "global_step": 39065,
+      "scores": {
+        "recall@5": 0.03765212765756062,
+        "recall@10": 0.045992764885273645,
+        "ndcg@5": 0.031299963041577394,
+        "ndcg@10": 0.03399148129378249,
+        "hit@5": 0.03765212765756062,
+        "hit@10": 0.045992764885273645
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 3,
+      "global_step": 46878,
+      "scores": {
+        "recall@5": 0.03741928644580195,
+        "recall@10": 0.045578193947264305,
+        "ndcg@5": 0.031096335534410924,
+        "ndcg@10": 0.033726623178943906,
+        "hit@5": 0.03741928644580195,
+        "hit@10": 0.045578193947264305
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "joint",
+      "epoch": 1,
+      "global_step": 54691,
+      "scores": {
+        "recall@5": 0.03538050607942725,
+        "recall@10": 0.042500146708893585,
+        "ndcg@5": 0.02982983896343338,
+        "ndcg@10": 0.03212053823098439,
+        "hit@5": 0.03538050607942725,
+        "hit@10": 0.042500146708893585
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "joint",
+      "epoch": 2,
+      "global_step": 62504,
+      "scores": {
+        "recall@5": 0.03367111084188189,
+        "recall@10": 0.04033832017370333,
+        "ndcg@5": 0.02869514865209244,
+        "ndcg@10": 0.030843895718807492,
+        "hit@5": 0.03367111084188189,
+        "hit@10": 0.04033832017370333
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "joint",
+      "epoch": 3,
+      "global_step": 70317,
+      "scores": {
+        "recall@5": 0.03294608495486099,
+        "recall@10": 0.03924604879821753,
+        "ndcg@5": 0.028252855754527656,
+        "ndcg@10": 0.030280071038587684,
+        "hit@5": 0.03294608495486099,
+        "hit@10": 0.03924604879821753
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "joint",
+      "epoch": 4,
+      "global_step": 78130,
+      "scores": {
+        "recall@5": 0.03202986425168053,
+        "recall@10": 0.038199209854294404,
+        "ndcg@5": 0.027656847684119915,
+        "ndcg@10": 0.02964110983203238,
+        "hit@5": 0.03202986425168053,
+        "hit@10": 0.038199209854294404
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "joint",
+      "epoch": 5,
+      "global_step": 85943,
+      "scores": {
+        "recall@5": 0.03191439015479208,
+        "recall@10": 0.03793418733684551,
+        "ndcg@5": 0.0275945713663393,
+        "ndcg@10": 0.029528878709316697,
+        "hit@5": 0.03191439015479208,
+        "hit@10": 0.03793418733684551
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    }
+  ]
+}

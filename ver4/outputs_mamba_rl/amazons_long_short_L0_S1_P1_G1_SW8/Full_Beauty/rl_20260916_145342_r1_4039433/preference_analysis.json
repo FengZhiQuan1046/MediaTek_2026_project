@@ -1,0 +1,919 @@
+{
+  "summary": {
+    "mean_transition_probability": 0.020924240248450368,
+    "mean_current_entropy": 3.3436129746080345,
+    "mean_predicted_next_entropy": 3.372449959968981,
+    "mean_ranking_weight": 0.2044677734375,
+    "preference_count": 32
+  },
+  "samples": [
+    {
+      "user_index": 0,
+      "history": [
+        335,
+        212,
+        60,
+        707,
+        61,
+        330,
+        3185,
+        383,
+        296,
+        317,
+        385,
+        645,
+        1516,
+        692,
+        268
+      ],
+      "target": 269,
+      "current_top": [
+        {
+          "preference_id": 20,
+          "probability": 0.087506
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.079987
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.076399
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.097099
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.064587
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.055406
+        }
+      ],
+      "transition_probability": 0.024521,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.962215
+    },
+    {
+      "user_index": 1,
+      "history": [
+        991,
+        992
+      ],
+      "target": 993,
+      "current_top": [
+        {
+          "preference_id": 20,
+          "probability": 0.098227
+        },
+        {
+          "preference_id": 22,
+          "probability": 0.062896
+        },
+        {
+          "preference_id": 26,
+          "probability": 0.055614
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 14,
+          "probability": 0.057934
+        },
+        {
+          "preference_id": 20,
+          "probability": 0.057652
+        },
+        {
+          "preference_id": 23,
+          "probability": 0.055335
+        }
+      ],
+      "transition_probability": 0.018341,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.981735
+    },
+    {
+      "user_index": 3,
+      "history": [
+        1328,
+        2707,
+        723,
+        3235
+      ],
+      "target": 2023,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.107162
+        },
+        {
+          "preference_id": 18,
+          "probability": 0.054201
+        },
+        {
+          "preference_id": 22,
+          "probability": 0.054161
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.079032
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.051301
+        },
+        {
+          "preference_id": 20,
+          "probability": 0.047725
+        }
+      ],
+      "transition_probability": 0.020721,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.974973
+    },
+    {
+      "user_index": 4,
+      "history": [
+        2535,
+        329,
+        371,
+        679,
+        2536,
+        1257,
+        2537,
+        1380
+      ],
+      "target": 49,
+      "current_top": [
+        {
+          "preference_id": 20,
+          "probability": 0.078728
+        },
+        {
+          "preference_id": 23,
+          "probability": 0.07653
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.067537
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.097174
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.062009
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.051433
+        }
+      ],
+      "transition_probability": 0.023773,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.963671
+    },
+    {
+      "user_index": 5,
+      "history": [
+        563,
+        81,
+        829,
+        532,
+        67,
+        302,
+        68,
+        300,
+        1364
+      ],
+      "target": 811,
+      "current_top": [
+        {
+          "preference_id": 8,
+          "probability": 0.073777
+        },
+        {
+          "preference_id": 23,
+          "probability": 0.067438
+        },
+        {
+          "preference_id": 22,
+          "probability": 0.059022
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.097198
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.066121
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.051546
+        }
+      ],
+      "transition_probability": 0.024139,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.962314
+    },
+    {
+      "user_index": 6,
+      "history": [
+        1878,
+        1879,
+        1880
+      ],
+      "target": 1881,
+      "current_top": [
+        {
+          "preference_id": 13,
+          "probability": 0.067019
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.061725
+        },
+        {
+          "preference_id": 23,
+          "probability": 0.052169
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.064765
+        },
+        {
+          "preference_id": 14,
+          "probability": 0.052551
+        },
+        {
+          "preference_id": 20,
+          "probability": 0.051459
+        }
+      ],
+      "transition_probability": 0.019119,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.979862
+    },
+    {
+      "user_index": 7,
+      "history": [
+        3497,
+        3497,
+        3497,
+        3498,
+        3498
+      ],
+      "target": 3498,
+      "current_top": [
+        {
+          "preference_id": 14,
+          "probability": 0.077974
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.065918
+        },
+        {
+          "preference_id": 19,
+          "probability": 0.063828
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.074437
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.057213
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.053904
+        }
+      ],
+      "transition_probability": 0.021118,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.973713
+    },
+    {
+      "user_index": 8,
+      "history": [
+        3931,
+        598,
+        2670,
+        123,
+        766,
+        3573,
+        2472,
+        877,
+        3089,
+        3932,
+        1946,
+        2706,
+        3933,
+        1675,
+        2303,
+        198
+      ],
+      "target": 3923,
+      "current_top": [
+        {
+          "preference_id": 15,
+          "probability": 0.059106
+        },
+        {
+          "preference_id": 20,
+          "probability": 0.05577
+        },
+        {
+          "preference_id": 12,
+          "probability": 0.054425
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.093049
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.056852
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.048842
+        }
+      ],
+      "transition_probability": 0.022079,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.966944
+    },
+    {
+      "user_index": 9,
+      "history": [
+        400,
+        138,
+        1526,
+        240,
+        238,
+        1979
+      ],
+      "target": 2372,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.124459
+        },
+        {
+          "preference_id": 21,
+          "probability": 0.051103
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.051003
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.095928
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.062696
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.053054
+        }
+      ],
+      "transition_probability": 0.023514,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.964687
+    },
+    {
+      "user_index": 10,
+      "history": [
+        2762,
+        129,
+        805,
+        2596,
+        1243,
+        575
+      ],
+      "target": 2429,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.080575
+        },
+        {
+          "preference_id": 21,
+          "probability": 0.079171
+        },
+        {
+          "preference_id": 13,
+          "probability": 0.05357
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.087314
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.05201
+        },
+        {
+          "preference_id": 21,
+          "probability": 0.050116
+        }
+      ],
+      "transition_probability": 0.021011,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.969836
+    },
+    {
+      "user_index": 11,
+      "history": [
+        53,
+        23,
+        559,
+        133,
+        638,
+        567
+      ],
+      "target": 2298,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.092397
+        },
+        {
+          "preference_id": 0,
+          "probability": 0.083964
+        },
+        {
+          "preference_id": 27,
+          "probability": 0.071503
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.099112
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.05835
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.050597
+        }
+      ],
+      "transition_probability": 0.022675,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.96455
+    },
+    {
+      "user_index": 13,
+      "history": [
+        542,
+        246,
+        102,
+        66,
+        543,
+        544,
+        545,
+        546,
+        169,
+        118,
+        547,
+        548
+      ],
+      "target": 549,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.054733
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.05399
+        },
+        {
+          "preference_id": 20,
+          "probability": 0.052508
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.095485
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.063762
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.052861
+        }
+      ],
+      "transition_probability": 0.023727,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.963876
+    },
+    {
+      "user_index": 14,
+      "history": [
+        1857,
+        84,
+        1315,
+        83,
+        187,
+        232,
+        1992,
+        560,
+        376,
+        1093,
+        248,
+        1259,
+        619,
+        652,
+        795
+      ],
+      "target": 1993,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.120364
+        },
+        {
+          "preference_id": 20,
+          "probability": 0.058977
+        },
+        {
+          "preference_id": 26,
+          "probability": 0.055161
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.100877
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.061425
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.054181
+        }
+      ],
+      "transition_probability": 0.024002,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.962401
+    },
+    {
+      "user_index": 15,
+      "history": [
+        1228,
+        477,
+        1284,
+        721,
+        149,
+        187,
+        372,
+        139,
+        241,
+        45,
+        513,
+        850,
+        516,
+        1378,
+        1334,
+        207,
+        668,
+        253,
+        12,
+        47,
+        1379,
+        1380,
+        570,
+        598,
+        1377,
+        684
+      ],
+      "target": 854,
+      "current_top": [
+        {
+          "preference_id": 20,
+          "probability": 0.068868
+        },
+        {
+          "preference_id": 23,
+          "probability": 0.064949
+        },
+        {
+          "preference_id": 22,
+          "probability": 0.056899
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.09295
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.055639
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.048576
+        }
+      ],
+      "transition_probability": 0.022202,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.966968
+    },
+    {
+      "user_index": 16,
+      "history": [
+        228,
+        400,
+        3616,
+        1445,
+        508,
+        2611,
+        65,
+        506,
+        1629
+      ],
+      "target": 838,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.091104
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.072422
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.068501
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.09755
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.070952
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.055718
+        }
+      ],
+      "transition_probability": 0.026062,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.959727
+    },
+    {
+      "user_index": 17,
+      "history": [
+        264,
+        2539,
+        2540,
+        1319,
+        812,
+        732,
+        1532,
+        1835,
+        406,
+        2541,
+        130
+      ],
+      "target": 1243,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.092805
+        },
+        {
+          "preference_id": 20,
+          "probability": 0.073164
+        },
+        {
+          "preference_id": 21,
+          "probability": 0.059106
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.0958
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.060332
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.048478
+        }
+      ],
+      "transition_probability": 0.022583,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.965399
+    },
+    {
+      "user_index": 18,
+      "history": [
+        298,
+        299,
+        300,
+        301,
+        116,
+        302,
+        303
+      ],
+      "target": 304,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.084271
+        },
+        {
+          "preference_id": 13,
+          "probability": 0.055945
+        },
+        {
+          "preference_id": 24,
+          "probability": 0.049832
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.100156
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.068702
+        },
+        {
+          "preference_id": 16,
+          "probability": 0.053767
+        }
+      ],
+      "transition_probability": 0.024521,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.960489
+    },
+    {
+      "user_index": 19,
+      "history": [
+        2848,
+        2849,
+        2850
+      ],
+      "target": 2851,
+      "current_top": [
+        {
+          "preference_id": 27,
+          "probability": 0.073515
+        },
+        {
+          "preference_id": 23,
+          "probability": 0.064246
+        },
+        {
+          "preference_id": 13,
+          "probability": 0.062057
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.067118
+        },
+        {
+          "preference_id": 14,
+          "probability": 0.050244
+        },
+        {
+          "preference_id": 22,
+          "probability": 0.049104
+        }
+      ],
+      "transition_probability": 0.019012,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.979065
+    },
+    {
+      "user_index": 20,
+      "history": [
+        2215,
+        2903,
+        506
+      ],
+      "target": 2904,
+      "current_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.115056
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.084589
+        },
+        {
+          "preference_id": 22,
+          "probability": 0.056294
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 23,
+          "probability": 0.073239
+        },
+        {
+          "preference_id": 14,
+          "probability": 0.052855
+        },
+        {
+          "preference_id": 8,
+          "probability": 0.048326
+        }
+      ],
+      "transition_probability": 0.02034,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.977614
+    },
+    {
+      "user_index": 21,
+      "history": [
+        2307,
+        2308
+      ],
+      "target": 2309,
+      "current_top": [
+        {
+          "preference_id": 27,
+          "probability": 0.061178
+        },
+        {
+          "preference_id": 23,
+          "probability": 0.059455
+        },
+        {
+          "preference_id": 19,
+          "probability": 0.047838
+        }
+      ],
+      "predicted_next_top": [
+        {
+          "preference_id": 14,
+          "probability": 0.056275
+        },
+        {
+          "preference_id": 23,
+          "probability": 0.055321
+        },
+        {
+          "preference_id": 20,
+          "probability": 0.051843
+        }
+      ],
+      "transition_probability": 0.018799,
+      "ranking_weight": 0.204468,
+      "uncertainty": 0.981402
+    }
+  ]
+}
