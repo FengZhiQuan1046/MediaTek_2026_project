@@ -1,0 +1,291 @@
+{
+  "dataset": "amazon:Baby_Products",
+  "run_id": "20260917_161153",
+  "group": "long",
+  "length_basis": "filtered_full_sequence",
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "specialists",
+      "epoch": 1,
+      "global_step": 6000,
+      "scores": {
+        "recall@5": 0.03227768952580525,
+        "recall@10": 0.0436678270862203,
+        "ndcg@5": 0.024681376842129264,
+        "ndcg@10": 0.028332144346868027,
+        "hit@5": 0.03227768952580525,
+        "hit@10": 0.0436678270862203
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "specialists",
+      "epoch": 2,
+      "global_step": 13321,
+      "scores": {
+        "recall@5": 0.0516443032412884,
+        "recall@10": 0.06225707236286207,
+        "ndcg@5": 0.04361173314644665,
+        "ndcg@10": 0.04701848191638108,
+        "hit@5": 0.0516443032412884,
+        "hit@10": 0.06225707236286207
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "specialists",
+      "epoch": 3,
+      "global_step": 20642,
+      "scores": {
+        "recall@5": 0.051948490891269815,
+        "recall@10": 0.06036434920742218,
+        "ndcg@5": 0.045529400795323374,
+        "ndcg@10": 0.0482205506877919,
+        "hit@5": 0.051948490891269815,
+        "hit@10": 0.06036434920742218
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 1,
+      "global_step": 27963,
+      "scores": {
+        "recall@5": 0.05157670598573698,
+        "recall@10": 0.06063473822962788,
+        "ndcg@5": 0.045879624844566896,
+        "ndcg@10": 0.048772052858127156,
+        "hit@5": 0.05157670598573698,
+        "hit@10": 0.06063473822962788
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 2,
+      "global_step": 35284,
+      "scores": {
+        "recall@5": 0.05069794166356846,
+        "recall@10": 0.05843782742420658,
+        "ndcg@5": 0.04533032762687057,
+        "ndcg@10": 0.047804445858433985,
+        "hit@5": 0.05069794166356846,
+        "hit@10": 0.05843782742420658
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "coordinator",
+      "epoch": 3,
+      "global_step": 42605,
+      "scores": {
+        "recall@5": 0.04978537871362423,
+        "recall@10": 0.057694257613140905,
+        "ndcg@5": 0.044844951040310284,
+        "ndcg@10": 0.04739125969624982,
+        "hit@5": 0.04978537871362423,
+        "hit@10": 0.057694257613140905
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "joint",
+      "epoch": 1,
+      "global_step": 49926,
+      "scores": {
+        "recall@5": 0.049041808902558555,
+        "recall@10": 0.057085882313178085,
+        "ndcg@5": 0.044118961867221404,
+        "ndcg@10": 0.046698866450812296,
+        "hit@5": 0.049041808902558555,
+        "hit@10": 0.057085882313178085
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "joint",
+      "epoch": 2,
+      "global_step": 57247,
+      "scores": {
+        "recall@5": 0.04934599655253997,
+        "recall@10": 0.056680298779869534,
+        "ndcg@5": 0.04441468819569244,
+        "ndcg@10": 0.04676602177679548,
+        "hit@5": 0.04934599655253997,
+        "hit@10": 0.056680298779869534
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "joint",
+      "epoch": 3,
+      "global_step": 64568,
+      "scores": {
+        "recall@5": 0.049886774596951365,
+        "recall@10": 0.05688309054652381,
+        "ndcg@5": 0.04488608418519421,
+        "ndcg@10": 0.04714929770279583,
+        "hit@5": 0.049886774596951365,
+        "hit@10": 0.05688309054652381
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "joint",
+      "epoch": 4,
+      "global_step": 71889,
+      "scores": {
+        "recall@5": 0.04934599655253997,
+        "recall@10": 0.056916889174299524,
+        "ndcg@5": 0.044670333320491334,
+        "ndcg@10": 0.047103903108072824,
+        "hit@5": 0.04934599655253997,
+        "hit@10": 0.056916889174299524
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "joint",
+      "epoch": 5,
+      "global_step": 79210,
+      "scores": {
+        "recall@5": 0.04961638557474567,
+        "recall@10": 0.05678169466319667,
+        "ndcg@5": 0.04486698580636994,
+        "ndcg@10": 0.04717430756735806,
+        "hit@5": 0.04961638557474567,
+        "hit@10": 0.05678169466319667
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    },
+    {
+      "stage": "joint",
+      "epoch": 6,
+      "global_step": 86531,
+      "scores": {
+        "recall@5": 0.049481191063642814,
+        "recall@10": 0.05661270152431811,
+        "ndcg@5": 0.0447654258829039,
+        "ndcg@10": 0.04708168925090903,
+        "hit@5": 0.049481191063642814,
+        "hit@10": 0.05661270152431811
+      },
+      "evaluated_users": 29587,
+      "total_users": 29587
+    }
+  ],
+  "length_rule": "length > threshold",
+  "length_threshold": 10,
+  "config": {
+    "dataset": "amazon:Baby_Products",
+    "data_path": null,
+    "cache_dir": "/workspace/P78123011/cache",
+    "refresh_data_cache": false,
+    "max_events": null,
+    "max_transitions": 1500000,
+    "min_rating": 4.0,
+    "specialist_epochs": 3,
+    "coordinator_epochs": 3,
+    "joint_epochs": 7,
+    "batch_size": 128,
+    "eval_batch_size": 64,
+    "validate_every_steps": 6000,
+    "monitor_metric": "ndcg@10",
+    "early_stopping_patience": 6,
+    "lr_patience": 2,
+    "candidates": 192,
+    "dim": 128,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "enable_lora": 1,
+    "short_window": 1,
+    "preference_count": 32,
+    "preference_hidden": 128,
+    "preference_temperature": 0.2,
+    "preference_score_weight": 0.2,
+    "use_graph_embeddings": true,
+    "max_history": 100,
+    "specialist_lr": 0.0001,
+    "coordinator_lr": 0.0001,
+    "joint_lr": 5e-05,
+    "preference_coef": 0.2,
+    "preference_transition_coef": 0.1,
+    "preference_balance_coef": 0.01,
+    "preference_separation_coef": 0.01,
+    "preference_sharpness_coef": 0.05,
+    "future_horizon": 3,
+    "future_decay": 0.5,
+    "hard_negative_pool_multiplier": 12,
+    "hard_negative_fraction": 0.75,
+    "hard_negative_warmup_epochs": 2,
+    "use_in_batch_negatives": true,
+    "preference_contrastive_coef": 0.05,
+    "agent_diversity_coef": 0.02,
+    "full_catalog_supervised": false,
+    "popularity_alpha": 0.3,
+    "transition_beta": 0.5,
+    "seed": 25252,
+    "device": "cuda:0",
+    "skip_mamba": false,
+    "graph_device": "cuda:0",
+    "mamba_encode_batch_size": 32,
+    "mamba_max_tokens": 32,
+    "mamba_model_id": "state-spaces/mamba-130m-hf",
+    "item_prompt_prefix": "Preference-aware product representation: ",
+    "validation_user_limit": 0,
+    "periodic_test_user_limit": 0,
+    "generate_reasons": false,
+    "save_model_weights": false,
+    "reason_count": 20,
+    "reason_max_new_tokens": 40,
+    "item_vector_artifact": null,
+    "resume_checkpoint": null,
+    "eval_length_basis": "filtered_full_sequence",
+    "eval_length_threshold": 10,
+    "experiment_note": "amazons_long_short subset=Baby_Products; short filtered-full-sequence <= 10; long > 10; same model and full catalog",
+    "target_recall_at_10": 0.15,
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_lora",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW1/Baby_Products/rl_20260917_161152_r1_1012857",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW1/Baby_Products/rl_20260917_161152_r1_1012857/Baby_Products_scores.json",
+    "use_long": 0,
+    "use_short": 1,
+    "use_preference": 1
+  },
+  "valid": {
+    "ndcg@5": 0.027734504425844783,
+    "ndcg@10": 0.031615537362334474,
+    "recall@5": 0.03623212897556359,
+    "recall@10": 0.0483320377192686,
+    "hit@5": 0.03623212897556359,
+    "hit@10": 0.0483320377192686
+  },
+  "valid_users": {
+    "total_users": 29587,
+    "evaluated_users": 29587
+  },
+  "test": {
+    "ndcg@5": 0.04361173314644665,
+    "ndcg@10": 0.04701848191638108,
+    "recall@5": 0.0516443032412884,
+    "recall@10": 0.06225707236286207,
+    "hit@5": 0.0516443032412884,
+    "hit@10": 0.06225707236286207
+  },
+  "test_users": {
+    "total_users": 29587,
+    "evaluated_users": 29587
+  }
+}

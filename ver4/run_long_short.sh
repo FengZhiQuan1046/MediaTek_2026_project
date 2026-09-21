@@ -11,7 +11,7 @@ PYTHON_BIN="${PYTHON_BIN:-/workspace/P78123011/miniconda3/envs/py31014/bin/pytho
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 # 手動設定要使用的實體 GPU："0"、"1"、"0,1" 或 "1,0"
 # 使用兩張卡時，第一張供主模型使用，第二張供 graph/preference 模型使用。
-GPU_IDS="${GPU_IDS:-2}"
+GPU_IDS="${GPU_IDS:-1}"
 EVAL_LENGTH_THRESHOLD="${EVAL_LENGTH_THRESHOLD:-10}"
 TRAINING_OPTIONS=("$@")
 if [[ ! "$EVAL_LENGTH_THRESHOLD" =~ ^[1-9][0-9]*$ ]]; then
@@ -49,7 +49,7 @@ USE_PREFERENCE="${USE_PREFERENCE:-1}"
 USE_GCN="${USE_GCN:-1}"
 
 
-SHORT_WINDOWs=(8)
+SHORT_WINDOWs=(1)
 
 for SHORT_WINDOW in "${SHORT_WINDOWs[@]}"; do
   OUTPUT_FOLDER_NAME="amazons_long_short"
@@ -164,7 +164,7 @@ for SHORT_WINDOW in "${SHORT_WINDOWs[@]}"; do
   REPEATS="${REPEATS:-1}"
   for ((run_number = 1; run_number <= REPEATS; run_number++)); do
     # name dataset validation_steps max_samples candidates popularity transition
-    # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
+    run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
     run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
     run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
     # run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5

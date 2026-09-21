@@ -17,7 +17,7 @@
 \maketitle
 
 \begin{abstract}
-Large-scale recommendation requires models that capture evolving user preferences while supporting high throughput under limited memory budgets. Mamba offers an attractive foundation through selective state-space modeling and efficient recurrent inference. However, an efficient backbone alone does not resolve how persistent interests, recent intent, and preference transitions should be represented and combined. Using one sequence representation places these distinct demands on a shared state, whereas assigning a separate language model to each specialist would introduce substantial computational and memory overhead. In this work, we propose RIBS (\emph{R}ecommendation via \emph{I}ntegrated \emph{B}ehavioral \emph{S}pecialists), which formulate recommendation as coordinated specialization over a shared semantic space and propose a Mamba-powered multi-agent recommendation framework supported by multi-LoRA. A frozen Mamba encoder produces reusable item representations, while agent-specific low-rank modules support long-horizon, short-horizon, and preference-transition modeling without duplicating the language backbone. A coordinator integrates their evidence according to temporal context and predicted preference uncertainty. This design separates semantic encoding from repeated ranking computation and provides distinct adaptation paths for complementary recommendation roles. Under our evaluation on various recommendation senarios, the proposed framework outperforms single-agent variants and demonstrates the benefits of specialization and coordination.
+Large-scale recommendation requires models that capture evolving user preferences while supporting high throughput under limited memory budgets. Mamba offers an attractive foundation through selective state-space modeling and efficient recurrent inference. However, an efficient backbone alone does not resolve how persistent interests, recent intent, and preference transitions should be represented and combined. Using one sequence representation places these distinct demands on a shared state, whereas assigning a separate language model to each specialist would introduce substantial computational and memory overhead. In this work, we propose RIBS (\emph{R}ecommendation via \emph{I}ntegrated \emph{B}ehavioral \emph{S}pecialists), which formulate recommendation as coordinated specialization over a shared semantic space and propose a Mamba-powered multi-agent recommendation framework supported by multi-LoRA. A frozen Mamba encoder produces reusable item representations, while agent-specific low-rank modules support long-horizon, short-horizon, and preference-transition modeling without duplicating the language backbone. A coordinator integrates their evidence according to temporal context and predicted preference uncertainty. This design separates semantic encoding from repeated ranking computation and provides distinct adaptation paths for complementary recommendation roles. Under our evaluation on various recommendation scenarios, the proposed framework outperforms single-agent variants and demonstrates the benefits of specialization and coordination.
 \end{abstract}
 
 \section{Introduction}
@@ -37,16 +37,16 @@ RIBS makes the allocation of behavioral evidence explicit through a learned coor
 
 \section{Related Work}
 \paragraph{Sequential representation learning.}
-SASRec uses self-attention to identify relevant items in a user's history \citep{kang2018sasrec}. BERT4Rec instead uses bidirectional context with a Cloze objective \citep{sun2019bert4rec}. Both illustrate how architectural and training choices influence the representation of sequential context. Our temporal branches use different input windows and initial forgetting rates; our preference branch operates over soft prototype assignments rather than item identities alone.
+SASRec uses self-attention to identify relevant items in a user's history \citep{kang2018sasrec}, while BERT4Rec instead uses bidirectional context with a Cloze objective \citep{sun2019bert4rec}. Both demonstrate how architectural and training choices influence the representation of sequential context. Our temporal branches use different context windows and initial forgetting rates that represent session-local and longer-range evidence separately; a separate preference branch operates over soft prototype assignments representing abstracted user taste still defined even when item-level history is too sparse to support a reliable embedding.
 
 \paragraph{Selective state-space models.}
-Mamba introduces input-dependent state-space dynamics for sequence modeling \citep{gu2023mamba}. Mamba4Rec demonstrates their application to sequential recommendation \citep{liu2024mamba4rec}. Our implementation uses pretrained Mamba for text encoding and a simpler diagonal selective recurrence for user histories. It does not reproduce the full Mamba block or its optimized selective-scan implementation. Consequently, linear dependence on history length should not be read as a measured speedup over those models.
+Mamba introduces input-dependent state-space dynamics for sequence modeling by combining a selective state-space recurrence with gated projections, a causal convolution, hardware-aware parallel scan \citep{gu2023mamba}. Mamba4Rec stacks Mamba layers over learned item-ID embeddings using the original selective-scan implementation \citep{liu2024mamba4rec}. Our implementation only uses a pretrained Mamba to precompute and cache item representations that remain frozen. A separate diagonal selective recurrence that retains input-dependent decay and gating of the selective SSM models user histories.
 
 \paragraph{Semantic and collaborative item representations.}
-BLaIR learns recommendation-oriented text representations by connecting item metadata with natural-language context and introduces Amazon Reviews 2023 \citep{hou2024bridging}. LightGCN learns collaborative representations through linear neighborhood propagation on the user--item graph \citep{he2020lightgcn}. We combine frozen text features with trainable graph item embeddings, allowing the temporal and preference specialists to share both sources of evidence. We do not assume that semantic similarity alone identifies the next interaction.
+BLaIR learns recommendation-oriented text representations by connecting item metadata with natural-language context \citep{hou2024bridging}. Because such representations derive from metadata, they are informative even for items with little interaction history. LightGCN, on the other hand, learns collaborative representations through linear neighborhood propagation on the user-item graph via aggregation \citep{he2020lightgcn}. This allows for co-consumption relationships that the previous method overlooks. We therefore combine frozen text features with trainable graph item embeddings, allowing for temporal and preference specialists to share both sources of evidence to help expand coverage on long-tail-heavy item distributions typical of product recommendations.
 
 \paragraph{Low-rank adaptation.}
-LoRA parameterizes weight updates through low-rank matrices \citep{hu2021lora}. We use this parameterization for branch-specific residual transformations in the recommendation space. This is a use of low-rank modules in a task model, not evidence that adapting a pretrained language backbone is necessary. The graph embeddings, text projection, GRU, and preference heads remain trainable where permitted by the optimization stage.
+LoRA parameterizes weight updates through low-rank matrices. We borrow its parameterization for branch-specific residual transformations in the recommendation space to impose a capacity limit on updates. We train the graph embeddings, text projections, preference GRU, and its heads directly. This training stage determines which modules receive gradients as specialist, coordinator, and joint stages unfreeze different subsets.
 
 \section{Method}
 \label{sec:method}
@@ -182,6 +182,71 @@ Toys and Games & 460,753 & 103,913 & 1,500,000 & 192 & 0.30 & 0.5\\
 \label{tab:config}
 \end{table*}
 
+\subsection{Overall Ranking Results}
+Table~\ref{tab:main} compares available configurations. $L$, $S$, $P$, and $G$ denote long, short, preference, and graph components. All listed variants include the same semantic encoding pipeline and enabled graph component. $L+G$ and $P+G$ are internal single-specialist variants, not reproductions of Mamba4Rec or standalone LightGCN. Complete-model runs with matching history-mode metadata are available for All Beauty; missing configurations on the other categories remain unreported.
+
+\begin{table*}[t]
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccrrrr}
+\toprule
+Category & L & S & P & Recall@5 & NDCG@5 & Recall@10 & NDCG@10\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Full_Beauty/rl_20260910_190927_r1_321310/Full_Beauty_scores.json
+All Beauty & -- & -- & $\checkmark$ & 0.0803 & 0.0765 & 0.0844 & 0.0779\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P0_G1/Full_Beauty/rl_20260912_154355_r1_630172/Full_Beauty_scores.json
+All Beauty & -- & $\checkmark$ & -- & 0.1119 & 0.1066 & 0.1160 & 0.1079\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Full_Beauty/rl_20260910_190900_r1_320995/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & -- & -- & 0.1132 & 0.1073 & 0.1167 & 0.1084\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Full_Beauty/rl_20260911_155827_r1_488206/Full_Beauty_scores.json
+All Beauty & -- & $\checkmark$ & $\checkmark$ & 0.1222 & 0.1118 & 0.1332 & 0.1153\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Full_Beauty/rl_20260911_155809_r1_488059/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & -- & $\checkmark$ & 0.1194 & 0.1106 & 0.1311 & 0.1144\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S1_P1_G1/Full_Beauty/rl_20260910_185419_r1_312334/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & $\checkmark$ & -- & 0.1009 & 0.0952 & 0.1057 & 0.0967 \\
+All Beauty & $\checkmark$ & $\checkmark$ & $\checkmark$ & 0.1222 & 0.1121 & 0.1318 & 0.1151\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Baby_Products/rl_20260910_190941_r1_321310/Baby_Products_scores.json
+Baby Products & -- & -- & $\checkmark$ & 0.0248 & 0.0179 & 0.0353 & 0.0213\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Baby_Products/rl_20260910_190948_r1_320995/Baby_Products_scores.json
+Baby Products & -- & $\checkmark$ & -- & 0.0404 & 0.0308 & 0.0542 & 0.0352 \\
+Baby Products & $\checkmark$ & -- & -- & 0.0430 & 0.0334 & 0.0557 & 0.0375\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Baby_Products/rl_20260911_155852_r1_488206/Baby_Products_scores.json
+Baby Products & -- & $\checkmark$ & $\checkmark$ & 0.0439 & 0.0344 & 0.0567 & 0.0385\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Baby_Products/rl_20260911_155908_r1_488059/Baby_Products_scores.json
+Baby Products & $\checkmark$ & -- & $\checkmark$ & 0.0437 & 0.0340 & 0.0566 & 0.0381\\
+Baby Products & $\checkmark$ & $\checkmark$ & -- & 0.0402 & 0.0308 & 0.0541 & 0.0352 \\
+Baby Products & $\checkmark$ & $\checkmark$ & $\checkmark$ & 0.0435 & 0.0340 & 0.0562 & 0.0381 \\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Sports_and_Outdoors/rl_20260910_202901_r1_321310/Sports_and_Outdoors_scores.json
+Sports and Outdoors & -- & -- & $\checkmark$ & 0.0219 & 0.0162 & 0.0298 & 0.0188\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Sports_and_Outdoors/rl_20260910_213007_r1_320995/Sports_and_Outdoors_scores.json
+Sports and Outdoors & -- & $\checkmark$ & -- & 0.0324 & 0.0258 & 0.0412 & 0.0285 \\
+Sports and Outdoors & $\checkmark$ & -- & -- & 0.0318 & 0.0252 & 0.0404 & 0.0280\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Sports_and_Outdoors/rl_20260911_173821_r1_488206/Sports_and_Outdoors_scores.json
+Sports and Outdoors & -- & $\checkmark$ & $\checkmark$ & 0.0338 & 0.0271 & 0.0428 & 0.0300\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Sports_and_Outdoors/rl_20260911_185143_r1_488059/Sports_and_Outdoors_scores.json
+Sports and Outdoors & $\checkmark$ & -- & $\checkmark$ & 0.0334 & 0.0261 & 0.0421 & 0.0289\\
+Sports and Outdoors & $\checkmark$ & $\checkmark$ & -- & 0.0327 & 0.0249 & 0.0413 & 0.0280 \\
+Sports and Outdoors & $\checkmark$ & $\checkmark$ & $\checkmark$ & 0.0337 & 0.0269 & 0.0425 & 0.0297 \\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Toys_and_Games/rl_20260911_001850_r1_321310/Toys_and_Games_scores.json
+Toys and Games & -- & -- & $\checkmark$ & 0.0326 & 0.0249 & 0.0425 & 0.0281\\
+Toys and Games & -- & $\checkmark$ & -- & 0.0467 & 0.0371 & 0.0582 & 0.0408 \\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Toys_and_Games/rl_20260911_021224_r1_320995/Toys_and_Games_scores.json
+Toys and Games & $\checkmark$ & -- & -- & 0.0456 & 0.0361 & 0.0569 & 0.0398\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Toys_and_Games/rl_20260911_221112_r1_488206/Toys_and_Games_scores.json
+Toys and Games & -- & $\checkmark$ & $\checkmark$ & 0.0467 & 0.0373 & 0.0579 & 0.0409\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Toys_and_Games/rl_20260912_003849_r1_488059/Toys_and_Games_scores.json
+Toys and Games & $\checkmark$ & -- & $\checkmark$ & 0.0460 & 0.0366 & 0.0572 & 0.0402\\
+Toys and Games & $\checkmark$ & $\checkmark$ & -- & 0.0464 & 0.0368 & 0.0576 & 0.0404 \\
+Toys and Games & $\checkmark$ & $\checkmark$ & $\checkmark$ & 0.0466 & 0.0371 & 0.0579 & 0.0407 \\
+\bottomrule
+\end{tabular}
+\caption{Completed full-catalog test results from ver4. All rows include graph features and category-specific priors. L, S, and P denote long-horizon, short-horizon, and preference specialists; a checkmark indicates an enabled branch and -- a disabled branch. Each row reports the final test evaluation of the validation-selected best model from the latest completed run for that category and configuration. Unavailable configurations are omitted; scores are rounded to four decimal places.}
+\label{tab:main}
+\end{table*}
+
 \begin{table*}[t]
     \centering
     \caption{Performance comparison on Amazon Reviews 2023. Published results are taken from \citet{liang2026resid}, using 5-core preprocessing and leave-one-out evaluation on the complete processed test split. The authors additionally remove items lacking structured metadata; superscript $*$ denotes a sequential model augmented with these features. The paper evaluates Beauty and Personal Care rather than All Beauty, so All Beauty is left unreported. ``--'' denotes an unreported result. Higher is better.}
@@ -217,61 +282,6 @@ Toys and Games & 460,753 & 103,913 & 1,500,000 & 192 & 0.30 & 0.5\\
     }
 \end{table*}
 
-\subsection{Overall Ranking Results}
-Table~\ref{tab:main} compares available configurations. $L$, $S$, $P$, and $G$ denote long, short, preference, and graph components. All listed variants include the same semantic encoding pipeline and enabled graph component. $L+G$ and $P+G$ are internal single-specialist variants, not reproductions of Mamba4Rec or standalone LightGCN. Complete-model runs with matching history-mode metadata are available for All Beauty; missing configurations on the other categories remain unreported.
-
-\begin{table*}[t]
-\centering
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lcccrrrr}
-\toprule
-Category & L & S & P & Recall@5 & NDCG@5 & Recall@10 & NDCG@10\\
-\midrule
-% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Full_Beauty/rl_20260910_190927_r1_321310/Full_Beauty_scores.json
-All Beauty & -- & -- & $\checkmark$ & 0.0803 & 0.0765 & 0.0844 & 0.0779\\
-% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P0_G1/Full_Beauty/rl_20260912_154355_r1_630172/Full_Beauty_scores.json
-All Beauty & -- & $\checkmark$ & -- & 0.1119 & 0.1066 & 0.1160 & 0.1079\\
-% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Full_Beauty/rl_20260910_190900_r1_320995/Full_Beauty_scores.json
-All Beauty & $\checkmark$ & -- & -- & 0.1132 & 0.1073 & 0.1167 & 0.1084\\
-% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Full_Beauty/rl_20260911_155827_r1_488206/Full_Beauty_scores.json
-All Beauty & -- & $\checkmark$ & $\checkmark$ & 0.1222 & 0.1118 & 0.1332 & 0.1153\\
-% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Full_Beauty/rl_20260911_155809_r1_488059/Full_Beauty_scores.json
-All Beauty & $\checkmark$ & -- & $\checkmark$ & 0.1194 & 0.1106 & 0.1311 & 0.1144\\
-% Source: outputs_mamba_rl/amazons_long_short_L1_S1_P1_G1/Full_Beauty/rl_20260910_185419_r1_312334/Full_Beauty_scores.json
-All Beauty & $\checkmark$ & $\checkmark$ & $\checkmark$ & 0.1222 & 0.1121 & 0.1318 & 0.1151\\
-\midrule
-% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Baby_Products/rl_20260910_190941_r1_321310/Baby_Products_scores.json
-Baby Products & -- & -- & $\checkmark$ & 0.0248 & 0.0179 & 0.0353 & 0.0213\\
-% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Baby_Products/rl_20260910_190948_r1_320995/Baby_Products_scores.json
-Baby Products & $\checkmark$ & -- & -- & 0.0430 & 0.0334 & 0.0557 & 0.0375\\
-% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Baby_Products/rl_20260911_155852_r1_488206/Baby_Products_scores.json
-Baby Products & -- & $\checkmark$ & $\checkmark$ & 0.0439 & 0.0344 & 0.0567 & 0.0385\\
-% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Baby_Products/rl_20260911_155908_r1_488059/Baby_Products_scores.json
-Baby Products & $\checkmark$ & -- & $\checkmark$ & 0.0437 & 0.0340 & 0.0566 & 0.0381\\
-\midrule
-% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Sports_and_Outdoors/rl_20260910_202901_r1_321310/Sports_and_Outdoors_scores.json
-Sports and Outdoors & -- & -- & $\checkmark$ & 0.0219 & 0.0162 & 0.0298 & 0.0188\\
-% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Sports_and_Outdoors/rl_20260910_213007_r1_320995/Sports_and_Outdoors_scores.json
-Sports and Outdoors & $\checkmark$ & -- & -- & 0.0318 & 0.0252 & 0.0404 & 0.0280\\
-% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Sports_and_Outdoors/rl_20260911_173821_r1_488206/Sports_and_Outdoors_scores.json
-Sports and Outdoors & -- & $\checkmark$ & $\checkmark$ & 0.0338 & 0.0271 & 0.0428 & 0.0300\\
-% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Sports_and_Outdoors/rl_20260911_185143_r1_488059/Sports_and_Outdoors_scores.json
-Sports and Outdoors & $\checkmark$ & -- & $\checkmark$ & 0.0334 & 0.0267 & 0.0421 & 0.0295\\
-\midrule
-% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Toys_and_Games/rl_20260911_001850_r1_321310/Toys_and_Games_scores.json
-Toys and Games & -- & -- & $\checkmark$ & 0.0326 & 0.0249 & 0.0425 & 0.0281\\
-% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Toys_and_Games/rl_20260911_021224_r1_320995/Toys_and_Games_scores.json
-Toys and Games & $\checkmark$ & -- & -- & 0.0456 & 0.0361 & 0.0569 & 0.0398\\
-% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Toys_and_Games/rl_20260911_221112_r1_488206/Toys_and_Games_scores.json
-Toys and Games & -- & $\checkmark$ & $\checkmark$ & 0.0467 & 0.0373 & 0.0579 & 0.0409\\
-% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Toys_and_Games/rl_20260912_003849_r1_488059/Toys_and_Games_scores.json
-Toys and Games & $\checkmark$ & -- & $\checkmark$ & 0.0460 & 0.0366 & 0.0572 & 0.0402\\
-\bottomrule
-\end{tabular}
-\caption{Completed full-catalog test results from ver4. All rows include graph features and category-specific priors. L, S, and P denote long-horizon, short-horizon, and preference specialists; a checkmark indicates an enabled branch and -- a disabled branch. Each row reports the final test evaluation of the validation-selected best model from the latest completed run for that category and configuration. Unavailable configurations are omitted; scores are rounded to four decimal places.}
-\label{tab:main}
-\end{table*}
-
 On All Beauty, the complete model reaches NDCG@10 of 0.115087 versus 0.108389 for $L+G$, a relative increase of approximately 6.18\%. Its Recall@10 increases from 0.116678 to 0.131778, or 12.94\% relative. These observations are consistent with a benefit from combining specialists in this configuration, but do not isolate the effect of preference supervision, extra parameters, or coordination.
 
 Removing the long branch gives NDCG@10 of 0.115315, approximately $2.3\times10^{-4}$ above the complete model, and a slightly higher Recall@10 of 0.133150. The current run therefore provides little evidence that the long branch is necessary on All Beauty. Across all four categories, $L+G$ outperforms $P+G$ on all four reported metrics. A preference prototype bottleneck alone is not a sufficiently strong replacement for the temporal branch in these runs. This comparison also changes the input horizon from 100 to 10 and the training objectives, so it cannot identify the cause of the difference.
@@ -281,26 +291,26 @@ We do not combine published baseline scores with these measurements. Category id
 \subsection{History-Length Analysis}
 We partition users using their complete filtered sequence length before leave-two-out splitting: short sequences have at most 10 events, and long sequences have more than 10. The same user remains in the same group for validation and test. Group assignment uses sequence length, not target identity, and does not change training or the model's input cap.
 
-\begin{table*}[t]
-\centering
-\begin{tabular}{llrrrr}
-\toprule
-& & \multicolumn{2}{c}{Short histories} & \multicolumn{2}{c}{Long histories}\\
-\cmidrule(lr){3-4}\cmidrule(lr){5-6}
-Category & Configuration & Recall@10 & NDCG@10 & Recall@10 & NDCG@10\\
-\midrule
-All Beauty & $P+G$ & 0.0937 & 0.0875 & 0.0320 & 0.0235\\
-All Beauty & $L+G$ & 0.1292 & 0.1214 & 0.0457 & 0.0349\\
-All Beauty & $S+P+G$ & 0.1446 & 0.1277 & 0.0685 & 0.0453\\
-All Beauty & $L+S+P+G$ & 0.1430 & 0.1276 & 0.0685 & 0.0445\\
-Baby Products & $L+G$ & 0.0562 & 0.0380 & 0.0529 & 0.0346\\
-Sports and Outdoors & $L+G$ & 0.0419 & 0.0292 & 0.0324 & 0.0214\\
-Toys and Games & $L+G$ & 0.0594 & 0.0418 & 0.0459 & 0.0306\\
-\bottomrule
-\end{tabular}
-\caption{Test performance by filtered full-sequence length. Cohort sizes appear in Table~\ref{tab:config}. Each configuration is trained jointly on all users, not separately by cohort.}
-\label{tab:groups}
-\end{table*}
+% \begin{table*}[t]
+% \centering
+% \begin{tabular}{llrrrr}
+% \toprule
+% & & \multicolumn{2}{c}{Short histories} & \multicolumn{2}{c}{Long histories}\\
+% \cmidrule(lr){3-4}\cmidrule(lr){5-6}
+% Category & Configuration & Recall@10 & NDCG@10 & Recall@10 & NDCG@10\\
+% \midrule
+% All Beauty & $P+G$ & 0.0937 & 0.0875 & 0.0320 & 0.0235\\
+% All Beauty & $L+G$ & 0.1292 & 0.1214 & 0.0457 & 0.0349\\
+% All Beauty & $S+P+G$ & 0.1446 & 0.1277 & 0.0685 & 0.0453\\
+% All Beauty & $L+S+P+G$ & 0.1430 & 0.1276 & 0.0685 & 0.0445\\
+% Baby Products & $L+G$ & 0.0562 & 0.0380 & 0.0529 & 0.0346\\
+% Sports and Outdoors & $L+G$ & 0.0419 & 0.0292 & 0.0324 & 0.0214\\
+% Toys and Games & $L+G$ & 0.0594 & 0.0418 & 0.0459 & 0.0306\\
+% \bottomrule
+% \end{tabular}
+% \caption{Test performance by filtered full-sequence length. Cohort sizes appear in Table~\ref{tab:config}. Each configuration is trained jointly on all users, not separately by cohort.}
+% \label{tab:groups}
+% \end{table*}
 
 Table~\ref{tab:groups} shows that the complete All Beauty model attains NDCG@10 of 0.1276 for short histories and 0.0445 for long histories. The latter group contains only 219 users, compared with 1,238 in the former. The $S+P+G$ variant is slightly higher in both groups, showing that access to older sequence events does not produce an observable advantage here. For $L+G$, short-history NDCG@10 also exceeds long-history NDCG@10 on the other three categories. These are descriptive cohort differences: interaction frequency, item distribution, and prediction difficulty may vary together with history length. They do not demonstrate that longer histories cause worse recommendations.
 
@@ -327,36 +337,139 @@ Prototype transitions are self-supervised signals derived from learned item embe
 \label{app:runs}
 Tables~\ref{tab:main} and~\ref{tab:groups} use the final \texttt{test} objects in category score JSON files under the version-local \texttt{outputs\_mamba\_rl} directory. The prefix \texttt{amazons\_long\_short\_} is followed by the component mask. Within each run directory, the source is \texttt{<category>\_scores.json}. Cohort metrics are read from \texttt{sequence\_length.test}; the split basis is \texttt{filtered\_full\_sequence}. Decimal values in tables are rounded to four places.
 
-\begin{table*}[t]
-\centering
-\small
-\begin{tabular}{lll}
-\toprule
-Category directory & Mask & Run directory\\
-\midrule
-Full\_Beauty & L0\_S0\_P1\_G1 & \texttt{rl\_20260910\_190927\_r1\_321310}\\
-Full\_Beauty & L0\_S1\_P0\_G1 & \texttt{rl\_20260912\_154355\_r1\_630172}\\
-Full\_Beauty & L1\_S0\_P0\_G1 & \texttt{rl\_20260910\_190900\_r1\_320995}\\
-Full\_Beauty & L0\_S1\_P1\_G1 & \texttt{rl\_20260911\_155827\_r1\_488206}\\
-Full\_Beauty & L1\_S0\_P1\_G1 & \texttt{rl\_20260911\_155809\_r1\_488059}\\
-Full\_Beauty & L1\_S1\_P1\_G1 & \texttt{rl\_20260910\_185419\_r1\_312334}\\
-Baby\_Products & L0\_S0\_P1\_G1 & \texttt{rl\_20260910\_190941\_r1\_321310}\\
-Baby\_Products & L1\_S0\_P0\_G1 & \texttt{rl\_20260910\_190948\_r1\_320995}\\
-Baby\_Products & L0\_S1\_P1\_G1 & \texttt{rl\_20260911\_155852\_r1\_488206}\\
-Baby\_Products & L1\_S0\_P1\_G1 & \texttt{rl\_20260911\_155908\_r1\_488059}\\
-Sports\_and\_Outdoors & L0\_S0\_P1\_G1 & \texttt{rl\_20260910\_202901\_r1\_321310}\\
-Sports\_and\_Outdoors & L1\_S0\_P0\_G1 & \texttt{rl\_20260910\_213007\_r1\_320995}\\
-Sports\_and\_Outdoors & L0\_S1\_P1\_G1 & \texttt{rl\_20260911\_173821\_r1\_488206}\\
-Sports\_and\_Outdoors & L1\_S0\_P1\_G1 & \texttt{rl\_20260911\_185143\_r1\_488059}\\
-Toys\_and\_Games & L0\_S0\_P1\_G1 & \texttt{rl\_20260911\_001850\_r1\_321310}\\
-Toys\_and\_Games & L1\_S0\_P0\_G1 & \texttt{rl\_20260911\_021224\_r1\_320995}\\
-Toys\_and\_Games & L0\_S1\_P1\_G1 & \texttt{rl\_20260911\_221112\_r1\_488206}\\
-Toys\_and\_Games & L1\_S0\_P1\_G1 & \texttt{rl\_20260912\_003849\_r1\_488059}\\
-\bottomrule
-\end{tabular}
-\caption{Exact source runs for the reported measurements.}
-\label{tab:runs}
-\end{table*}
 
 The earlier unsuffixed history-length experiment used untruncated training-history length for grouping and is excluded. The older \texttt{amazons\_lora} and \texttt{amazons\_full} directories are not mixed into the tables. This keeps the presented cohort definition consistent and avoids treating historical runs as matched ablations.
+\clearpage
+\section{Short-Agent Window Size}
+\label{app:short_window}
+Table~\ref{tab:short_window} reports the final full-catalog test results for short-agent window sizes $W\in\{2,4,6,8\}$ with $L=0$, $S=1$, $P=1$, and $G=1$. Each row uses the latest completed run for its category and window size, evaluated after restoring the validation-selected best model. Because the long agent is disabled, this setting also limits the preference agent to the same recent-history window; the experiment therefore varies both agents' available sequence context. Graph features and category-specific priors remain enabled.
+
+\begin{table*}[t]
+\centering
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcrrrrrrrrrrrr}
+\toprule
+& & \multicolumn{4}{c}{Overall} & \multicolumn{4}{c}{Long histories} & \multicolumn{4}{c}{Short histories}\\
+Category & Window & R@5 & N@5 & R@10 & N@10 & R@5 & N@5 & R@10 & N@10 & R@5 & N@5 & R@10 & N@10\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW2/Full_Beauty/rl_20260915_155744_r1_4039016/Full_Beauty_scores.json
+All Beauty & 2 & 0.1229 & 0.1118 & 0.1325 & 0.1149 & 0.0548 & 0.0400 & 0.0731 & 0.0457 & 0.1349 & 0.1245 & 0.1430 & 0.1272\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW4/Full_Beauty/rl_20260916_142553_r1_4039016/Full_Beauty_scores.json
+All Beauty & 4 & 0.1222 & 0.1118 & 0.1332 & 0.1154 & 0.0548 & 0.0403 & 0.0685 & 0.0447 & 0.1341 & 0.1245 & 0.1446 & 0.1279\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW6/Full_Beauty/rl_20260915_155829_r1_4039433/Full_Beauty_scores.json
+All Beauty & 6 & 0.1222 & 0.1116 & 0.1338 & 0.1153 & 0.0548 & 0.0403 & 0.0685 & 0.0447 & 0.1341 & 0.1242 & 0.1454 & 0.1278\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW8/Full_Beauty/rl_20260916_145342_r1_4039433/Full_Beauty_scores.json
+All Beauty & 8 & 0.1242 & 0.1130 & 0.1338 & 0.1161 & 0.0548 & 0.0409 & 0.0685 & 0.0453 & 0.1365 & 0.1258 & 0.1454 & 0.1286\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW2/Baby_Products/rl_20260915_160135_r1_4039016/Baby_Products_scores.json
+Baby Products & 2 & 0.0504 & 0.0416 & 0.0624 & 0.0455 & 0.0519 & 0.0435 & 0.0641 & 0.0474 & 0.0501 & 0.0413 & 0.0620 & 0.0451\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW4/Baby_Products/rl_20260916_142658_r1_4039016/Baby_Products_scores.json
+Baby Products & 4 & 0.0469 & 0.0371 & 0.0597 & 0.0412 & 0.0483 & 0.0386 & 0.0618 & 0.0429 & 0.0466 & 0.0369 & 0.0593 & 0.0409\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW6/Baby_Products/rl_20260915_160137_r1_4039433/Baby_Products_scores.json
+Baby Products & 6 & 0.0451 & 0.0352 & 0.0580 & 0.0394 & 0.0455 & 0.0358 & 0.0592 & 0.0402 & 0.0450 & 0.0351 & 0.0578 & 0.0392\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW8/Baby_Products/rl_20260916_180215_r1_753937/Baby_Products_scores.json
+Baby Products & 8 & 0.0445 & 0.0347 & 0.0572 & 0.0387 & 0.0439 & 0.0343 & 0.0583 & 0.0390 & 0.0446 & 0.0347 & 0.0570 & 0.0387\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW2/Sports_and_Outdoors/rl_20260915_192749_r1_4039016/Sports_and_Outdoors_scores.json
+Sports and Outdoors & 2 & 0.0455 & 0.0390 & 0.0536 & 0.0416 & 0.0455 & 0.0394 & 0.0531 & 0.0418 & 0.0455 & 0.0389 & 0.0537 & 0.0415\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW4/Sports_and_Outdoors/rl_20260917_005049_r1_997198/Sports_and_Outdoors_scores.json
+Sports and Outdoors & 4 & 0.0369 & 0.0299 & 0.0461 & 0.0328 & 0.0351 & 0.0285 & 0.0443 & 0.0315 & 0.0373 & 0.0301 & 0.0465 & 0.0331\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW6/Sports_and_Outdoors/rl_20260915_194603_r1_4039433/Sports_and_Outdoors_scores.json
+Sports and Outdoors & 6 & 0.0347 & 0.0277 & 0.0438 & 0.0307 & 0.0319 & 0.0251 & 0.0407 & 0.0280 & 0.0352 & 0.0282 & 0.0443 & 0.0312\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW8/Sports_and_Outdoors/rl_20260917_005026_r1_996978/Sports_and_Outdoors_scores.json
+Sports and Outdoors & 8 & 0.0339 & 0.0271 & 0.0428 & 0.0300 & 0.0291 & 0.0231 & 0.0381 & 0.0260 & 0.0348 & 0.0279 & 0.0437 & 0.0307\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW2/Toys_and_Games/rl_20260916_042724_r1_4039016/Toys_and_Games_scores.json
+Toys and Games & 2 & 0.0563 & 0.0477 & 0.0669 & 0.0511 & 0.0551 & 0.0475 & 0.0650 & 0.0507 & 0.0565 & 0.0477 & 0.0674 & 0.0512\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW4/Toys_and_Games/rl_20260917_051212_r1_997198/Toys_and_Games_scores.json
+Toys and Games & 4 & 0.0503 & 0.0405 & 0.0615 & 0.0442 & 0.0474 & 0.0384 & 0.0583 & 0.0419 & 0.0509 & 0.0410 & 0.0623 & 0.0447\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW6/Toys_and_Games/rl_20260916_043022_r1_4039433/Toys_and_Games_scores.json
+Toys and Games & 6 & 0.0478 & 0.0383 & 0.0590 & 0.0418 & 0.0439 & 0.0350 & 0.0543 & 0.0384 & 0.0487 & 0.0390 & 0.0600 & 0.0426\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1_SW8/Toys_and_Games/rl_20260917_052031_r1_996978/Toys_and_Games_scores.json
+Toys and Games & 8 & 0.0469 & 0.0374 & 0.0580 & 0.0409 & 0.0412 & 0.0327 & 0.0518 & 0.0361 & 0.0482 & 0.0384 & 0.0594 & 0.0420\\
+\bottomrule
+\end{tabular}%
+}
+\caption{Short-agent window-size results for $S+P+G$: overall, long-history, and short-history full-catalog test scores from the same restored model. R and N denote Recall and NDCG. Long and short groups use filtered full-sequence lengths $>10$ and $\leq10$, independently of window size. Scores are rounded to four decimal places.}
+\label{tab:short_window}
+\end{table*}
+\clearpage
+
+\section{Full-Catalog Results by History Length}
+\label{app:full_catalog_groups}
+Table~\ref{tab:main_length_groups} reports cohort scores for all configurations displayed in Table~\ref{tab:main}. Long and short refer to user-history groups, not individual agent outputs. Both groups are evaluated with the same trained model.
+The following displayed overall rows do not exactly match completed source scores to four decimal places: All Beauty ($L+S$); Baby Products ($S$, $L+S$); Sports and Outdoors ($S$, $L+P$, $L+S$); and Toys and Games ($S$), with $G$ enabled throughout. Their cohort rows use the latest completed run for the corresponding configuration, so they should not be treated as an exact decomposition of the displayed main-table values. Complete-model cohort results for Baby Products, Sports and Outdoors, and Toys and Games are unavailable and marked --. The existing main table is retained unchanged.
+\begin{table*}[t]
+\centering
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccrrrrrrrr}
+\toprule
+& & & & \multicolumn{4}{c}{Long histories} & \multicolumn{4}{c}{Short histories}\\
+Category & L & S & P & R@5 & N@5 & R@10 & N@10 & R@5 & N@5 & R@10 & N@10\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Full_Beauty/rl_20260910_190927_r1_321310/Full_Beauty_scores.json
+All Beauty & -- & -- & $\checkmark$ & 0.0320 & 0.0235 & 0.0320 & 0.0235 & 0.0889 & 0.0859 & 0.0937 & 0.0875\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P0_G1/Full_Beauty/rl_20260912_154355_r1_630172/Full_Beauty_scores.json
+All Beauty & -- & $\checkmark$ & -- & 0.0457 & 0.0346 & 0.0457 & 0.0346 & 0.1236 & 0.1193 & 0.1284 & 0.1209\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Full_Beauty/rl_20260910_190900_r1_320995/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & -- & -- & 0.0457 & 0.0349 & 0.0457 & 0.0349 & 0.1252 & 0.1201 & 0.1292 & 0.1214\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Full_Beauty/rl_20260911_155827_r1_488206/Full_Beauty_scores.json
+All Beauty & -- & $\checkmark$ & $\checkmark$ & 0.0548 & 0.0409 & 0.0685 & 0.0453 & 0.1341 & 0.1244 & 0.1446 & 0.1277\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Full_Beauty/rl_20260911_155809_r1_488059/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & -- & $\checkmark$ & 0.0548 & 0.0403 & 0.0685 & 0.0447 & 0.1309 & 0.1230 & 0.1422 & 0.1268\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S1_P0_G1/Full_Beauty/rl_20260912_162509_r1_638904/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & $\checkmark$ & -- & 0.0548 & 0.0403 & 0.0639 & 0.0429 & 0.1325 & 0.1241 & 0.1405 & 0.1268\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S1_P1_G1/Full_Beauty/rl_20260910_185419_r1_312334/Full_Beauty_scores.json
+All Beauty & $\checkmark$ & $\checkmark$ & $\checkmark$ & 0.0548 & 0.0403 & 0.0685 & 0.0445 & 0.1341 & 0.1248 & 0.1430 & 0.1276\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Baby_Products/rl_20260910_190941_r1_321310/Baby_Products_scores.json
+Baby Products & -- & -- & $\checkmark$ & 0.0265 & 0.0192 & 0.0370 & 0.0226 & 0.0245 & 0.0177 & 0.0350 & 0.0210\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P0_G1/Baby_Products/rl_20260912_154413_r1_630172/Baby_Products_scores.json
+Baby Products & -- & $\checkmark$ & -- & 0.0412 & 0.0319 & 0.0549 & 0.0363 & 0.0434 & 0.0338 & 0.0558 & 0.0378\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Baby_Products/rl_20260910_190948_r1_320995/Baby_Products_scores.json
+Baby Products & $\checkmark$ & -- & -- & 0.0403 & 0.0306 & 0.0529 & 0.0346 & 0.0435 & 0.0339 & 0.0562 & 0.0380\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Baby_Products/rl_20260911_155852_r1_488206/Baby_Products_scores.json
+Baby Products & -- & $\checkmark$ & $\checkmark$ & 0.0415 & 0.0324 & 0.0557 & 0.0370 & 0.0444 & 0.0348 & 0.0569 & 0.0388\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Baby_Products/rl_20260911_155908_r1_488059/Baby_Products_scores.json
+Baby Products & $\checkmark$ & -- & $\checkmark$ & 0.0402 & 0.0309 & 0.0529 & 0.0350 & 0.0443 & 0.0345 & 0.0573 & 0.0387\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S1_P0_G1/Baby_Products/rl_20260912_162611_r1_638904/Baby_Products_scores.json
+Baby Products & $\checkmark$ & $\checkmark$ & -- & 0.0409 & 0.0314 & 0.0546 & 0.0358 & 0.0438 & 0.0345 & 0.0561 & 0.0384\\
+Baby Products & $\checkmark$ & $\checkmark$ & $\checkmark$ & -- & -- & -- & -- & -- & -- & -- & --\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Sports_and_Outdoors/rl_20260910_202901_r1_321310/Sports_and_Outdoors_scores.json
+Sports and Outdoors & -- & -- & $\checkmark$ & 0.0191 & 0.0137 & 0.0272 & 0.0163 & 0.0224 & 0.0167 & 0.0303 & 0.0192\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P0_G1/Sports_and_Outdoors/rl_20260912_170016_r1_630172/Sports_and_Outdoors_scores.json
+Sports and Outdoors & -- & $\checkmark$ & -- & 0.0272 & 0.0214 & 0.0355 & 0.0240 & 0.0334 & 0.0266 & 0.0422 & 0.0294\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Sports_and_Outdoors/rl_20260910_213007_r1_320995/Sports_and_Outdoors_scores.json
+Sports and Outdoors & $\checkmark$ & -- & -- & 0.0246 & 0.0189 & 0.0324 & 0.0214 & 0.0332 & 0.0264 & 0.0419 & 0.0292\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Sports_and_Outdoors/rl_20260911_173821_r1_488206/Sports_and_Outdoors_scores.json
+Sports and Outdoors & -- & $\checkmark$ & $\checkmark$ & 0.0286 & 0.0226 & 0.0372 & 0.0253 & 0.0348 & 0.0279 & 0.0438 & 0.0309\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Sports_and_Outdoors/rl_20260911_185143_r1_488059/Sports_and_Outdoors_scores.json
+Sports and Outdoors & $\checkmark$ & -- & $\checkmark$ & 0.0256 & 0.0200 & 0.0334 & 0.0225 & 0.0348 & 0.0280 & 0.0437 & 0.0308\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S1_P0_G1/Sports_and_Outdoors/rl_20260912_192439_r1_638904/Sports_and_Outdoors_scores.json
+Sports and Outdoors & $\checkmark$ & $\checkmark$ & -- & 0.0261 & 0.0204 & 0.0344 & 0.0230 & 0.0340 & 0.0272 & 0.0427 & 0.0300\\
+Sports and Outdoors & $\checkmark$ & $\checkmark$ & $\checkmark$ & -- & -- & -- & -- & -- & -- & -- & --\\
+\midrule
+% Source: outputs_mamba_rl/amazons_long_short_L0_S0_P1_G1/Toys_and_Games/rl_20260911_001850_r1_321310/Toys_and_Games_scores.json
+Toys and Games & -- & -- & $\checkmark$ & 0.0273 & 0.0206 & 0.0368 & 0.0237 & 0.0338 & 0.0259 & 0.0437 & 0.0291\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P0_G1/Toys_and_Games/rl_20260912_203808_r1_630172/Toys_and_Games_scores.json
+Toys and Games & -- & $\checkmark$ & -- & 0.0398 & 0.0313 & 0.0508 & 0.0348 & 0.0483 & 0.0384 & 0.0599 & 0.0422\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P0_G1/Toys_and_Games/rl_20260911_021224_r1_320995/Toys_and_Games_scores.json
+Toys and Games & $\checkmark$ & -- & -- & 0.0351 & 0.0271 & 0.0459 & 0.0306 & 0.0480 & 0.0382 & 0.0594 & 0.0418\\
+% Source: outputs_mamba_rl/amazons_long_short_L0_S1_P1_G1/Toys_and_Games/rl_20260911_221112_r1_488206/Toys_and_Games_scores.json
+Toys and Games & -- & $\checkmark$ & $\checkmark$ & 0.0407 & 0.0321 & 0.0514 & 0.0355 & 0.0481 & 0.0384 & 0.0593 & 0.0420\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S0_P1_G1/Toys_and_Games/rl_20260912_003849_r1_488059/Toys_and_Games_scores.json
+Toys and Games & $\checkmark$ & -- & $\checkmark$ & 0.0358 & 0.0278 & 0.0464 & 0.0312 & 0.0483 & 0.0386 & 0.0597 & 0.0423\\
+% Source: outputs_mamba_rl/amazons_long_short_L1_S1_P0_G1/Toys_and_Games/rl_20260913_012319_r1_638904/Toys_and_Games_scores.json
+Toys and Games & $\checkmark$ & $\checkmark$ & -- & 0.0377 & 0.0294 & 0.0484 & 0.0328 & 0.0484 & 0.0385 & 0.0597 & 0.0422\\
+Toys and Games & $\checkmark$ & $\checkmark$ & $\checkmark$ & -- & -- & -- & -- & -- & -- & -- & --\\
+\bottomrule
+\end{tabular}%
+}
+\caption{Long- and short-history full-catalog test results for the configurations in Table~\ref{tab:main}. R and N denote Recall and NDCG. All rows retain graph features and category-specific priors. Groups use filtered full-sequence lengths $>10$ and $\leq10$. Source runs match the displayed overall scores where possible; otherwise the latest completed run for the same configuration is used. Scores are rounded to four decimal places. -- denotes unavailable cohort results.}
+\label{tab:main_length_groups}
+\end{table*}
+\clearpage
 \end{document}
