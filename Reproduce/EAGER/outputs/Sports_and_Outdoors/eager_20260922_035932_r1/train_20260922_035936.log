@@ -1,0 +1,10 @@
+2026-09-22 03:59:36,675 | INFO | EXPERIMENT_CONFIG {"batch_size": 256, "branch_factor": 0, "cache_dir": "/workspace/P78123011/cache", "d_model": 96, "data_path": null, "dataset": "amazon-sports-and-outdoors", "device": "cuda", "din_batch_size": 128, "din_negatives": 60, "din_steps": 10000, "eval_batch_size": 50, "eval_every_steps": 300, "eval_user_limit": 0, "kmeans_iters": 100, "log_every_steps": 100, "max_events": null, "max_train_samples": 0, "maxlen": 19, "min_history": 4, "min_rating": 4.0, "monitor_metric": "ndcg@10", "num_heads": 4, "output_dir": "/workspace/P78123011/MediaTek_2026_project/Reproduce/EAGER/outputs/Sports_and_Outdoors/eager_20260922_035932_r1", "predict_candidates": 50, "rerank_batch_size": 64, "seed": 2024, "semantic_backend": "t5", "semantic_batch_size": 32, "semantic_max_tokens": 64, "semantic_model_id": "google-t5/t5-base", "train_steps": 20000, "tree_workers": 1, "use_contrastive": false, "use_guide": false, "world_size": 1}
+2026-09-22 03:59:38,161 | INFO | INTERACTION_CACHE hit path=/workspace/P78123011/cache/mamba_multi_agent_data/amazon-sports-and-outdoors_fcc157f72b81.pkl
+2026-09-22 03:59:44,625 | INFO | DIN_CACHE hit path=/workspace/P78123011/cache/eager/amazon-sports-and-outdoors/din_steps10000_seed2024.pt
+2026-09-22 04:00:37,468 | INFO | TRAIN step=100 loss=12.900697 lr=5.0095e-05
+2026-09-22 04:01:21,125 | INFO | TRAIN step=200 loss=12.623739 lr=0.00010009
+2026-09-22 04:02:04,846 | INFO | TRAIN step=300 loss=12.301633 lr=0.000150085
+2026-09-22 21:51:59,908 | INFO | VALID step=300 ndcg@10=0.002175 metrics={"evaluated_users": 625563, "hit@10": 0.0044583838877938755, "hit@5": 0.0021516617830658145, "ndcg@10": 0.0021752558567388995, "ndcg@5": 0.0014226898291859068, "recall@10": 0.0044583838877938755, "recall@5": 0.0021516617830658145, "users_per_second": 9.745305590233025}
+2026-09-22 21:52:45,291 | INFO | TRAIN step=400 loss=12.102426 lr=0.00020008
+2026-09-22 21:53:29,714 | INFO | TRAIN step=500 loss=12.006107 lr=0.000250075
+2026-09-22 21:54:14,124 | INFO | TRAIN step=600 loss=11.952727 lr=0.00030007

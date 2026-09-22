@@ -261,10 +261,10 @@ def evaluate(streams, data, split, args, collect=False):
             for cutoff in (5, 10):
                 selected = filtered[:cutoff]
                 if gold in selected:
-                    rank = selected.index(gold) + 1
+                    hit_rank = selected.index(gold) + 1
                     totals[f"recall@{cutoff}"] += 1
                     totals[f"hit@{cutoff}"] += 1
-                    totals[f"ndcg@{cutoff}"] += 1 / math.log2(rank + 1)
+                    totals[f"ndcg@{cutoff}"] += 1 / math.log2(hit_rank + 1)
             if collect:
                 recommendations.append({"user": users[start + row], "target": gold, "top10": filtered})
     seconds = max(time.perf_counter() - started, 1e-9)

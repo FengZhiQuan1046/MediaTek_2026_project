@@ -1,0 +1,2 @@
+Reproduce with the same repository and cache:
+bash run.sh --cache-dir=/workspace/P78123011/cache --output-dir=/workspace/P78123011/MediaTek_2026_project/preliminary/results --datasets=amazon-all-beauty,amazon:Baby_Products,amazon-sports-and-outdoors,amazon-toys-and-games --max-users=2000 --max-lag=100 --short-window=10 --random-matches=20 --reference-items=20000 --cluster-items=10000 --clusters=32 --bootstrap=2000 --seed=25252

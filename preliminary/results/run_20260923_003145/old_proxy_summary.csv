@@ -1,0 +1,17 @@
+dataset,split,metric,mean,ci_low,ci_high,n_users,units,status
+amazon-sports-and-outdoors,valid,old_item_auc,0.5552631578947369,0.42934210526315786,0.6773684210526315,19,pairwise_accuracy,exploratory_n_lt_100
+amazon-sports-and-outdoors,valid,old_preference_proxy_auc,0.5460526315789473,0.4448355263157895,0.6321381578947368,19,pairwise_accuracy,exploratory_n_lt_100
+amazon-sports-and-outdoors,valid,recent_margin,0.04653147647255346,0.007481035080395247,0.08161446334500062,19,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,valid,full_margin,0.0445661513428939,0.002473949327280647,0.06659878296287437,19,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,valid,full_minus_recent_margin,-0.001965325129659552,-0.020741825021411243,0.015928508145244494,19,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,valid,old_fraction,0.3036963036963036,0.22185238007606428,0.3933612440191387,19,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,valid,low_alignment_old_fraction,0.09998334998334997,0.06464286809681548,0.13513909336277755,19,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,valid,low_alignment_old_cluster_excess,0.017704081632653048,-0.06182397959183675,0.12854209183673465,14,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,test,old_item_auc,0.5152173913043478,0.387445652173913,0.6359782608695653,23,pairwise_accuracy,exploratory_n_lt_100
+amazon-sports-and-outdoors,test,old_preference_proxy_auc,0.5000000000000001,0.4441032608695652,0.5620652173913044,23,pairwise_accuracy,exploratory_n_lt_100
+amazon-sports-and-outdoors,test,recent_margin,0.07437959054242009,0.04086346694308778,0.10055648324930148,23,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,test,full_margin,0.06945575190627057,0.03958615087296651,0.09080666578982187,23,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,test,full_minus_recent_margin,-0.0049238386361495304,-0.012604665723831756,0.002812583388193792,23,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,test,old_fraction,0.3072014834799326,0.23558433078837834,0.40787728765544845,23,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,test,low_alignment_old_fraction,0.1313521132865895,0.10372357400348356,0.16245962915630732,23,score_difference_or_fraction,exploratory_n_lt_100
+amazon-sports-and-outdoors,test,low_alignment_old_cluster_excess,-0.03099941724941725,-0.07112215909090909,0.02450364219114219,22,score_difference_or_fraction,exploratory_n_lt_100

@@ -1,0 +1,17 @@
+dataset,split,metric,mean,ci_low,ci_high,n_users,units,status
+amazon-sports-and-outdoors,valid,old_item_auc,0.6506912442396314,0.6069009216589862,0.6902246543778802,217,pairwise_accuracy,estimated
+amazon-sports-and-outdoors,valid,old_preference_proxy_auc,0.573963133640553,0.5449193548387097,0.6065466589861751,217,pairwise_accuracy,estimated
+amazon-sports-and-outdoors,valid,recent_margin,0.057282447059583005,0.045858622761228665,0.06857236328830917,217,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,valid,full_margin,0.05608724009606146,0.04489533006286566,0.0674506698988275,217,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,valid,full_minus_recent_margin,-0.0011952069635215443,-0.004332839010909955,0.00230422325191959,217,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,valid,old_fraction,0.36762585501745654,0.33716554581880326,0.3945222793748783,217,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,valid,low_alignment_old_fraction,0.16272061532050136,0.14623769630725067,0.17885126120516937,217,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,valid,low_alignment_old_cluster_excess,-0.010312002657460346,-0.02936222046804674,0.011023322533868068,185,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,test,old_item_auc,0.6362781954887218,0.6030968045112782,0.6735150375939849,266,pairwise_accuracy,estimated
+amazon-sports-and-outdoors,test,old_preference_proxy_auc,0.5642857142857143,0.5358881578947369,0.5916423872180451,266,pairwise_accuracy,estimated
+amazon-sports-and-outdoors,test,recent_margin,0.06761074178200915,0.05734233415888664,0.07900565544745528,266,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,test,full_margin,0.06164413656955375,0.05155200178461864,0.07188340882329565,266,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,test,full_minus_recent_margin,-0.0059666052124554055,-0.009474808806763556,-0.0025090815891560757,266,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,test,old_fraction,0.3505106527843756,0.3202650428167827,0.3759812780773033,266,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,test,low_alignment_old_fraction,0.16221795250757404,0.14790315004771104,0.17518709106967617,266,score_difference_or_fraction,estimated
+amazon-sports-and-outdoors,test,low_alignment_old_cluster_excess,-0.0006674777839505102,-0.022497681992440857,0.02550789478198365,221,score_difference_or_fraction,estimated

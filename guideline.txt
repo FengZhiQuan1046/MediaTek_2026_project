@@ -1,0 +1,894 @@
+前置實驗實作指引：歷史相關性衰減、歷史干擾與 Preference 選擇性抽象化
+版本：2026-09-22
+用途：交給另一個 Codex，讓它在實際推薦系統程式庫中完成程式、驗證及可追溯的實驗輸出。
+
+======================================================================
+0. 給接手 Codex 的任務
+======================================================================
+
+請直接實作本文件指定的前置實驗。先讀取目標 repository 的 AGENTS.md、資料
+loader、模型、評估、checkpoint 與實驗設定；沿用現有專案架構，完成可執行的
+分析管線、必要測試、smoke run，以及資源與資料允許的正式實驗。
+
+不要只回覆計畫或偽代碼。也不要為了得到預期結論而調整分組、門檻或刪除結果。
+本文件要求驗證假說，不保證假說成立。無效、反向、不確定的結果都必須保留。
+
+本次指引所在的論文資料夾目前只有 LaTeX、表格與編修檔案，沒有實際模型程式、
+原始互動資料或 checkpoint。不要把 tmp/rewrite_experiments.py 當成模型程式。
+若接手時仍只有論文資料夾，請先建立可測試的分析模組與介面，向使用者一次詢問
+實際 code/data/checkpoint 路徑；缺少真實輸入時只能執行標示清楚的 synthetic
+smoke test，不得宣稱完成真實資料實驗。
+
+使用者希望得到的不是更多推薦 performance 表格，而是回答：
+  A. 較久遠歷史是否逐漸失去對下一步需求的相關性？
+  B. 低相關歷史是否仍會不必要地牽引模型表示？
+  C. Preference 是否比直接 item-level 表示或普通壓縮更能抑制無關變化，
+     同時保留對偏好變化的反應？
+
+預設只新增分析、hook、設定與必要 checkpoint 保存功能，不覆寫原始資料、
+既有實驗結果或 checkpoint，不自行修改論文、推送遠端或傳送資料至外部服務。
+
+======================================================================
+1. 核心假說與不能宣稱的事情
+======================================================================
+
+H1：在部分資料集或使用者群組中，較遠歷史對下一個互動的超額語意對齊較弱。
+H2：對齊較弱的舊歷史，仍可能使模型狀態偏向與目前需求不一致的方向。
+H3：Preference 的價值是 selective abstraction：對保持偏好的商品替換較穩定，
+    對偏好方向的變化仍有足夠且方向正確的反應。
+
+必須分清楚：
+  - 低語意相似度不等於無預測價值；互補商品可能不相似。
+  - 失去額外貢獻可能是冗餘，不一定是 noise。
+  - 與隨機參考差異不顯著，不等於兩者等價。
+  - 只看到穩定性，不代表學到偏好；常數輸出也非常穩定。
+  - 人工替換是擾動實驗，不是真實使用者偏好改變的因果實驗。
+  - Metadata 類別是偏好方向的代理標籤，不是人類意圖的 ground truth。
+  - Learned prototypes 不能同時當實驗分組標準及方法有效性的唯一證據。
+  - 不能直接宣稱「超過歷史的某個比例就完全是 noise」。
+  - Preference 是輸入的轉換，不會憑空增加輸入資訊；要驗證的是資訊取捨。
+
+預期可使用但必須由結果支持的表述：
+  "Distant interactions exhibit little excess semantic alignment relative
+   to matched random items in the evaluated setting."
+  "Preference representations are less sensitive to intent-preserving
+   item substitutions while retaining responsiveness to intent changes."
+
+======================================================================
+2. 先核對現有模型，不可照論文描述直接臆造 implementation
+======================================================================
+
+論文目前描述的架構如下，請與實際 code 對照後輸出 audit.md：
+  - Frozen Mamba 預先編碼 item text，產生 cached features f_i。
+  - Shared item embedding e_i 結合 trainable text projection 與 LightGCN。
+  - Long / Short specialists 輸出同為 d 維的 s_L、s_S。
+  - Preference assignments q_t = softmax(C e_i / tau_p)。
+  - GRU 與 heads 產生 predicted next distribution q_hat、transition rho。
+  - q_hat 經 prototypes 重建後產生 d 維 s_P。
+  - Coordinator 合併分支；rho 與 confidence 主要控制 preference 權重，
+    不可假定它們直接控制 long/short mixing。
+  - 預設 long horizon H=100、short window W=10。
+  - 原實作關閉 L 時，P 的輸入也縮成 min(H,W)。這是重要的輸入範圍混淆。
+  - Graph 與 popularity/transition priors 使用 training interactions。
+
+Audit 至少列出：
+  repository revision、工作目錄未提交修改、dataset/category、ID mapping、
+  split policy、filtering、timestamp 單位與排序、重複互動、metadata fallback、
+  embedding 來源與 pooling、真實 horizon、branch masks、loss coefficients、
+  graph 構圖來源、priors、checkpoint 選擇方式、seed、軟硬體版本。
+
+目前論文提到 All Beauty、Baby Products、Sports and Outdoors、Toys and Games。
+Full_Beauty 指 All Beauty，不是 Beauty and Personal Care。
+既有 component、cohort、sweep 表可能來自不同 runs，不可將它們混成 matched controls。
+
+先確認 checkpoint 是否真的存在。若缺少權重：
+  - A 類資料分析仍可完成。
+  - B 類 learned-state 分析標示 blocked_missing_checkpoint。
+  - 如可在原訓練管線重訓，補上 best checkpoint、config、ID mapping 保存，
+    再於明確的訓練預算內執行；不要假造已訓練權重或悄悄套用不同模型。
+
+======================================================================
+3. 執行階段與資源管理
+======================================================================
+
+依序完成，不要等昂貴對照全部訓練完才交付資料分析：
+  Stage 0：repository audit、輸入 adapter、synthetic tests、dry run。
+  Stage A：不依賴推薦模型 checkpoint 的歷史相關性分析。
+  Stage B：有 checkpoint 時，優先完成 6.4 的逐項移除分布影響，再完成 paired
+           history intervention 與 branch diagnostics。
+  Stage C：補做等視窗、等輸入的 representation controls；需要訓練的控制組
+           使用獨立 analysis-training 管線，不改掉原本已報告模型的設定。
+  Stage D：彙整統計、繪圖、產生 results report 與可重跑指令。
+
+先跑一個 category 的 128 個使用者 smoke run，再進入正式 evaluation。
+正式分析盡量用所有 eligible users；允許用固定 seed 的可設定 user cap 先 pilot。
+必須區分 pilot 與 full，不可把 pilot 結果標成全量結果。
+
+避免 N_users x N_items x N_lags 或 catalog 全對全 similarity 的 materialization。
+使用 item feature cache、chunked gathering、streaming aggregation、batched inference。
+優先只算本指引的狀態與語意指標；full-catalog ranking 是次要診斷且需明確啟用。
+正式訓練前輸出預估時間、硬體與上限；預算不明時先完成無需昂貴重訓的工作，
+不要自行啟動無上限的大型 sweep。
+
+======================================================================
+4. 資料契約、切分與防止循環驗證
+======================================================================
+
+每筆分析樣本至少包含：
+  category, split, user_id, prefix_id, ordered_history_item_ids,
+  history_timestamps, prediction_timestamp, target_item_id,
+  observed_history_length, checkpoint_id（如適用）。
+
+沿用專案原有 train / validation / test 切分。以最後兩筆做 val/test 的情況，
+validation prefix 不含 val/test，test prefix 可包含已觀測的 validation item。
+任何 prediction-time 輸入不得包含當下 target 或 target 之後的互動。
+訓練 prefixes 不得跨過 held-out 邊界。
+
+所有 learned transforms、KMeans、PCA、bin cut points、anchor construction、
+replacement pool、popularity counts、probe fitting 都只能用 training data。
+候選 item 還須符合可觀測的可用時間；沒有上市時間時可用 first training
+observation 作保守代理，記錄此限制，不能宣稱完成 point-in-time catalog audit。
+
+Validation 用來決定 bins 合併、超參數、global readout temperature 與 equivalence
+margin；test 只套用凍結設定。不要用 test 結果挑好看的門檻、window 或群組。
+Bootstrap 計算不算重新選擇設定。
+
+語意評估來源依優先序：
+  (1) 商品 metadata 的細分類別／用途／屬性；不要只用資料集根類別。
+  (2) 可用的獨立 frozen text encoder，固定版本與 text fields。
+  (3) 原 cached frozen Mamba features，作 shared-backbone semantic diagnostic。
+若只能用 (3)，明確註記不是獨立 encoder，不得包裝為完全獨立驗證。
+
+若沒有可靠細類別，可用獨立 frozen features 在 training items 上建立固定
+clusters 當代理標籤，val/test 僅 assign；不得使用推薦模型 learned C 定義干預。
+不同驗證來源的結果分開報，不混合成單一相似度。
+
+Text 優先只使用 item metadata，不用 review fallback，以避免 held-out review
+文字被編入特徵。若 cache 已混入 review 且無法識別，記錄 contaminated/unknown
+狀態，不能把該結果當嚴格的 metadata-only 分析；可另建乾淨分析 cache。
+
+======================================================================
+5. 實驗 A：歷史距離與超額語意對齊
+======================================================================
+
+5.1 定義
+
+給定 prefix H=(i_1,...,i_T)，target y=i_(T+1)。
+lag k=1 代表最新已觀測 item i_T，k=2 代表 i_(T-1)。
+interaction lag 與真實 elapsed days 必須分開，不可把「第 k 次」稱為「k 天」。
+
+對固定且 L2 normalized 的外部語意表示 f，計算：
+  a_u(k) = cosine(f(i_(T-k+1)), f(y))
+  b_u(k) = mean_j cosine(f(random_item_(u,k,j)), f(y))
+  delta_u(k) = a_u(k) - b_u(k)
+  Delta(k) = mean_u delta_u(k)
+
+Primary target 是下一個真實 item，不是近期平均 embedding。
+可額外算 old-versus-recent similarity，但應命名 context_consistency，
+不可拿它取代 next-target alignment，否則會循環地偏好最近歷史。
+
+另外輸出 metadata overlap（如 multi-label Jaccard）與同細類別比例，
+作為 cosine 的交叉檢查。缺 metadata 的 item 必須報 coverage，不能填成 0 相似。
+
+5.2 隨機參考組
+
+每個 historical item 預設抽 B=20 個 matched random items，參數可設定。
+Pool 只用 training items 且滿足可用時間代理；不使用 target 來挑替代商品。
+排除原 item 與已觀測 history items；若偶然抽中 held-out target，記錄頻率，
+不要事後以 target 身分反覆重抽，造成 selection depends on outcome。
+
+Primary matching：同 dataset category、training popularity quantile、
+相近 first-observed age/cohort（有 timestamp 時）。
+Secondary matching：再加入相同 metadata 細類別。
+兩者意義不同：前者包含類別相關性，後者問類別內還有多少 item-level 對齊。
+不要只報同細類別 matching，因為它可能預先消除要測量的偏好訊號。
+
+設定 deterministic matching fallback：逐步放寬 age -> popularity 相鄰 bin。
+不可悄悄放寬細類別；記錄實際 matching level、pool size、重複抽樣比例。
+無可用 matches 時標為 unavailable，不填 0。
+輸出 matched variable balance，若匹配很差，限制該分析的解讀。
+
+5.3 距離 bins 與 cohort composition
+
+建議候選 interaction bins：1, 2, 3-4, 5-8, 9-16, 17-32, 33-64, 65-100。
+建議候選 day bins：0-1, 1-7, 7-30, 30-90, 90-180, 180-365, >365 天。
+區間採左閉右開等明確規則，避免邊界重疊；不足的 bins 可在 validation 合併。
+Timestamp 不存在或品質不合格時跳過 day analysis 並給出原因。
+
+Primary lag curve 必須是 fixed cohort：對特定最大 lag K，只比較 history>=K
+的同一批使用者。可分別做 K=8,16,32 的 panel，不強迫稀少資料支持 K=100。
+另外提供 all-available curve，清楚標註其 cohort 隨 lag 改變，並附 n_users。
+不要只畫後者後宣稱時間衰減。
+
+每位使用者在每個 bin 先平均，再跨使用者平均，避免長序列主導統計。
+若使用多個 prefix，先在 user 內聚合，bootstrap 以 user 為 cluster。
+按預測時可觀測 history length、活動頻率、category 分層；必要時增加
+training-defined 的穩定／衝突群組，不能用模型 learned prototypes 分組。
+
+5.4 「近似隨機」區間，而非 noise cutoff
+
+輸出 Delta、95% user-cluster bootstrap CI，以及 raw/random 曲線。
+Bootstrap 預設 2000 repetitions，pilot 可較少但需標示。
+若使用者數太少，例如 n<100，標 exploratory；CI 仍照實報，不直接推論等價。
+
+Equivalence margin epsilon 必須可設定，含 units 與決定理由；若尚未指定，
+預設不輸出 confirmed cutoff，只輸出曲線與 epsilon sensitivity grid。
+不得看 test 後選 epsilon。
+在預先固定的 epsilon 下，CI 完整落入 [-epsilon,+epsilon] 才能稱為
+near-random under this metric；CI 涵蓋 0 不足以成立。
+
+若要報連續 tail 的 k_star，要求該 tail 所有預先指定且有足夠樣本的 bins
+都滿足條件，並使用 simultaneous bands 或保守的多重比較校正。
+尾端無資料不能算通過，不符合時 k_star=null。
+不要強制 monotonic curve；可能有週期性回升。
+
+可選地輸出「位於 near-random lag bins 的歷史比例」，但名稱必須是
+fraction_in_near_random_alignment_bins，不能命名 true_noise_ratio。
+它是 group-level lag 診斷的占比，不是每個 item 都已被判定為 noise。
+
+======================================================================
+6. 實驗 B1：舊歷史干預與模型牽引
+======================================================================
+
+6.1 Paired intervention
+
+固定 recent suffix R（主分析 W=10；W 可由 validation 決定）及原 target。
+只擾動較舊、而且確實進入受測 branch 的 prefix O。
+Primary replacement ratios：0, 0.25, 0.50, 0.75, 1.0，分母明確是 old prefix。
+每個 sample/ratio 預設 5 組固定 seed replacements，同一組供所有模型使用。
+ratio=0 必須完全等於原始輸入。
+
+主要 intervention types：
+  A. Matched unrelated replacement：以 training donor sequence 或 matched
+     items 替換，與 recent suffix 的 proxy preference 不同。
+     必須記錄 donor-selection 與 sequence coherence；item-wise replacement
+     與 whole-donor-block replacement 分開，避免把不自然序列當唯一證據。
+  B. Intent-preserving replacement：相同細類別/用途且屬性接近，item identity 不同。
+  C. Old-history block deletion：次要控制；刪除會改變長度、padding/position，
+     所以與等長 replacement 分開分析，不能混成同一效果。
+     單一 occurrence 的 leave-one-out deletion 另依 6.4 實作為主要分布指標。
+
+替換策略只依據 prefix、training statistics 和外部 metadata。
+不可根據 next target 或哪個模型比較弱來挑 replacements。
+不足的 replacement slots 不可以重複塞同一 item 補足而不記錄；報 actual ratio。
+等長替換保留原 slot timestamp，明示這是固定時間槽的人工干預；replacement item
+必須在該 slot 時點已可用，而不只是 prediction 時點可用。無法核對時另標
+availability_unknown，不混入嚴格時間匹配的主分析。
+
+6.2 凍結與 hook
+
+使用 validation-selected checkpoint，model.eval()，disable dropout，no gradients。
+原始與干預輸入使用同一組模型權重、shared item embeddings 與 graph。
+不重建 LightGCN，不更新 item counts、priors 或 prototype vectors。
+記錄 s_L, s_S, s_P, q_hat, rho, temporal mixing, gamma 及可用的 coordinator state。
+不要修改模型公式以便得到預期行為。
+
+分支未看到被替換的 slots 時，標 structural_invariance。
+例如 Short 本來看不到 old prefix，它零變化不是 denoising 成功。
+目前 L=0 時 P 也可能只看 W，因此其 old-prefix invariance 同樣不是抽象化證據。
+必須保存 per-branch effective input IDs/hash 與 intervention reachability。
+
+6.3 指標
+
+Within-branch state displacement：
+  D_b = 1 - cosine(s_b(original), s_b(perturbed))
+同時記錄 norms；zero vectors 視為 invalid，不悄悄加 epsilon 後當正常數據。
+不同 branch 的 D 可作輔助，跨模型主要結論使用下節共同讀出空間。
+
+Preference-native diagnostics：
+  JS(q_hat_original, q_hat_perturbed) / log(2)，range [0,1]。
+  delta_rho、delta_gamma、delta_temporal_weights。
+這些不是外部 ground truth，只作內部機制補充。
+不要跨不同 run 直接比較 prototype index；同一個 index 不代表同一偏好。
+
+主要方向性指標：
+  shift_toward_donor = mean probability on introduced external classes
+                      after perturbation minus before perturbation。
+使用 7.2 的共同讀出，並附 original recent classes 的 mass change。
+對多標籤避免重複計數；對 missing labels 報 unavailable。
+Primary 分析先使用 pre-prior branch outputs，避免 popularity/transition priors
+掩蓋分支反應；最終 calibrated output 作 secondary 並獨立命名。
+
+可將 B1 的 user/bin 結果與 A 的 alignment 合併描述，但 low-alignment bins
+要由 validation 定義。若 test 依 target 做分組，只能標 post-hoc descriptive。
+不要以 model change 本身定義 noise 再證明模型受 noise 影響。
+
+6.4 主要新增指標：逐項移除、以序列長度正規化的預測分布影響
+
+6.4.1 要測量什麼
+
+對同一條已觀測序列，逐一移除某個歷史 item occurrence，重新計算對下一個
+item 的完整預測分布。使用 total variation distance（TV）量測分布改變，
+再以原始可見序列長度取平均，得到 [0,1] 的 sequence-level 統計量。
+
+本節保留 TV 版本作為直觀對照；最新主要指標依 6.5 使用 adaptive normalized KL。
+輸出名稱必須含 _TV / _AKL / _NJS 後綴，不可不同 run 靜默替換同名指標的公式。
+選 TV 的理由：0 表示兩分布相同，1 表示機率質量完全分離；它可解讀為
+兩個分布之間重新分配的機率質量比例。它不是「該 item 為 noise 的機率」。
+
+6.4.2 固定分析序列與候選支撐集合
+
+對使用者 u，先在刪除前依設定截取共同分析序列：
+  H_u = (i_1,...,i_T)，T = 原始有效、非 padding 的分析序列長度。
+預設只分析已實際進入模型的 capped history，不以 dataset 原始完整長度充當 T。
+跨模型比較時使用相同 H_u/T；分支只看其中部分時保留 reachability 註記。
+T 不包含 target。若 T=0，整筆標 empty_history，統計量為 NA。
+
+歷史中的重複 item 以位置 j 區分；刪除第 j 次 occurrence，不刪同 ID 的所有紀錄。
+H_u^(-j) 表示只移除第 j 次 occurrence 的歷史。
+
+對本次比較固定候選集合 C_u：
+  - 優先使用原模型完整 processed catalog 的原始 eligible candidates。
+  - Seen-item mask 只依原始 H_u 計算一次，原模型對 repeated gold 的規則照用。
+  - 刪除後不能將被刪除商品重新放回候選集合，否則 TV 會混入 support 改變。
+  - 所有 original/deleted 分布使用同一 C_u、item ordering 與 timestamp。
+  - Padding/special tokens 永遠不在 C_u；C_u 為空標 invalid_support。
+
+Primary 使用 pre-prior neural fused logits，temperature tau=1，計算：
+  p_u(c)      = exp(z(c | H_u)/tau) / sum_(v in C_u) exp(z(v | H_u)/tau)
+  p_u^(-j)(c) = exp(z(c | H_u^(-j))/tau)
+                / sum_(v in C_u) exp(z(v | H_u^(-j))/tau)
+
+這是模型分數導出的分布；若原模型沒有機率校準，不宣稱它是真實校準機率。
+同一 pair 必須共用 tau。跨 checkpoint 比較需附 original entropy/logit scale，
+因為不同 sharpness 也會改變 TV。可做 validation 固定之共同 tau sensitivity，
+不可用各模型自己的 test-optimal temperature 製造優勢。
+Per-branch logits 同法另算，branch 與 fused 不混成一個分布。
+Post-prior 分布可作 secondary；若作 isolated neural-deletion analysis，
+prior vectors（尤其 last-item transition prior）固定為原始 H_u 的值。
+若另測自然 end-to-end 刪除後重算 transition prior，須另命名，不能冒稱神經分支效果。
+
+6.4.3 刪除語意與視窗邊界：主分析採固定輸入邊界的 occurrence deletion
+
+每個 branch 的原始可見 slot set 在刪除前決定並凍結。
+刪除 j 後只跳過該 occurrence 的內容更新，不从更早歷史補入新 item。
+例如 short 原本看末 W 個，刪除其中一個後保留 W-1 個，不能再納入第 W+1 個。
+這是 fixed-boundary leave-one-out，不是完整服務管線重新取最後 W 個的效果。
+
+保留其餘 item 的順序與原 timestamp、固定 prediction time，不重新編造時間間隔。
+對 recurrent branch，使用真正跳過 update 的 mask 或移除後正確 packed sequence；
+zero embedding 本身不是 deletion，因 bias/GRU/SSM 仍可能更新 state。
+對使用 positional encoding 的模型，記錄保留原 position IDs 或重新編號的政策；
+主分析優先保留其餘原 position IDs，natural reindex 作另列控制。
+不要用未訓練的 [MASK] token 替代 deletion。
+
+若 j 原本不在某分支輸入內，該分支理論上完全不變；標 structural_invariance。
+若其實仍改變，先檢查 window refill、global length features、priors 或 padding bug。
+T=1 刪除後為空：只有模型有定義良好的 empty-history 路徑時才計算，否則整條
+sample 標 unsupported_empty_deletion，不以零取代，也不只改分母後硬算。
+不更動權重、item embeddings、graph；刪除歷史不等於刪除全域 graph edge。
+
+6.4.4 單一歷史 occurrence 的影響
+
+  I_(u,j) = TV(p_u, p_u^(-j))
+          = (1/2) * sum_(c in C_u) |p_u(c) - p_u^(-j)(c)|
+  0 <= I_(u,j) <= 1。
+
+  I=0：移除此 occurrence 不改變指定候選集合上的預測分布。
+  I=0.10：兩分布間約 10% 的機率質量需要重新分配。
+  I=1：兩分布完全分離；有限 softmax 通常只會逼近此上界。
+
+它量測的是固定其他歷史時的 model leave-one-out dependence，不是 Shapley value，
+也不是獨立的因果貢獻。兩個 item 的影響可能重疊或交互作用，不能將 TV 的和
+解讀為整段序列可被唯一分解的總重要性。
+
+6.4.5 使用者要求的 [0,1]、序列長度 normalized 統計量
+
+定義主統計量 LNI（Length-Normalized Influence）：
+  LNI_u = (1/T) * sum_(j=1 to T) I_(u,j)
+        = (1/(2T)) * sum_(j=1 to T) sum_(c in C_u)
+                        |p_u(c) - p_u^(-j)(c)|。
+
+因每個 I 在 [0,1]，所以 0 <= LNI_u <= 1。
+可解讀為：從原始 T 個歷史位置均勻抽一個移除，平均造成多少分布變化。
+分母永遠是原始 T，不是 T-1、不是 padding length，也不是 catalog size。
+不要對 I 先除 T，再對所有 I 取平均，這會多除一次 T。
+平均能去除「單純把更多項目加總」的尺度效果，但不保證不同長度模型行為等價；
+仍需提供 history-length strata，不能宣稱已消除全部 length confounding。
+
+對低相關位置集合 L_u，定義 LRI（Low-Relevance Influence）：
+  LRI_u = (1/T) * sum_(j=1 to T) 1[j in L_u] * I_(u,j)。
+  0 <= LRI_u <= |L_u|/T <= 1，且 LRI_u <= LNI_u。
+
+L_u 的主定義：依 validation 凍結的 low-excess-alignment lag bins 指定位置。
+此為低相關 lag 的代理標籤，不是逐 item 真正無用的 ground truth。
+若 A 未能建立合理低相關 bins，LRI 標 no_supported_low_relevance_definition；
+LNI 與完整 influence-versus-lag 曲線照常輸出。
+可另做 target-similarity-defined L_u，但只能標 post-hoc descriptive，
+不能與 validation-defined 主分析混在一起。
+
+必須同時報：
+  low_fraction_u = |L_u|/T
+  mean_low_influence_u = sum_(j in L_u) I_(u,j) / |L_u|
+  LRI_u = low_fraction_u * mean_low_influence_u。
+
+這能區分 LRI 高是因為「低相關位置多」還是「每個低相關位置影響大」。
+L_u 確實為空時 LRI=0、low_fraction=0、mean_low_influence=NA。
+L_u 未知或缺 metadata 不能當空集合、不能自動填 0。
+
+若附 relative influence share：
+  RIS_u = sum_(j in L_u) I_(u,j) / sum_(j=1 to T) I_(u,j)。
+此值是相對份額，不是使用者要求的長度 normalized 主指標；不能替代 LRI。
+sum I 接近 0 時 RIS=NA。必須附 LRI/LNI，避免全部影響很小卻份額很大造成誤導。
+
+跨使用者主彙整採 macro mean：LNI = mean_u LNI_u，LRI = mean_u LRI_u。
+每位 user 多個 prefix 時先在 user 內平均，CI 按 user cluster bootstrap。
+不要用 sum_(u,j) I / sum_u T 取代 macro mean，否則長歷史 users 權重較大。
+後者若需要可以額外命名 micro_mean，不與主統計混用。
+
+6.4.6 為何「影響很大」仍不等於「不必要」
+
+LRI 只證明被標為低相關的歷史會牽動分布，不能單獨判定牽引有害。
+搭配實際下一個 item y 的有方向差值：
+  G_(u,j) = p_u^(-j)(y) - p_u(y)，range [-1,1]。
+  G>0：移除後 observed target 的機率增加；G<0：原 occurrence 有助於该 target。
+
+可附低相關歷史 removal-gain 的長度平均：
+  LRG_u = (1/T) * sum_(j in L_u) max(0, G_(u,j))，range [0,1]。
+同時報正/負 G 的平均與比例，不可只留下正向 gains。
+這是對 logged next target 的 retrospective support，不是真實干預後 user 行為。
+Full-catalog target probabilities 通常小，LRG 也可能小，不可任意放大或用
+test min-max scaling 改成漂亮的 0-1 值；直接報量級。
+
+結論需結合：low relevance + 分布敏感度 + 有方向的 target/semantic 診斷。
+不可以「I 最大的 item」定義 noise，再宣稱 noise 的 I 最大。
+
+6.4.7 計算與輸出
+
+Exact primary：每個 prefix 計算 1 個 baseline + T 個 deletion forward passes。
+Baseline 只算一次，deleted histories batched，candidates 分塊。
+用 stable logsumexp 正規化；chunked scoring 可先求每個 row 的 logZ，
+再逐塊累加 0.5*abs(p-q)，不保存 users x positions x catalog tensor。
+用足夠精度做 probability sum / TV accumulation，記錄浮點容差。
+不能只比較兩邊各自 Top-K，因支撐集合不同且漏掉 tail mass。
+資源不足時可用預先固定的 candidate subset，但必須命名 subset_LNI/LRI，
+它是條件於該 subset 的分布，不能聲稱等於 full-catalog 指標。
+
+若 T 太長，可預先均勻無放回抽 m 個 positions A_u：
+  estimated_LNI_u = mean_(j in A_u) I_(u,j)
+  estimated_LRI_u = mean_(j in A_u) 1[j in L_u]*I_(u,j)。
+兩者是 uniform position sampling 下的無偏估計且在 [0,1]，標 estimated，
+報 m/T 與 sampling seed；bootstrap 重抽 users 不等於估計完整的 position
+sampling 不確定性，需增加 position draws 或明示 conditional-on-sampled-positions。
+不可以只抽低相關 items 後直接平均當 LRI；若只估低相關條件平均，須乘 |L_u|/T。
+若 stratified sampling，以已知各 stratum 的 n_h/T 加權其平均，不能各 bin 等權。
+
+每個 occurrence 保存：
+  user/prefix/checkpoint/branch, original_T, position, lag, item_id,
+  candidate_support_hash, temperature, intervention_mode, input_boundary_hash,
+  reachable, low_relevance_definition, is_low_relevance,
+  TV, normalized_JS_optional, p_target, p_target_deleted, signed_G, status。
+每個 prefix/user 保存：
+  LNI, LRI, low_fraction, mean_low_influence, RIS_optional, LRG_optional,
+  n_valid_deletions, n_requested_deletions, exact_or_estimated, sampling_policy。
+Exact 計算缺任何原定位置，整體主統計標 incomplete，不能以剩餘位置假裝全量。
+
+數值範例（用於文件與測試）：
+  原始 p=(0.6,0.3,0.1)，移除某位置後 q=(0.3,0.4,0.3)，TV=0.30。
+  T=4，四個位置 TV=(0.30,0.10,0.05,0.15)，LNI=0.15。
+  L_u={第1,第2個位置}，LRI=(0.30+0.10)/4=0.10，
+  low_fraction=0.50，mean_low_influence=0.20，兩者乘積=0.10。
+  不可把 LRI=0.10 解釋為「10% 的歷史是 noise」。
+
+6.5 KL 版本與自適應正規化（本指引最新的主要分布指標）
+
+6.5.1 方向與解讀
+
+沿用 6.4 的 occurrence deletion、原始長度 T、fixed support、fixed boundaries、
+凍結 graph/weights/priors 與 reachability 規則。只替換分布差異的計算。
+令 p=p_u 為完整歷史分布，q_j=p_u^(-j) 為移除第 j 個紀錄後的分布。
+主要方向固定為 full_to_deleted：
+  K_(u,j) = KL(p || q_j) = sum_(c in C_u) p(c) * [log p(c) - log q_j(c)]。
+使用自然對數，單位 nats。不得隨結果任意顛倒方向。
+
+這等於 E_(c~p)[-log q_j(c)] - E_(c~p)[-log p(c)]：
+以完整歷史模型的分布作參考，移除後重現此分布所增加的 expected log loss。
+它不是 observed next-item label 的 log loss，也不是已證明遺失的真實使用者資訊。
+完整歷史模型本身可能有錯；KL 大只表示相對該參考的變化大。
+
+KL 不對稱且沒有有限通用上界。若 p(c)>0 而 q_j(c)=0，KL 可為 infinity。
+反向 KL 可另報，但標 reverse_KL；(KL(p||q)+KL(q||p))/2 仍然沒有上界。
+除以 T、log(catalog_size) 或 H(p) 都不能保證 direct KL 落在 [0,1]。
+特別不要以 H(p) 當唯一分母：低 entropy 時分母近零，且 KL 並不受 H(p) 上界限制。
+
+6.5.2 每個 occurrence 的有界轉換
+
+定義 adaptive normalized KL influence：
+  A_(u,j) = K_(u,j) / (K_(u,j) + s_g)，其中 s_g > 0。
+  g = (dataset, original history-length bin)，由刪除前 H_u 決定。
+
+有限 K 時，A 在 [0,1)；K=0 時 A=0；K=s_g 時 A=0.5；
+K=9*s_g 時 A=0.9；K 趨向 infinity 時 A 趨向 1。
+此為本實驗設計的飽和映射，不是標準 KL 的自然最大值正規化，也不是 p-value。
+A=0.1 不再表示「10% 機率質量被移動」；只有 TV 有該種質量解讀。
+此映射壓縮極端 KL，必須同時保存 raw_KL 與 upper-tail/saturation 比例。
+
+6.5.3 自適應尺度 s_g：只從 validation reference calibration 凍結取得
+
+目的：對不同 dataset/length 範圍使用事先定義的參考尺度，而非在 test 上
+用 min-max 拉滿到 [0,1]。Primary 不依每個 sample 或被刪除 item 重新估尺度。
+
+預先指定一個可取得、同視窗的 reference checkpoint（例如 internal temporal
+baseline），不得根据 test 表現挑選 reference。Reference 身分、模型分支、
+temperature、candidate policy、checkpoint hash 與主要比較方式都寫入 manifest。
+所有待比較模型在相同 dataset/length bin 共用這一張尺度表，不能各自校準成
+自己的中位數，以免把原本的敏感度差異消掉。
+
+Calibration 步驟：
+  1. 用 reference model 在 validation prefixes 執行與 test 完全相同的 LOO。
+  2. 依原始 T 分 bins；沿用在 validation 凍結的長度 bins，不依 KL 大小分群。
+  3. 對每個 g 取 raw_KL 的 user-balanced 第 90 百分位數 Q90_g。
+     每位 user 總權重相同；多 prefixes/positions 在 user 內平分權重。
+     不得將 T 長的 user 自動給更多 quantile 權重。
+  4. s_g = max(Q90_g, s_floor)。預設 s_floor=1e-3 nats，於 test 前固定，
+     另報有多少 bins 觸發 floor；此值是操作設定，不是理論常數。
+  5. 若 bin 的有效 user 少於 100，預先規定回退到同 dataset 所有長度的
+     calibration，再不足則使用固定全域尺度 s=1 nat，並記錄 fallback。
+     不可使用 test 資料補足 calibration。
+
+這裡 Q90 是「reference LOO 影響的尺度」，不是 noise threshold、null critical
+value 或 statistical significance threshold。A>0.5 只表示超過相應 Q90 尺度
+（未觸發 floor 時），不代表顯著、有害或無關。
+若沒有 reference checkpoint/validation calibration，先以 s=1 nat 執行，
+標 fixed_scale_KL；不得稱為已校準的 adaptive_KL。
+
+主要圖附 fixed-scale s=1 nat 與 raw_KL 對照，避免 length-adaptive scaling
+把真實的跨長度衰減抵消掉。Adaptive score 是相對 length reference 的診斷；
+不同 g 的 A 不能被解讀為相同絕對資訊差。跨模型配對使用同一 H_u/g/s_g。
+Primary 不另外按模型 entropy 自適應，避免把要觀察的 confidence 差異校正掉。
+
+6.5.4 按原始序列長度彙整
+
+  LNI_AKL(u) = (1/T) * sum_(j=1 to T) A_(u,j)
+  LRI_AKL(u) = (1/T) * sum_(j in L_u) A_(u,j)。
+
+仍有 0 <= LRI_AKL <= LNI_AKL <= 1，且 LRI_AKL <= |L_u|/T。
+低相關位置集合 L_u 仍按 6.4 的獨立、validation-defined 規則決定。
+同時輸出 low_fraction、mean_low_AKL，保持
+  LRI_AKL = low_fraction * mean_low_AKL。
+
+不能先平均 KL 再套飽和函數替代上式：
+  mean[K/(K+s)] 一般不等於 mean(K)/(mean(K)+s)。
+本任務選擇先逐項有界化，再按 T 平均，以保留每個 occurrence 相同權重。
+原本的 TV 保留為 LNI_TV/LRI_TV，raw_KL 平均另存 mean_KL_nats（無上界）。
+有方向的 signed_G/LRG 保持原 probability 定義，不用 KL 取代其正負方向。
+6.4 的 macro aggregation、position sampling、missing 與 structural-invariance
+規則全部沿用；正規化不能把缺失或不可見當成抗噪能力。
+
+6.5.5 KL-based bounded robustness check：normalized Jensen-Shannon divergence
+
+為確認發現不是 direct KL 對近零 q 的極端敏感造成，同時報：
+  m = (p+q_j)/2
+  NJS_(u,j) = [KL(p||m)+KL(q_j||m)] / [2*log(2)]，range [0,1]。
+這是以 KL 建構、對稱且自然有界的資訊差異，不需 s_g。
+  LNI_NJS = mean_j NJS_(u,j)
+  LRI_NJS = sum_(j in L_u) NJS_(u,j)/T。
+NJS=0 表示分布相同，NJS=1 表示分布的 support 完全分離。
+若使用 scipy.spatial.distance.jensenshannon，注意回傳的是 JS distance
+（divergence 的平方根）：base=2 時要平方才是這裡的 NJS。
+若只想要最少校準假設的單一資訊指標，可在 test 前將 NJS 設為 primary；
+預設依使用者本次偏好以 AKL 為 primary，不允許看完 test 才切換。
+
+6.5.6 數值穩定與必要測試
+
+使用 log_softmax(logits/tau) 直接取得 logp/logq，而不是先 softmax 再 log。
+使用相同 eligible support；chunked scoring 可先累積 logZ 再累加
+  exp(logp)*(logp-logq)。
+至少 float32、建議用 float64 accumulation 核對小批次；只容許將微小 roundoff
+造成的負 KL（例如 -1e-10）修正為 0，顯著負值為錯誤，不能 abs() 掩蓋。
+有限 softmax logits 在共同支撐上理論為正；若只有已存 probability 且有 underflow
+zeros，先找原 logits。不得默默把所有 q clamp 到 1e-8 改寫分布。
+若確實需 smoothing，兩邊使用相同 uniform-mixture smoothing 並重報結果來源，
+例如 p'=(1-alpha)p+alpha/|C_u|；alpha 固定且做 sensitivity。不能與 unsmoothed 混報。
+Infinite KL 理論上可映射為 A=1，但實作必須先區分 true support zero 與數值錯誤；
+共同有限 softmax 出現 Inf/NaN 屬 invalid，不能直接飽和為 1 後當成功結果。
+
+新增測試：
+  - p=q 時 KL/AKL/NJS 都是 0；正向/反向 KL 不必相等。
+  - p=(0.6,0.3,0.1), q=(0.3,0.4,0.3)，正向 KL 約 0.21972246 nats。
+  - s=0.1、K=(0.3,0.1,0,0.2) 時，A=(0.75,0.5,0,2/3)，
+    T=4 的 LNI_AKL=23/48；L_u={1,2} 的 LRI_AKL=0.3125。
+  - K=s 時 A=0.5、K=9s 時 A=0.9；變更 log base 並等比例轉換 s 時 A 不變。
+  - common s 下 K 排序與 A 排序相同；檢查先平均再映射不是本指標。
+  - p=(1,0),q=(0,1) 的 direct KL 為 Inf、NJS=1，當作解析邊界測試。
+  - calibration 不讀 test，所有模型共用尺度 hash，bin fallback 可重現。
+  - adaptive mean、fixed-scale mean、raw_KL、TV、NJS 分欄，不能覆蓋舊結果。
+
+新增輸出 calibration_kl_scales.csv/json，包含 dataset, length_bin,
+reference_checkpoint, quantile, raw_quantile_nats, s_floor, final_scale_nats,
+n_users, weighting_rule, fallback, calibration_split, calibration_hash。
+LOO row 新增 forward_KL_nats, reverse_KL_optional, AKL, NJS, scale_group,
+scale_nats, scale_hash, smoothing_policy, entropy_original, entropy_deleted。
+Summary 新增 LNI_AKL/LRI_AKL、LNI_NJS/LRI_NJS、mean_KL_nats、LNI_TV/LRI_TV。
+主要 Figure 2 改以 AKL 為主，附 raw_KL 與 TV/NJS；圖註說明 adaptive scaling
+是相對 validation reference，並保留 6.4 規定的 length strata/coverage。
+
+======================================================================
+7. 實驗 B2：Preference 是否具有選擇性
+======================================================================
+
+7.1 兩種近期干預
+
+舊歷史保持不動，在所有待比較分支都可見的共同 suffix 內做 paired interventions：
+  Nuisance / intent-preserving：同細類別、相近用途/屬性，替換 item identity。
+  Shift / intent-changing：將相同數量近期 slots 改為另一個一致的 proxy category，
+                           使用 coherent donor block 優先。
+
+替換數量候選 m=1,2,4（受 W 限制），每組 nuisance 與 shift 使用相同 slots、
+相同替換數、近似 popularity/availability；記錄 semantic distance。
+若二者距離缺乏 overlap，就明示比較的是兩種干預 regime，不能聲稱只隔離 intent。
+合成 shift 不改掉原始 logged target；不要把它拿來計算 ground-truth NDCG 來
+判定新意圖，因為沒有觀測到這個反事實序列的真實下一個 item。
+
+另外提供 natural next-event alignment / category decoding 的乾淨樣本結果，
+用來檢查 learned preference 是否在未干預資料上仍保留有效訊息。
+若做「轉移後回歸」自然群組，需要 future windows 的資料與嚴格 prefix masking；
+第一版非必做，不能用單一步 target 假裝已觀測持續偏好轉移。
+
+7.2 共同 external-category readout
+
+跨分支比較不要直接將 d 維 state cosine 與 M 維 q_hat JS 畫成同一量尺。
+優先實作共同的 fixed category-anchor readout：
+  - 用 training-only、外部 metadata/獨立 cluster labels 定義 J 個類別。
+  - 在同一固定 shared-item space e 中，為每類抽取相同上限數目的 training items。
+  - 對 normalized item vectors 求平均再 normalization，得到 anchor a_c。
+  - p_b(c | H) = softmax_c(cosine(s_b(H), a_c) / tau_readout)。
+  - 所有分支共用 anchors、同一 tau_readout、同一 label mapping。
+  - tau_readout 在 validation 決定一次，test 凍結；不是每個方法分別調到好看。
+
+這是相同尺度的 semantic readout，不是校準過的真實 preference probability。
+如果 anchors 無法與 s_b 對應到同一空間，不要硬算 cosine；改用同容量的
+training-only linear probes 預測共同 external labels，validation 選共同方案。
+報 probe train/val/test 切分、容量、regularization 與 clean decoding 能力；
+probe 結果代表 decodability，不能冒稱模型原生輸出。
+
+不同 checkpoint 的 e 可能不同。B2 優先在同一 checkpoint 內比較 branches；
+Stage C 比較需凍結同一 e 與同一 anchors。若無法做到，列為 confounded
+secondary comparison，不宣稱嚴格匹配。
+
+7.3 主要 metrics
+
+  D_nuisance = mean normalized_JS(p_original, p_nuisance)
+  D_shift = mean normalized_JS(p_original, p_shift)
+  Directional_shift = mean[p_shift(introduced_classes)
+                           - p_original(introduced_classes)]
+  Clean_alignment = p_original(target_external_classes)，或共同 label decoding。
+  Collapse diagnostics = across-user state variance、有效 covariance rank、
+                         readout variance、entropy 與 prototype usage（補充）。
+
+單獨報 D_nuisance 小不算成功。希望同時看到：
+  (i) nuisance 改變小；(ii) shift 有足夠反應；(iii) 方向正確；
+  (iv) clean alignment/decoding 不退化成常數或全域先驗。
+建議主圖 x=D_nuisance，y=Directional_shift，附 CI；左上較理想。
+另列 D_shift，避免方向性指標隱藏大幅但無方向的混亂。
+
+若附 selective ratio，例如 Directional_shift/(D_nuisance+epsilon_num)，
+必須也報分子分母，標示小分母不穩定，不能僅以該 ratio 排名。
+不要因單一 ratio 巨大就宣稱表示最好。
+
+======================================================================
+8. Stage C：排除「只是壓縮／只是短視窗」的替代解釋
+======================================================================
+
+必做的便宜 sanity controls：
+  - Constant/global-prior representation：nuisance 小但 shift 應接近零。
+  - Shared-input mean pooling：顯示普通聚合的反應。
+
+主要 learned controls（在資料/計算允許時）：
+  C1. Direct item-input sequence encoder。
+  C2. Linear bottleneck item-input sequence encoder。
+  C3. Fixed KMeans soft assignments + sequence encoder。
+  C4. Learned prototypes + sequence encoder，移除 preference auxiliary bundle。
+  C5. Learned prototypes + sequence encoder，完整 preference auxiliary bundle。
+
+為隔離表徵，不要把所有結構差異混在一起：
+  - C1-C5 使用相同輸入 history、相同固定 e、相同 GRU hidden size、
+    相同 d 維輸出、相同候選 bank/ranking loss、相同 optimizer/schedule/budget。
+  - C2-C5 的中間 bottleneck dimension 盡量固定為 M，例如 32。
+  - C1 若輸入 d 使參數量不同，報總量與 trainable params，不宣稱完全等容量。
+  - Fixed KMeans 在 training e 上 fit，assignment temperature 在 validation 決定。
+  - C4/C5 固定架構，僅切換 supervision；保留 ranking gradient 到 prototypes。
+  - C5 使用實作中能完整核對的六個 auxiliary terms，逐一列出。
+  - 另外若需隔離 transition 項，可做 C5-minus-transition，列 optional。
+  - 避免讓各控制組各自重訓 shared graph/text features，否則不是同一輸入空間。
+
+這是新的 matched representation diagnostic，不是既有完整 RIBS 的復現。
+與原 long/short/preference branches 的 observational comparison 分開呈現。
+若實際架構不支持此方式，先實作最小 adapter，不要臆造不存在的 branch API。
+
+Primary 使用共同 W；較長 H 的 matched-input replication 可選，不能用
+L-only=100 與 P-only=10 的差異聲稱 learned preference 本身更會 denoise。
+
+優先做 3 個 training seeds（例如 25252,25253,25254），有既有 checkpoints
+只做單 seed 時明示。干預 randomness seeds 與 model training seeds 分開。
+同 seed/control 共用 split、sample IDs、干預 cache；不能比較不同使用者。
+若多 seed，分別列 per-seed 效果與跨 seed 統計；不要把相同 user 的多 seed
+當成更多獨立使用者來人為縮小 CI。
+
+======================================================================
+9. 工程介面與檔案輸出
+======================================================================
+
+以下是建議結構，可以依現有 repo 調整，但職責必須清楚：
+  experiments/history_preference/
+    config.py / configs/*.yaml
+    data_adapter.py
+    semantic_features.py
+    matching.py
+    cohorts.py
+    alignment.py
+    interventions.py
+    model_adapter.py
+    readouts.py
+    controls.py
+    statistics.py
+    plots.py
+    run.py
+    tests/
+
+ModelAdapter 至少提供：
+  encode_branches(batch) -> states + q_hat/rho/gates + effective-input metadata
+  get_shared_item_embeddings(item_ids)
+  get_checkpoint_metadata()
+不要要求所有專案使用同名 class；由 adapter 轉接。
+
+Config 至少包括：
+  data_root, dataset_categories, checkpoint_paths, output_root,
+  split_policy, metadata_fields, independent_encoder_or_feature_path,
+  lag_bins, day_bins, fixed_cohort_Ks, recent_window, long_horizon,
+  matching_bins, random_matches_B, replacement_replicates, replacement_ratios,
+  intent_replace_counts, readout_temperature, equivalence_epsilon,
+  min_users_for_confirmatory, bootstrap_repetitions, seeds,
+  max_users, batch_size, device, precision, training_budget, stages,
+  loo_enabled, loo_scope, loo_temperature, loo_boundary_policy,
+  loo_candidate_mode, loo_position_sample_size, loo_low_relevance_definition,
+  loo_primary_metric, kl_direction, kl_scale_mode, kl_reference_checkpoint,
+  kl_scale_quantile, kl_scale_floor_nats, kl_calibration_min_users,
+  kl_scale_table_path, kl_smoothing_alpha。
+
+CLI 必須支援 dry-run、resume、stage 選擇；例如（以實作後真實指令替換）：
+  python -m experiments.history_preference.run --config ... --stage audit
+  python -m experiments.history_preference.run --config ... --stage alignment
+  python -m experiments.history_preference.run --config ... --stage leave-one-out
+  python -m experiments.history_preference.run --config ... --stage interventions
+  python -m experiments.history_preference.run --config ... --stage controls
+  python -m experiments.history_preference.run --config ... --stage report
+
+每次執行輸出至獨立 run directory，至少保存：
+  manifest.json              實際設定、版本、ID/feature/checkpoint hashes、status
+  audit.md                   repository 與資料／模型核對結果
+  cohorts.csv                split/group 的 users、prefixes、items、coverage
+  matching_diagnostics.csv   matching balance、fallback、candidate pool sizes
+  alignment_per_user.parquet lag/bin 的 raw/random/excess，每位 user 的統計
+  alignment_summary.csv      mean、CI、n、equivalence 狀態與多重比較方法
+  intervention_manifest.*    original/modified item IDs、positions、type、ratio、seed
+  intervention_metrics.*     sample/model/branch 的 displacement、JS、方向、coverage
+  loo_per_position.parquet    occurrence-level TV/G、原始 T、候選 support hash
+  loo_per_user.parquet        LNI/LRI/low_fraction/mean_low_influence 與完整性
+  loo_summary.csv             macro mean、user-cluster CI、length strata、sampling
+  selectivity_summary.csv    nuisance/shift/clean/collapse，含 paired CI
+  controls_summary.csv       視窗、維度、參數量、training budget、seed、checkpoint
+  figures/*.png + *.pdf      同步輸出畫圖資料，禁止只有圖片沒有原始統計
+  report.md                  結論、反例、未完成項目、限制與重跑指令
+  commands.txt               真實執行指令，不只放想像中的命令
+
+欄位至少包含 dataset, split, model, seed, group, n_users, n_pairs, mean,
+ci_low, ci_high, units, metric_definition_version, status。
+不能用 0 代替 missing；使用 null/NA 加 status/reason。
+不輸出完整 review 或使用者個資至 report，分析 ID 依專案原有匿名化方式處理。
+
+Cache key 包含 split、item mapping、feature來源、matching policy、seed、
+history window、checkpoint hash，避免設定不同卻誤用同一 cache。
+Resume 時檢查 manifest 相容性；不完整輸出不得被視為成功 cache。
+
+======================================================================
+10. 三張主要論文圖及補充圖
+======================================================================
+
+Figure 1：Historical alignment decay。
+  x=lag 或 elapsed days；y=Delta；95% CI；horizontal y=0。
+  附 raw/random panel、fixed-cohort K、n_users；dataset 分面。
+  epsilon 未定義時不画宣稱成立的 noise boundary。
+
+Figure 2：Leave-one-out distribution influence（優先）。
+  Panel A：x=lag；y=mean per-occurrence TV；固定 cohort、CI 與 low-relevance bins。
+  Panel B：各模型/branch 的 LNI、LRI，依相同 original-T strata 比較。
+  附 low_fraction 與 mean_low_influence，避免混淆低相關位置多或單項影響強。
+  Panel C 可附 signed target probability change G，支援有方向的判讀。
+  明確標記 structural invariance；看不到該位置的 branch 不算 denoising 成功。
+  原 replacement-ratio versus donor-direction 曲線保留為補充圖。
+
+Figure 3：Selectivity trade-off。
+  x=D_nuisance；y=Directional_shift；每種表示一個點及 CI。
+  constant control 必須出現，附表報 clean alignment 與 D_shift/collapse 指標。
+
+Supplement：time-based curves、same-subcategory matching、各 seed、natural
+cohort、matching balance、sample counts、失敗案例與表示 collapse diagnostics。
+圖表使用標準 scientific plotting 工具，axis units、legend、方法與 error bars
+需完整；人工擾動圖標明 synthetic intervention。
+
+======================================================================
+11. 必須通過的驗證與測試
+======================================================================
+
+資料正確性：
+  - ID mapping 一致，padding 不當 item，unknown/zero features 有明確處理。
+  - lag=1 正確對應最新已觀測 item，target 不在輸入時點之後被提前使用。
+  - graph、anchor、cluster、matching counts 不含 held-out interactions。
+  - replacement selection 不讀 target；測試把 target 改掉但 prefix 不變，
+    應得到同一組 replacements。
+  - shared fixed cohort 不隨 lag 改變；all-available panel 明確分開。
+  - time-bin boundaries、ties、empty histories、短序列與重複 item 均有測試。
+
+干預正確性：
+  - ratio=0 與原始輸入、state、readout 在容許浮點誤差內一致。
+  - 等長替換不改 recent suffix、未選 slots、sequence length 或 slot timestamps。
+  - B2 nuisance/shift 使用相同 slots 與 requested count。
+  - eval/dropout 狀態正確；干預前後模型參數與 graph hash 不變。
+  - 相同 sample/seed 的 intervention 在所有模型一致。
+  - unreachable interventions 被標 structural_invariance。
+
+指標正確性：
+  - TV(p,p)=0、TV((1,0),(0,1))=1、6.4.7 的 TV=0.30 小例子皆正確。
+  - LNI/LRI 在 [0,1]，LRI<=LNI、LRI<=low_fraction，且
+    LRI=low_fraction*mean_low_influence（low set 非空時）。
+  - T=4 範例得到 LNI=0.15/LRI=0.10，避免錯除 T-1 或重複除 T。
+  - 原始/刪除候選支撐 hash 完全相同，刪除不解除 seen-item mask。
+  - 重複 item 只刪指定 occurrence；不 refill 視窗；padding 長度不改分母。
+  - chunked TV 與完整小 catalog 的直接計算相符；probabilities 各自和為 1。
+  - Uniform/stratified position sampling 在 toy data 多次抽樣後逼近 exact 指標。
+  - 空 low set 與未知 low set 分別為 0/NA；缺 deletion 不冒充 exact 完整結果。
+  - cosine、normalized JS 的已知小例子正確，JS 同分布=0、range [0,1]。
+  - confidence interval 按 user clustering，不把 replacement draws 當獨立 users。
+  - equivalence 的 CI-in-band 與 CI-crossing-zero 行為不同，有反例測試。
+  - constant representation：D_nuisance=0、D_shift=0，不得被總結為最佳。
+  - toy data 中 recent-linked targets 應呈現已知 alignment；random targets
+    不應被管線機械性畫成固定的「越舊越差」。
+  - time-free dataset 正確跳過時間分析，缺 metadata 不當作零對齊。
+
+驗收是管線與統計正確，不要求真實資料一定支持 H1/H2/H3。
+Synthetic sanity pass 不代表真實假說被證實。
+
+======================================================================
+12. 最終報告應如何回答研究問題
+======================================================================
+
+對每個 dataset 分別報：
+  H1：supported / mixed / inconclusive / contradicted，附效果量、CI、coverage。
+  H2：低對齊區間是否仍造成方向性牽引？是否只是模型看不到干預？
+  H3：preference 是否同時降低 nuisance、保留 direction/clean information？
+      是否優於 mean pooling、constant 與普通壓縮？是否只是 window 差異？
+
+只完成 A 時，結論只談資料對齊，不能推論 preference 已經更好。
+只完成 B 的不同分支比較時，承認架構與 supervision 的混淆。
+沒有等輸入的 Stage C，不宣稱已隔離 prototype abstraction 的效果。
+單 seed 只能報 conditional-on-checkpoint 的 user uncertainty，不當成 training
+robustness。無法確定 threshold 時，報 no supported cutoff，不補造數字。
+
+與 Recall/NDCG 的關係：可作 supplementary，但上述三類機制證據才是本任務主體。
+嚴禁拿 prior 消融、偏好類別 probe 或 synthetic direction 指標冒充線上效益。
+
+交付時請列：
+  1. 新增/修改的實際程式與設定路徑。
+  2. 真實執行過的測試與命令、資料量與 runtime。
+  3. 正式結果與 synthetic smoke 的明確分隔。
+  4. 三張主圖、統計表、可重跑命令。
+  5. 仍缺哪些 data/checkpoints/資源，哪些 stage 因而未執行。
+
+======================================================================
+13. 可選方法背景，不是必須加入的套件或核心實驗
+======================================================================
+
+Jain & Wallace (2019), Attention is not Explanation:
+https://aclanthology.org/N19-1357/
+用途：提醒不要只以 mixing/attention 權重推論實際模型依賴。
+不要把其結果不加限制地套用成所有 gating 都不可解釋。
+
+Yang et al. (2020), Model-Augmented Conditional Mutual Information Estimation
+for Feature Selection:
+https://proceedings.mlr.press/v124/yang20b.html
+用途：若後續要研究「舊歷史在給定近期歷史後的額外資訊」，可延伸條件資訊分析。
+第一版不要求高維 conditional MI estimation，不要把 cosine gap 命名為 MI。
+
+本指引中的門檻、干預、共同讀出與圖表是待實作的研究設計，並非上述文獻已證實
+本推薦模型具有相同效果。請以實際完成的結果撰寫結論。

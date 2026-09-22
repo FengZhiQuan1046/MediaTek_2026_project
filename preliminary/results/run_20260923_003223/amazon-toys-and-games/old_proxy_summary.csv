@@ -1,0 +1,17 @@
+dataset,split,metric,mean,ci_low,ci_high,n_users,units,status
+amazon-toys-and-games,valid,old_item_auc,0.6460526315789473,0.609953007518797,0.6822415413533834,266,pairwise_accuracy,estimated
+amazon-toys-and-games,valid,old_preference_proxy_auc,0.5955827067669174,0.5617434210526314,0.6250493421052632,266,pairwise_accuracy,estimated
+amazon-toys-and-games,valid,recent_margin,0.0749670389227401,0.06150543261879593,0.08853205327728861,266,score_difference_or_fraction,estimated
+amazon-toys-and-games,valid,full_margin,0.07191446513161623,0.058391382291744974,0.08547410130976958,266,score_difference_or_fraction,estimated
+amazon-toys-and-games,valid,full_minus_recent_margin,-0.0030525737911238707,-0.0067618904803368384,0.0007397611506451339,266,score_difference_or_fraction,estimated
+amazon-toys-and-games,valid,old_fraction,0.38012277783201165,0.3507095933790476,0.40642198249021233,266,score_difference_or_fraction,estimated
+amazon-toys-and-games,valid,low_alignment_old_fraction,0.1599718535785312,0.14371062316686317,0.17527290721720404,266,score_difference_or_fraction,estimated
+amazon-toys-and-games,valid,low_alignment_old_cluster_excess,-0.0038349232980908247,-0.02831832592092656,0.019036326147591896,217,score_difference_or_fraction,estimated
+amazon-toys-and-games,test,old_item_auc,0.6624223602484473,0.6298059006211181,0.6953804347826087,322,pairwise_accuracy,estimated
+amazon-toys-and-games,test,old_preference_proxy_auc,0.5760869565217391,0.5454153726708074,0.6026436335403726,322,pairwise_accuracy,estimated
+amazon-toys-and-games,test,recent_margin,0.0843199702060741,0.07413475671031089,0.09696590233223963,322,score_difference_or_fraction,estimated
+amazon-toys-and-games,test,full_margin,0.0810659172834817,0.06738055728676712,0.09361769458660797,322,score_difference_or_fraction,estimated
+amazon-toys-and-games,test,full_minus_recent_margin,-0.0032540529225924,-0.0065876419858440114,-9.285375499022052e-05,322,score_difference_or_fraction,estimated
+amazon-toys-and-games,test,old_fraction,0.36314256821342933,0.33885047511681976,0.38747307713384815,322,score_difference_or_fraction,estimated
+amazon-toys-and-games,test,low_alignment_old_fraction,0.14989286035690033,0.13483014577799576,0.163818305223714,322,score_difference_or_fraction,estimated
+amazon-toys-and-games,test,low_alignment_old_cluster_excess,-0.014574399462840748,-0.033101854430789994,0.007920261439997127,254,score_difference_or_fraction,estimated
