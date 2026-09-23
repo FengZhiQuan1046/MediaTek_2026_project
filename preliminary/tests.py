@@ -3,7 +3,10 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from experiment import bootstrap_mean, fixed_cohort, historical_summary, paired_decay, pairwise_accuracy, sample_matches, summarize_lags
+from experiment import (bootstrap_mean, fixed_cohort, historical_summary,
+                        paired_decay, pairwise_accuracy, sample_matches,
+                        subset_cosine_normalizer, summarize_information_coverage,
+                        summarize_lags)
 
 
 class StatisticsTests(unittest.TestCase):
@@ -29,6 +32,7 @@ class StatisticsTests(unittest.TestCase):
     def test_fixed_cohort_never_includes_lags_beyond_k(self):
         row = {"user": 1, "history_length": 32, **{name: 0.0 for name in (
             "raw_cosine", "random_cosine", "excess_cosine", "raw_cluster_match",
+            "raw_cosine_z", "random_cosine_z", "excess_cosine_z",
             "random_cluster_match", "excess_cluster_match")}}
         rows = [{**row, "lag": lag} for lag in range(1, 33)]
         summary = summarize_lags(rows, SimpleNamespace(bootstrap=5, seed=1), "toy", "test")
@@ -54,10 +58,34 @@ class StatisticsTests(unittest.TestCase):
             for lag in range(1, length + 1):
                 rows.append({"user": user, "history_length": length, "lag": lag,
                              "excess_cosine": 1.0 if lag == 1 else 0.0,
+                             "excess_cosine_z": 1.0 if lag == 1 else 0.0,
                              "excess_cluster_match": 0.0})
         result = paired_decay(rows, SimpleNamespace(bootstrap=10, seed=1), "toy", "test")
         self.assertEqual(result[0]["n_users"], 1)
         self.assertEqual(result[0]["mean"], 1.0)
+
+    def test_subset_normalizer_uses_distinct_training_pairs(self):
+        vectors = np.array([[1.0, 0.0], [0.0, 1.0],
+                            [2 ** -.5, 2 ** -.5]], dtype=np.float32)
+        mean, std, count = subset_cosine_normalizer(
+            vectors, 6, np.random.default_rng(1))
+        self.assertGreaterEqual(mean, 0.0)
+        self.assertGreater(std, 0.0)
+        self.assertEqual(count, 6)
+
+    def test_information_coverage_uses_positive_signal(self):
+        rows = [
+            {"user": 1, "lag": 1, "history_length": 3, "excess_cosine_z": 3.0},
+            {"user": 1, "lag": 2, "history_length": 3, "excess_cosine_z": -4.0},
+            {"user": 1, "lag": 3, "history_length": 3, "excess_cosine_z": 1.0},
+            {"user": 2, "lag": 1, "history_length": 1, "excess_cosine_z": -1.0},
+        ]
+        summary, users = summarize_information_coverage(rows, "toy", "test", 3)
+        self.assertEqual(len(users), 1)
+        self.assertEqual(users[0]["items_for_50pct"], 1)
+        self.assertEqual(users[0]["items_for_80pct"], 3)
+        self.assertEqual(summary[0]["mean_percent"], 75.0)
+        self.assertEqual(summary[2]["mean_percent"], 100.0)
 
 
 if __name__ == "__main__":

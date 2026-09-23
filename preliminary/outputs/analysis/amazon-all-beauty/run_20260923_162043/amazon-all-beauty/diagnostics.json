@@ -1,0 +1,31 @@
+{
+  "dataset": "amazon-all-beauty",
+  "cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl",
+  "cache_sha256": "331d07169c5df65d30bc394312a518050d8cb28f91c847f4068180c3ac4f7af2",
+  "eligible_users": 1457,
+  "sampled_users": 1457,
+  "num_items": 4090,
+  "train_items": 3161,
+  "reference_items": 3161,
+  "vectorized_items": 4090,
+  "cosine_normalization": {
+    "basis": "random distinct training-item pairs within subset",
+    "mean": 0.08709400147199631,
+    "std": 0.059676896780729294,
+    "sampled_pairs": 100000
+  },
+  "information_coverage_users": {
+    "valid": 1253,
+    "test": 1351
+  },
+  "text_coverage": 1.0,
+  "cluster_fit_items": 3161,
+  "clusters": 32,
+  "matching_fallback_counts": {
+    "0": 17636,
+    "2": 558
+  },
+  "target_occurrences_in_random_references": 128,
+  "timestamp_status": "unavailable_in_ver4_cache",
+  "text_provenance": "metadata_or_review_fallback_unknown_per_item"
+}

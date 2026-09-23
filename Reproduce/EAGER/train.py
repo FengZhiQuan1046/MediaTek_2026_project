@@ -124,6 +124,27 @@ def seed_everything(seed):
     if torch.cuda.is_available(): torch.cuda.manual_seed_all(seed)
 
 
+def verify_cuda_scope(args):
+    """Fail closed if this process can see GPUs outside the launcher selection."""
+    requested = os.environ.get("REQUESTED_GPU_IDS")
+    expected_text = os.environ.get("EXPECTED_VISIBLE_GPUS")
+    if not requested or not expected_text:
+        raise RuntimeError("Launch EAGER through run.sh so GPU_IDS is enforced")
+    expected = int(expected_text)
+    visible = torch.cuda.device_count()
+    if visible != expected:
+        raise RuntimeError(
+            f"GPU isolation mismatch: GPU_IDS={requested} requested {expected} visible GPU(s), "
+            f"but PyTorch sees {visible}"
+        )
+    logical = int(os.environ.get("LOCAL_RANK", "0"))
+    if logical < 0 or logical >= visible:
+        raise RuntimeError(f"Logical CUDA device cuda:{logical} is outside the visible GPU set")
+    torch.cuda.set_device(logical)
+    args.device = f"cuda:{logical}"
+    return requested, visible
+
+
 def cycle_batches(histories, labels, batch_size):
     dataset = TensorDataset(histories, labels)
     if not len(dataset):
@@ -369,13 +390,13 @@ def parse_args():
 
 def main():
     args = parse_args()
+    if args.device.startswith("cuda") and not torch.cuda.is_available():
+        raise RuntimeError("CUDA is required by upstream EAGER")
+    requested_gpus, visible_gpus = verify_cuda_scope(args)
     if int(os.environ.get("WORLD_SIZE", "1")) > 1:
-        torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
-        args.device = f"cuda:{os.environ['LOCAL_RANK']}"
         dist.init_process_group("nccl", timeout=timedelta(hours=4))
     seed_everything(args.seed)
     args.world_size = world_size()
-    if args.device.startswith("cuda") and not torch.cuda.is_available(): raise RuntimeError("CUDA is required by upstream EAGER")
     output = Path(args.output_dir); output.mkdir(parents=True, exist_ok=True)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     logger = configure_logging(output / f"train_{run_id}.log") if rank() == 0 else logging.getLogger("eager_worker")
@@ -383,6 +404,10 @@ def main():
         logger.handlers.clear()
         logger.addHandler(logging.NullHandler())
     logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
+    logger.info(
+        "CUDA_SCOPE requested_physical=%s visible_count=%d logical_device=%s name=%s",
+        requested_gpus, visible_gpus, args.device, torch.cuda.get_device_name(torch.cuda.current_device()),
+    )
     if rank() != 0:
         barrier()
     data, interaction_cache = load_data(args, logger)
@@ -428,7 +453,9 @@ def main():
             "DIN_behavior",
             "T5_semantic" if args.semantic_backend == "t5" else "hashed_semantic_smoke_test",
         ],
-        "visible_gpus": torch.cuda.device_count(),
+        "requested_physical_gpus": requested_gpus,
+        "visible_gpus": visible_gpus,
+        "logical_device": args.device,
         "interaction_cache": str(interaction_cache), "din_cache": str(din_cache),
         "semantic_cache": str(semantic_cache), "tree_cache": str(eager_cache / "trees"),
         "history": history,

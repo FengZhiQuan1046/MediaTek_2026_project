@@ -36,6 +36,7 @@ LAG_BINS = ((1, 1), (2, 2), (3, 4), (5, 8), (9, 16),
             (17, 32), (33, 64), (65, 100))
 FIXED_K = (8, 16, 32)
 METRICS = ("raw_cosine", "random_cosine", "excess_cosine",
+           "raw_cosine_z", "random_cosine_z", "excess_cosine_z",
            "raw_cluster_match", "random_cluster_match", "excess_cluster_match")
 
 
@@ -117,6 +118,53 @@ def normalized_mean(matrix):
     return mean / norm if norm > 0 else mean
 
 
+def subset_cosine_normalizer(reference_vectors, pair_count, rng):
+    """Estimate a train-only within-subset cosine null for z-normalization."""
+    reference_vectors = np.asarray(reference_vectors, dtype=np.float32)
+    if len(reference_vectors) < 2:
+        raise RuntimeError("At least two usable training items are required for normalization")
+    count = min(pair_count, len(reference_vectors) * (len(reference_vectors) - 1))
+    left = rng.integers(0, len(reference_vectors), size=count)
+    # A non-zero cyclic offset guarantees that an item is never paired with itself.
+    offset = rng.integers(1, len(reference_vectors), size=count)
+    right = (left + offset) % len(reference_vectors)
+    similarities = np.einsum("ij,ij->i", reference_vectors[left], reference_vectors[right])
+    mean = float(similarities.mean())
+    std = float(similarities.std(ddof=1)) if count > 1 else 0.0
+    if not np.isfinite(std) or std <= 1e-12:
+        raise RuntimeError("Within-subset cosine standard deviation is zero")
+    return mean, std, int(count)
+
+
+def full_catalog_cosine_normalizer(item_texts, vectorizer, pair_count, rng):
+    """Estimate cosine normalization from pairs sampled over the full catalog."""
+    item_count = len(item_texts)
+    if item_count < 2:
+        raise RuntimeError("At least two catalog items are required for normalization")
+    chunks = []
+    attempts = 0
+    while sum(len(chunk) for chunk in chunks) < pair_count and attempts < 100:
+        needed = pair_count - sum(len(chunk) for chunk in chunks)
+        draw_count = min(max(needed * 2, 1024), 16384)
+        left = rng.integers(0, item_count, size=draw_count)
+        right = (left + rng.integers(1, item_count, size=draw_count)) % item_count
+        left_vectors = vectorizer.transform([item_texts[int(item)] for item in left])
+        right_vectors = vectorizer.transform([item_texts[int(item)] for item in right])
+        valid = ((left_vectors.multiply(left_vectors).sum(axis=1).A1 > 0)
+                 & (right_vectors.multiply(right_vectors).sum(axis=1).A1 > 0))
+        similarities = left_vectors.multiply(right_vectors).sum(axis=1).A1[valid]
+        if len(similarities):
+            chunks.append(np.asarray(similarities[:needed], dtype=np.float32))
+        attempts += 1
+    if not chunks or sum(len(chunk) for chunk in chunks) < pair_count:
+        raise RuntimeError("Could not sample enough usable full-catalog cosine pairs")
+    similarities = np.concatenate(chunks)[:pair_count]
+    std = float(similarities.std(ddof=1)) if len(similarities) > 1 else 0.0
+    if not np.isfinite(std) or std <= 1e-12:
+        raise RuntimeError("Full-catalog cosine standard deviation is zero")
+    return float(similarities.mean()), std, int(len(similarities))
+
+
 def bin_name(lo, hi):
     return str(lo) if lo == hi else f"{lo}-{hi}"
 
@@ -145,7 +193,9 @@ def summarize_lags(rows, args, dataset, split):
                                "lag_bin": bin_name(lo, hi), "lag_start": lo, "lag_end": hi,
                                "metric": metric, "mean": mean, "ci_low": lower,
                                "ci_high": upper, "n_users": len(by_user),
-                               "n_positions": len(selected), "units": "cosine" if "cosine" in metric else "probability_difference",
+                               "n_positions": len(selected),
+                               "units": ("within_subset_z" if metric.endswith("_z") else
+                                         "cosine" if "cosine" in metric else "probability_difference"),
                                "status": "exploratory_n_lt_100" if len(by_user) < 100 else "estimated"})
     return output
 
@@ -167,6 +217,47 @@ def summarize_old(rows, args, dataset, split):
     return output
 
 
+def load_model_item_influence(training_output_dir, dataset, args):
+    """Load trained-model leave-one-out rows and summarize every exact lag."""
+    source = Path(training_output_dir) / safe_name(dataset) / "history_item_influence.csv"
+    if not source.exists():
+        raise FileNotFoundError(
+            f"Missing trained-model history influence {source}; rerun preliminary/run.sh"
+        )
+    rows = []
+    with source.open(newline="", encoding="utf-8") as stream:
+        for raw in csv.DictReader(stream):
+            row = {
+                "dataset": dataset, "split": raw["split"], "user": int(raw["user"]),
+                "history_length": int(raw["history_length"]), "lag": int(raw["lag"]),
+                "item": int(raw["item"]), "target": int(raw["target"]),
+                "negative_count": int(raw["negative_count"]),
+                "margin_with_item": float(raw["margin_with_item"]),
+                "margin_without_item": float(raw["margin_without_item"]),
+                "margin_influence": float(raw["margin_influence"]),
+                "target_score_influence": float(raw["target_score_influence"]),
+                "rank_with_item": int(raw["rank_with_item"]),
+                "rank_without_item": int(raw["rank_without_item"]),
+                "rank_improvement": int(raw["rank_improvement"]),
+            }
+            rows.append(row)
+    summary = []
+    for lag in sorted({row["lag"] for row in rows if row["split"] == "test"}):
+        selected = [row["margin_influence"] for row in rows
+                    if row["split"] == "test" and row["lag"] == lag]
+        mean, low, high = bootstrap_mean(selected, args.bootstrap, args.seed + lag)
+        values = np.asarray(selected, dtype=np.float64)
+        summary.append({
+            "dataset": dataset, "split": "test", "lag": lag,
+            "mean_margin_influence": mean, "ci_low": low, "ci_high": high,
+            "help_percent": float(100 * np.mean(values > 0)),
+            "hurt_percent": float(100 * np.mean(values < 0)),
+            "neutral_percent": float(100 * np.mean(values == 0)),
+            "n_users": len(values),
+        })
+    return rows, summary, source
+
+
 def paired_decay(rows, args, dataset, split):
     """Paired lag-1 minus lag-9:16 contrast in the same history>=16 users."""
     eligible = defaultdict(dict)
@@ -174,7 +265,7 @@ def paired_decay(rows, args, dataset, split):
         if row["history_length"] >= 16 and row["lag"] <= 16:
             eligible[row["user"]][row["lag"]] = row
     output = []
-    for metric in ("excess_cosine", "excess_cluster_match"):
+    for metric in ("excess_cosine_z", "excess_cluster_match"):
         values = []
         for user_rows in eligible.values():
             if 1 in user_rows and all(lag in user_rows for lag in range(9, 17)):
@@ -186,6 +277,46 @@ def paired_decay(rows, args, dataset, split):
                        "ci_low": low, "ci_high": high, "n_users": len(values),
                        "status": "exploratory_n_lt_100" if len(values) < 100 else "estimated"})
     return output
+
+
+def summarize_information_coverage(rows, dataset, split, max_lag):
+    """How much positive next-item alignment is contained in the latest X items."""
+    by_user = defaultdict(list)
+    for row in rows:
+        by_user[row["user"]].append(row)
+    curves, users = [], []
+    for user, user_rows in by_user.items():
+        signal_by_lag = np.zeros(max_lag, dtype=np.float64)
+        for row in user_rows:
+            if 1 <= row["lag"] <= max_lag:
+                # Negative excess alignment is evidence against, not a non-negative
+                # quantity that can be assigned a meaningful percentage share.
+                signal_by_lag[row["lag"] - 1] = max(0.0, row["excess_cosine_z"])
+        total = float(signal_by_lag.sum())
+        if total <= 0:
+            continue
+        cumulative = 100.0 * np.cumsum(signal_by_lag) / total
+        curve = {"dataset": dataset, "split": split, "user": user,
+                 "history_length": max(row["history_length"] for row in user_rows),
+                 "positive_signal_total": total}
+        for threshold in (50, 80, 90):
+            curve[f"items_for_{threshold}pct"] = int(np.searchsorted(
+                cumulative, threshold, side="left") + 1)
+        users.append(curve)
+        curves.append(cumulative)
+    if not curves:
+        return [], users
+    matrix = np.vstack(curves)
+    summary = []
+    for index in range(max_lag):
+        values = matrix[:, index]
+        summary.append({"dataset": dataset, "split": split, "recent_items": index + 1,
+                        "mean_percent": float(values.mean()),
+                        "median_percent": float(np.median(values)),
+                        "q25_percent": float(np.quantile(values, .25)),
+                        "q75_percent": float(np.quantile(values, .75)),
+                        "n_users": len(values)})
+    return summary, users
 
 
 def sample_matches(item, blocked, pop_bins, pools, amount, rng, exclude_target=None):
@@ -248,6 +379,8 @@ def analyse_dataset(dataset, args, output):
         ).astype(np.float32).toarray()
     usable = np.linalg.norm(vectors, axis=1) > 0
     fit_ids = reference_ids[usable[[row_of[int(item)] for item in reference_ids]]]
+    cosine_mean, cosine_std, cosine_pair_count = full_catalog_cosine_normalizer(
+        data.item_texts, vectorizer, args.normalization_pairs, rng)
     fit_ids = rng.choice(fit_ids, min(len(fit_ids), args.cluster_items), replace=False)
     n_clusters = min(args.clusters, len(fit_ids))
     if n_clusters < 2:
@@ -263,6 +396,7 @@ def analyse_dataset(dataset, args, output):
     fallback = Counter()
     target_in_random = 0
     all_lag_rows, all_old_rows, summary_rows, old_summary, contrasts = [], [], [], [], []
+    coverage_summary, coverage_users = [], []
     for split in ("valid", "test"):
         lag_rows, old_rows = [], []
         for user in users:
@@ -296,12 +430,16 @@ def analyse_dataset(dataset, args, output):
                 target_in_random += int(np.count_nonzero(all_ids[match_rows] == target))
                 raw = float(vectors[item_row] @ target_vector)
                 random_cos = float(np.mean(vectors[match_rows] @ target_vector))
+                raw_z = (raw - cosine_mean) / cosine_std
+                random_z = (random_cos - cosine_mean) / cosine_std
                 raw_cluster = float(clusters[item_row] == target_cluster)
                 random_cluster = float(np.mean(clusters[match_rows] == target_cluster))
                 row = {"dataset": dataset, "split": split, "user": user,
                        "history_length": len(history), "lag": lag,
                        "item": item, "target": target, "raw_cosine": raw,
                        "random_cosine": random_cos, "excess_cosine": raw - random_cos,
+                       "raw_cosine_z": raw_z, "random_cosine_z": random_z,
+                       "excess_cosine_z": raw_z - random_z,
                        "raw_cluster_match": raw_cluster,
                        "random_cluster_match": random_cluster,
                        "excess_cluster_match": raw_cluster - random_cluster,
@@ -328,17 +466,17 @@ def analyse_dataset(dataset, args, output):
             candidate_rows = np.concatenate(([target_row], negative_rows))
             candidate_vectors = vectors[candidate_rows]
             old_sim = vectors[old_rows_index] @ candidate_vectors.T
-            item_scores = old_sim.max(axis=0)
+            item_scores = ((old_sim - cosine_mean) / cosine_std).max(axis=0)
             old_cluster_count = np.bincount(clusters[old_rows_index], minlength=n_clusters)
             proxy_scores = old_cluster_count[clusters[candidate_rows]] / len(old_items)
             recent_centroid = normalized_mean(vectors[recent_rows_index])
             full_centroid = normalized_mean(vectors[history_rows])
-            recent_scores = candidate_vectors @ recent_centroid
-            full_scores = candidate_vectors @ full_centroid
+            recent_scores = (candidate_vectors @ recent_centroid - cosine_mean) / cosine_std
+            full_scores = (candidate_vectors @ full_centroid - cosine_mean) / cosine_std
             recent_margin = float(recent_scores[0] - recent_scores[1:].mean())
             full_margin = float(full_scores[0] - full_scores[1:].mean())
             low_old = [row for row in user_lags if row["lag"] > args.short_window
-                       and row["excess_cosine"] <= 0]
+                       and row["excess_cosine_z"] <= 0]
             old_rows.append({"dataset": dataset, "split": split, "user": user,
                              "history_length": len(history), "old_count": len(old_items),
                              "old_fraction": len(old_items) / len(history),
@@ -355,6 +493,10 @@ def analyse_dataset(dataset, args, output):
         summary_rows.extend(summarize_lags(lag_rows, args, dataset, split))
         old_summary.extend(summarize_old(old_rows, args, dataset, split))
         contrasts.extend(paired_decay(lag_rows, args, dataset, split))
+        split_coverage, split_coverage_users = summarize_information_coverage(
+            lag_rows, dataset, split, args.max_lag)
+        coverage_summary.extend(split_coverage)
+        coverage_users.extend(split_coverage_users)
         print(f"  {split}: {len({r['user'] for r in lag_rows})} users, {len(lag_rows)} positions, {len(old_rows)} old-history readouts", flush=True)
 
     prefix = output / safe_name(dataset)
@@ -374,27 +516,45 @@ def analyse_dataset(dataset, args, output):
               ["dataset", "split", "metric", "mean", "ci_low", "ci_high", "n_users", "units", "status"])
     write_csv(prefix / "paired_decay.csv", contrasts,
               ["dataset", "split", "cohort", "metric", "mean", "ci_low", "ci_high", "n_users", "status"])
+    write_csv(prefix / "information_coverage.csv", coverage_summary,
+              ["dataset", "split", "recent_items", "mean_percent", "median_percent",
+               "q25_percent", "q75_percent", "n_users"])
+    write_csv(prefix / "information_coverage_per_user.csv", coverage_users,
+              ["dataset", "split", "user", "history_length", "positive_signal_total",
+               "items_for_50pct", "items_for_80pct", "items_for_90pct"])
     diagnostics = {"dataset": dataset, "cache": str(source), "cache_sha256": file_sha256(source),
                    "eligible_users": len(data.valid_target), "sampled_users": len(users),
                    "num_items": data.num_items, "train_items": len(train_ids),
                    "reference_items": len(reference_ids), "vectorized_items": len(all_ids),
+                   "cosine_normalization": {"basis": "random distinct usable item pairs sampled uniformly from the full dataset catalog",
+                                            "catalog_items": data.num_items,
+                                            "mean": cosine_mean, "std": cosine_std,
+                                            "sampled_pairs": cosine_pair_count},
+                   "information_coverage_users": {
+                       split: sum(row["split"] == split for row in coverage_users)
+                       for split in ("valid", "test")},
                    "text_coverage": float(usable.mean()), "cluster_fit_items": len(fit_ids),
                    "clusters": n_clusters, "matching_fallback_counts": dict(fallback),
                    "target_occurrences_in_random_references": target_in_random,
                    "timestamp_status": "unavailable_in_ver4_cache",
                    "text_provenance": "metadata_or_review_fallback_unknown_per_item"}
     (prefix / "diagnostics.json").write_text(json.dumps(diagnostics, indent=2), encoding="utf-8")
-    return summary_rows, old_summary, contrasts, diagnostics
+    return summary_rows, old_summary, contrasts, coverage_summary, coverage_users, diagnostics
 
 
-def plot_results(summary, old_summary, output):
+def plot_results(summary, old_summary, influence_summary, coverage_summary, output):
     datasets = sorted({row["dataset"] for row in summary})
     names = {"amazon-all-beauty": "All Beauty", "amazon:Baby_Products": "Baby Products",
              "amazon-sports-and-outdoors": "Sports & Outdoors", "amazon-toys-and-games": "Toys & Games"}
     figures = output / "figures"
     figures.mkdir(exist_ok=True)
-    for metric, filename, ylabel in (("excess_cosine", "figure1_history_alignment.pdf", "Excess cosine vs popularity-matched random"),
-                                     ("excess_cluster_match", "figure2_preference_proxy.pdf", "Excess train-fitted cluster match")):
+    for metric, filename, title, ylabel in (
+            ("excess_cosine_z", "figure1_history_alignment.pdf",
+             "How item relevance changes further back in the history",
+             "Similarity to the next item above the subset baseline"),
+            ("excess_cluster_match", "figure2_preference_proxy.pdf",
+             "Does the user's broad preference remain visible in older items?",
+             "Extra chance of sharing the next item's preference group")):
         fig, axes = plt.subplots(1, 2, figsize=(12, 4.4), sharey=True)
         for axis, cohort in zip(axes, ("all_available", "fixed_K16")):
             for dataset in datasets:
@@ -410,53 +570,85 @@ def plot_results(summary, old_summary, output):
                 axis.fill_between(x, [row["ci_low"] for row in rows],
                                   [row["ci_high"] for row in rows], alpha=.14)
             axis.axhline(0, color="black", lw=.8)
-            axis.set_xscale("log", base=2)
-            axis.set_xlabel("Interaction lag (1 = most recent)")
-            axis.set_title("All available (changing cohort)" if cohort == "all_available" else "Fixed cohort: history >= 16")
+            axis.set_xlim(left=.5)
+            axis.set_xlabel("How many positions back (1 = most recent item)")
+            axis.set_title("All users with available history" if cohort == "all_available" else "Users with at least 16 history items")
             axis.grid(alpha=.2)
         axes[0].set_ylabel(ylabel)
+        fig.suptitle(title)
         handles, labels = axes[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower center", ncol=min(4, len(labels)))
-        fig.text(.5, .13, "Only bins with >=100 users are plotted; per-bin counts and all exploratory bins are in alignment_summary.csv.",
+        if handles:
+            fig.legend(handles, labels, loc="lower center", ncol=min(4, len(labels)))
+        fig.text(.5, .12, "Higher means more useful for predicting the next item. Shaded areas are 95% confidence intervals; only points with at least 100 users are shown.",
                  ha="center", fontsize=8)
-        fig.subplots_adjust(bottom=.25, wspace=.12)
+        fig.subplots_adjust(bottom=.25, top=.84, wspace=.12)
         fig.savefig(figures / filename)
         plt.close(fig)
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.4))
-    metrics = ("old_item_auc", "old_preference_proxy_auc")
-    for idx, dataset in enumerate(datasets):
-        rows = {row["metric"]: row for row in old_summary
-                if row["dataset"] == dataset and row["split"] == "test"}
-        for j, metric in enumerate(metrics):
-            row = rows.get(metric)
-            if row and math.isfinite(row["mean"]):
-                x = idx + (j - .5) * .28
-                axes[0].errorbar(x, row["mean"], yerr=[[row["mean"] - row["ci_low"]],
-                    [row["ci_high"] - row["mean"]]], fmt="o", capsize=2,
-                    color=("tab:blue", "tab:orange")[j],
-                    label=("Old item max cosine", "Old cluster frequency")[j] if idx == 0 else None)
-        row = rows.get("full_minus_recent_margin")
-        if row and math.isfinite(row["mean"]):
-            axes[1].errorbar(idx, row["mean"], yerr=[[row["mean"] - row["ci_low"]],
-                [row["ci_high"] - row["mean"]]], fmt="o", capsize=2)
-    for axis in axes:
-        axis.set_xticks(range(len(datasets)), [names.get(d, d) for d in datasets], rotation=15, ha="right")
-        axis.grid(alpha=.2)
-    axes[0].axhline(.5, color="black", lw=.8)
-    axes[0].set_ylabel("Pairwise target-vs-negative accuracy")
-    axes[0].legend(fontsize=8)
-    axes[1].axhline(0, color="black", lw=.8)
-    axes[1].set_ylabel("Full minus recent mean-pooling margin")
-    axes[1].set_title("Model-free negative-transfer proxy; not Mamba")
-    fig.tight_layout()
+    fig, axis = plt.subplots(figsize=(9.2, 5.2))
+    for dataset in datasets:
+        rows = [row for row in influence_summary
+                if row["dataset"] == dataset and row["split"] == "test"]
+        rows.sort(key=lambda row: row["lag"])
+        if not rows:
+            continue
+        x = np.asarray([row["lag"] for row in rows])
+        y = np.asarray([row["mean_margin_influence"] for row in rows])
+        axis.plot(x, y, marker="o", markersize=3, label=names.get(dataset, dataset))
+        axis.fill_between(x, [row["ci_low"] for row in rows],
+                          [row["ci_high"] for row in rows], alpha=.14)
+    axis.axhline(0, color="black", lw=.8)
+    axis.set_xlim(left=.5)
+    axis.set_xlabel("Item position in history (1 = most recent)")
+    axis.set_ylabel("Next-item margin with item − margin after removing it")
+    axis.set_title("How each history item helps or hurts the next-item prediction")
+    axis.grid(alpha=.2)
+    if axis.get_legend_handles_labels()[0]:
+        axis.legend()
+    fig.text(.5, .02,
+             "Above zero: keeping the item helps. Below zero: keeping it hurts. "
+             "Shaded areas are 95% user-bootstrap confidence intervals.",
+             ha="center", fontsize=8)
+    fig.tight_layout(rect=(0, .06, 1, 1))
     fig.savefig(figures / "figure3_old_encoding_proxy.pdf")
+    plt.close(fig)
+
+    fig, axis = plt.subplots(figsize=(8.8, 5.2))
+    for dataset in datasets:
+        rows = [row for row in coverage_summary
+                if row["dataset"] == dataset and row["split"] == "test"]
+        rows.sort(key=lambda row: row["recent_items"])
+        if not rows:
+            continue
+        x = np.array([row["recent_items"] for row in rows])
+        axis.plot(x, [row["mean_percent"] for row in rows],
+                  label=names.get(dataset, dataset))
+        axis.fill_between(x, [row["q25_percent"] for row in rows],
+                          [row["q75_percent"] for row in rows], alpha=.12)
+    axis.set_xlim(left=1)
+    axis.set_ylim(0, 100)
+    axis.set_xlabel("Number of most recent items included (X)")
+    axis.set_ylabel("Useful signal for the next item already covered (%)")
+    axis.set_title("How much next-item information comes from the most recent X items?")
+    for percentage in (50, 80, 90):
+        axis.axhline(percentage, color="gray", lw=.7, ls="--", alpha=.45)
+    axis.grid(alpha=.2)
+    handles, labels = axis.get_legend_handles_labels()
+    if handles:
+        axis.legend(handles, labels)
+    fig.text(.5, .02,
+             "Signal means positive similarity to the next item beyond matched random items.\n"
+             "Lines show the user average; shaded areas cover the middle 50% of users.",
+             ha="center", fontsize=8)
+    fig.tight_layout(rect=(0, .06, 1, 1))
+    fig.savefig(figures / "figure4_recent_information_coverage.pdf")
     plt.close(fig)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache-dir", required=True)
+    parser.add_argument("--training-output-dir", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--datasets", required=True)
     parser.add_argument("--max-users", type=int, default=2000)
@@ -464,12 +656,14 @@ def main():
     parser.add_argument("--short-window", type=int, default=10)
     parser.add_argument("--random-matches", type=int, default=20)
     parser.add_argument("--reference-items", type=int, default=20000)
+    parser.add_argument("--normalization-pairs", type=int, default=100000)
     parser.add_argument("--cluster-items", type=int, default=10000)
     parser.add_argument("--clusters", type=int, default=32)
     parser.add_argument("--bootstrap", type=int, default=500)
     parser.add_argument("--seed", type=int, default=25252)
     args = parser.parse_args()
     if min(args.max_lag, args.short_window, args.random_matches, args.reference_items,
+           args.normalization_pairs,
            args.cluster_items, args.clusters) < 1 or args.max_users < 0 or args.bootstrap < 0:
         parser.error("sizes must be positive; max-users and bootstrap must be nonnegative")
     if args.short_window >= args.max_lag:
@@ -481,17 +675,19 @@ def main():
     run.mkdir(parents=True, exist_ok=False)
     manifest = {"status": "running", "mode": "full" if args.max_users == 0 else "pilot",
                 "ver4_revision": git_revision(), "settings": vars(args),
-                "method": "checkpoint_free_text_hash_diagnostic_v1",
+                "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
                 "python_version": platform.python_version(),
                 "numpy_version": np.__version__,
                 "no_checkpoints_or_weights_saved": True,
-                "limitations": ["not a trained ver4 Mamba/LoRA state intervention",
+                "limitations": ["Figure 3 uses sampled negatives rather than full-catalog reranking",
+                                "Figures 1, 2, and 4 remain model-free text diagnostics",
                                 "no timestamps in cached InteractionData",
                                 "item_texts may include review fallback; provenance unavailable"]}
     (run / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"Output: {run}", flush=True)
     try:
-        summary, old_summary, contrasts, diagnostics = [], [], [], []
+        summary, old_summary, contrasts, coverage_summary, coverage_users, diagnostics = [], [], [], [], [], []
+        influence_rows, influence_summary = [], []
         skipped = []
         for dataset in datasets:
             source = ver4_cache_path(args.cache_dir, dataset)
@@ -500,11 +696,25 @@ def main():
                                 "expected_path": str(source)})
                 print(f"Skipping {dataset}: exact ver4 cache missing ({source})", flush=True)
                 continue
-            a, b, c, d = analyse_dataset(dataset, args, run)
+            a, b, c, d, e, f = analyse_dataset(dataset, args, run)
             summary.extend(a)
             old_summary.extend(b)
             contrasts.extend(c)
-            diagnostics.append(d)
+            coverage_summary.extend(d)
+            coverage_users.extend(e)
+            diagnostics.append(f)
+            dataset_rows, dataset_summary, influence_source = load_model_item_influence(
+                args.training_output_dir, dataset, args
+            )
+            influence_rows.extend(dataset_rows)
+            influence_summary.extend(dataset_summary)
+            write_csv(run / safe_name(dataset) / "model_item_influence_per_position.csv",
+                      dataset_rows,
+                      ["dataset", "split", "user", "history_length", "lag", "item", "target",
+                       "negative_count", "margin_with_item", "margin_without_item",
+                       "margin_influence", "target_score_influence", "rank_with_item",
+                       "rank_without_item", "rank_improvement"])
+            diagnostics[-1]["model_item_influence_source"] = str(influence_source)
         if not diagnostics:
             raise RuntimeError("No exact ver4 dataset caches available")
         write_csv(run / "alignment_summary.csv", summary,
@@ -514,7 +724,16 @@ def main():
                   ["dataset", "split", "metric", "mean", "ci_low", "ci_high", "n_users", "units", "status"])
         write_csv(run / "paired_decay.csv", contrasts,
                   ["dataset", "split", "cohort", "metric", "mean", "ci_low", "ci_high", "n_users", "status"])
-        plot_results(summary, old_summary, run)
+        write_csv(run / "information_coverage.csv", coverage_summary,
+                  ["dataset", "split", "recent_items", "mean_percent", "median_percent",
+                   "q25_percent", "q75_percent", "n_users"])
+        write_csv(run / "information_coverage_per_user.csv", coverage_users,
+                  ["dataset", "split", "user", "history_length", "positive_signal_total",
+                   "items_for_50pct", "items_for_80pct", "items_for_90pct"])
+        write_csv(run / "model_item_influence_summary.csv", influence_summary,
+                  ["dataset", "split", "lag", "mean_margin_influence", "ci_low", "ci_high",
+                   "help_percent", "hurt_percent", "neutral_percent", "n_users"])
+        plot_results(summary, old_summary, influence_summary, coverage_summary, run)
         audit = ["# ver4 source audit", "", f"Repository revision: `{manifest['ver4_revision']}`.",
                  "", "Dirty worktree at run start (preserved, not modified by this analysis):"]
         audit.extend(f"- `{line}`" for line in git_dirty_summary())
@@ -526,10 +745,13 @@ def main():
                       "- Item IDs are built from all filtered interactions before splitting; matching pools, popularity counts, reference cluster fit and text features selected for fit use training items only.",
                       "- `ver4/run_amazons_full_rl.sh` specifies frozen Mamba item encoding, dimension 128 online model, LoRA rank 16, long horizon 100, short window 10, and Long/Short/Preference/Graph enabled by default.",
                       "- The pretrained Mamba text encoder is an offline item-feature cache; online selective-state specialists and preference GRU are distinct modules. When Long is disabled, ver4 limits Preference to the short window too.",
-                      "- Training graph and catalog priors are built from training histories, but they are not used in this checkpoint-free diagnostic.",
-                      "- No trained ver4 state, optimizer, LoRA tensor, checkpoint or weights are loaded or saved here. Therefore Mamba-state harm and learned preference benefit cannot be tested in this run.",
+                      "- Missing exact caches are prepared before this analysis by the fixed ver4 LoRA Mamba + LightGCN training path; model weights/checkpoints are not saved.",
+                      "- Training graph and catalog priors are built from training histories, but they are not used directly by this text-hash diagnostic.",
+                      "- Figure 3 uses leave-one-item-out scores computed from the restored best trained model before that model is released. No checkpoint or model weights are saved.",
+                      "- Figures 1, 2, and 4 remain model-free text diagnostics and must not be interpreted as trained-state interventions.",
                       "- The auxiliary text-hash feature is a deterministic 1,024-dimensional word/bigram representation. Cluster labels are fitted on sampled training items only; they are *proxy* preferences.",
                       "- Random controls match training-popularity quintiles within the same Amazon dataset and exclude observed history. Exact-bin and widened-bin frequencies are in diagnostics.json.",
+                      "- Every cosine is normalized with the mean and standard deviation of random distinct usable item pairs sampled uniformly from the subset's complete catalog. Normalizer values are stored in diagnostics.json.",
                       "- Day-based analysis is unavailable because timestamps were discarded by the ver4 cache. Interaction lag must not be described as elapsed time.",
                       "- User bootstrap CIs are conditional on this split, feature proxy and (when capped) sampled users; they do not measure training-seed uncertainty.", ""])
         (run / "audit.md").write_text("\n".join(audit), encoding="utf-8")
@@ -566,9 +788,9 @@ def main():
         for d in diagnostics:
             dataset = d["dataset"]
             report.extend([f"### {dataset}", "",
-                           f"- Fixed-K16 item excess cosine, lag 1: {shown(cell(dataset, 'excess_cosine', '1', 'fixed_K16'))}.",
-                           f"- Fixed-K16 item excess cosine, lags 9-16: {shown(cell(dataset, 'excess_cosine', '9-16', 'fixed_K16'))}.",
-                           f"- Paired lag-1 minus lag-9:16 excess cosine: {shown(contrast(dataset, 'lag1_minus_lag9to16_excess_cosine'))}.",
+                           f"- Fixed-K16 normalized item excess cosine, lag 1: {shown(cell(dataset, 'excess_cosine_z', '1', 'fixed_K16'))}.",
+                           f"- Fixed-K16 normalized item excess cosine, lags 9-16: {shown(cell(dataset, 'excess_cosine_z', '9-16', 'fixed_K16'))}.",
+                           f"- Paired lag-1 minus lag-9:16 normalized excess cosine: {shown(contrast(dataset, 'lag1_minus_lag9to16_excess_cosine_z'))}.",
                            f"- Fixed-K16 coarse preference-cluster excess, lags 9-16: {shown(cell(dataset, 'excess_cluster_match', '9-16', 'fixed_K16'))}.",
                            f"- Old-history item-level pairwise accuracy: {shown(cell(dataset, 'old_item_auc'))}.",
                            f"- Old-history preference-proxy pairwise accuracy: {shown(cell(dataset, 'old_preference_proxy_auc'))}.",
@@ -576,22 +798,26 @@ def main():
                            f"- Fraction of capped history in old low-alignment positions: {shown(cell(dataset, 'low_alignment_old_fraction'))} (post-hoc descriptor, not noise prevalence).",
                            f"- Cluster excess among those positions: {shown(cell(dataset, 'low_alignment_old_cluster_excess'))}.",
                            f"- Full-minus-recent mean-pooling margin: {shown(cell(dataset, 'full_minus_recent_margin'))}.", ""])
-        report.extend(["", "## Interpretation", "", "Read `alignment_summary.csv` for observed, random and excess curves and user CIs.",
-                       "A CI crossing zero does not establish equivalence; no threshold was selected.",
-                       "`old_proxy_summary.csv` gives same-candidate model-free encoding diagnostics.",
-                       "A negative full-minus-recent margin is evidence only for mean-pooling interference, not Mamba.",
-                       "The coarse cluster encoding must not be called successful unless it beats the item-level control on the paired diagnostic; unfavorable results are retained.",
-                       "No trained checkpoint was available or created, so learned-state influence and ver4 preference selectivity remain untested.",
+        report.extend(["", "## How to read the results", "",
+                       "`alignment_summary.csv` shows whether recent and older items look more like the next item than matched random items do.",
+                       "If a confidence interval crosses zero, the experiment cannot say whether that history range helps.",
+                       "`information_coverage.csv` shows what percentage of all positive next-item signal is already contained in the most recent X items.",
+                       "`old_proxy_summary.csv` compares a direct old-item match with a broader preference summary, using the same targets and negatives.",
+                       "For Figure 3, positive influence means keeping that exact item raises the trained model's true-target margin over the same sampled negatives; negative influence means it lowers the margin.",
+                       "The preparatory run writes these influence statistics but no checkpoint or weights.",
                        "", "## Figures", "", "- figures/figure1_history_alignment.pdf",
-                       "- figures/figure2_preference_proxy.pdf", "- figures/figure3_old_encoding_proxy.pdf", ""])
+                       "- figures/figure2_preference_proxy.pdf", "- figures/figure3_old_encoding_proxy.pdf",
+                       "- figures/figure4_recent_information_coverage.pdf", ""])
         (run / "report.md").write_text("\n".join(report), encoding="utf-8")
         (run / "commands.txt").write_text(
             "Reproduce with the same repository and cache:\n"
             + " ".join(["bash run.sh", f"--cache-dir={args.cache_dir}",
+                        f"--training-output-dir={args.training_output_dir}",
                         f"--output-dir={args.output_dir}", f"--datasets={args.datasets}",
                         f"--max-users={args.max_users}", f"--max-lag={args.max_lag}",
                         f"--short-window={args.short_window}", f"--random-matches={args.random_matches}",
-                        f"--reference-items={args.reference_items}", f"--cluster-items={args.cluster_items}",
+                        f"--reference-items={args.reference_items}",
+                        f"--normalization-pairs={args.normalization_pairs}", f"--cluster-items={args.cluster_items}",
                         f"--clusters={args.clusters}", f"--bootstrap={args.bootstrap}",
                         f"--seed={args.seed}"]) + "\n", encoding="utf-8")
         manifest["status"] = "partial_missing_datasets" if skipped else "complete"

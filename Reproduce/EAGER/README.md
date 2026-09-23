@@ -16,7 +16,12 @@ If upstream is checked out elsewhere, set `EAGER_UPSTREAM_DIR` to its inner
 `EAGER` directory containing `lib/` and `optimizers/`, for example
 `EAGER_UPSTREAM_DIR=/path/to/EAGER/EAGER bash run.sh`.
 
-`GPU_IDS=0,1` runs two subsets concurrently, one per GPU. Select subsets with
+`GPU_IDS=0,1` runs two subsets concurrently, one per GPU. With
+`DISTRIBUTED=1`, one subset uses all listed GPUs through DDP. The launcher sets
+`CUDA_VISIBLE_DEVICES` before Python starts and verifies the visible-device
+count inside every process, so models, k-means, semantic encoding, and CUDA
+batches cannot use an unlisted physical GPU. Raw dataset objects, DataLoader
+storage, and disk caches remain on CPU/storage by design. Select subsets with
 `SUBSETS=Full_Beauty,Toys_and_Games`. Intermediate DIN weights, T5 vectors and
 semantic-ID trees are cached under the shared `cache/eager` directory. Run
 outputs contain only the training log, `config.json`, `metrics.json`, and the

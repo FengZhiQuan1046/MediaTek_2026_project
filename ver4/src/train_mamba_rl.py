@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -9,6 +10,7 @@ import hashlib
 import json
 import logging
 import math
+import os
 from pathlib import Path
 import pickle
 import random
@@ -748,6 +750,126 @@ def evaluate(
     return metrics, samples
 
 
+def _sample_influence_candidates(num_items, target, history, negative_count, rng):
+    """Sample one fixed unseen comparison slate for a user's ablations."""
+    blocked = set(map(int, history)) | {int(target)}
+    available = num_items - len(blocked)
+    if available < 1:
+        return None
+    wanted = min(negative_count, available)
+    chosen, seen = [], set()
+    while len(chosen) < wanted:
+        draws = rng.integers(0, num_items, size=max(64, 3 * (wanted - len(chosen))))
+        for item in draws:
+            item = int(item)
+            if item not in blocked and item not in seen:
+                chosen.append(item)
+                seen.add(item)
+                if len(chosen) == wanted:
+                    break
+    return [int(target), *chosen]
+
+
+@torch.inference_mode()
+def measure_history_item_influence(
+    model, data, split, batch_size, max_history, device, output_path,
+    user_limit=0, negative_count=64, seed=25252, dataset="",
+):
+    """Measure each item's contribution by deleting it from a fixed history.
+
+    Positive margin influence means the item raises the true next item's score
+    relative to the same fixed sampled negatives. This runs on the restored best
+    model before it is released and writes statistics only, never model weights.
+    """
+    model.eval()
+    targets = data.valid_target if split == "valid" else data.test_target
+    users = sorted(targets)
+    if user_limit > 0 and len(users) > user_limit:
+        total = len(users)
+        users = [users[index * total // user_limit] for index in range(user_limit)]
+    rng = np.random.default_rng(seed)
+    examples = []
+    for user in users:
+        history = list(data.train_by_user[user])
+        if split == "test":
+            history.append(data.valid_target[user])
+        history = history[-max_history:]
+        if len(history) < 2:
+            continue
+        candidates = _sample_influence_candidates(
+            data.num_items, targets[user], history, negative_count, rng
+        )
+        if candidates is not None:
+            examples.append((int(user), history, candidates))
+
+    graph_items = model.graph_item_vectors()
+
+    def score(records):
+        margins, target_scores, ranks = [], [], []
+        for start in range(0, len(records), batch_size):
+            batch = records[start:start + batch_size]
+            lengths = torch.tensor([len(row[1]) for row in batch], device=device)
+            padded = torch.zeros((len(batch), int(lengths.max())), dtype=torch.long, device=device)
+            for index, (_, history, _) in enumerate(batch):
+                padded[index, :len(history)] = torch.tensor(history, dtype=torch.long, device=device)
+            candidates = torch.tensor([row[2] for row in batch], dtype=torch.long, device=device)
+            with amp_context(device):
+                candidate_vectors = model.project_ids(candidates, graph_items)
+                states = model.encode_states(
+                    padded, lengths, graph_items,
+                    user_ids=torch.tensor([row[0] for row in batch], device=device),
+                )
+                output = model.logits_from_states(states, candidate_vectors)
+            logits = output["coordinator"].float()
+            margins.extend((logits[:, 0] - logits[:, 1:].mean(1)).cpu().tolist())
+            target_scores.extend(logits[:, 0].cpu().tolist())
+            ranks.extend((logits >= logits[:, :1]).sum(1).cpu().tolist())
+        return margins, target_scores, ranks
+
+    full_records = [(user, history, candidates) for user, history, candidates in examples]
+    full_margins, full_targets, full_ranks = score(full_records)
+    rows = []
+    for start in tqdm(range(0, len(examples), batch_size),
+                      desc=f"history-item influence {split}", unit="user-batch"):
+        batch = examples[start:start + batch_size]
+        ablations, metadata = [], []
+        for local_index, (user, history, candidates) in enumerate(batch):
+            global_index = start + local_index
+            for lag in range(1, len(history) + 1):
+                removed_index = len(history) - lag
+                without = history[:removed_index] + history[removed_index + 1:]
+                ablations.append((user, without, candidates))
+                metadata.append((global_index, lag, history[removed_index]))
+        without_margins, without_targets, without_ranks = score(ablations)
+        for (global_index, lag, item), margin_without, target_without, rank_without in zip(
+                metadata, without_margins, without_targets, without_ranks):
+            user, history, candidates = examples[global_index]
+            rows.append({
+                "dataset": dataset, "split": split, "user": user,
+                "history_length": len(history), "lag": lag, "item": item,
+                "target": int(targets[user]), "negative_count": len(candidates) - 1,
+                "margin_with_item": full_margins[global_index],
+                "margin_without_item": margin_without,
+                "margin_influence": full_margins[global_index] - margin_without,
+                "target_score_influence": full_targets[global_index] - target_without,
+                "rank_with_item": full_ranks[global_index],
+                "rank_without_item": rank_without,
+                "rank_improvement": rank_without - full_ranks[global_index],
+            })
+    destination = Path(output_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    columns = list(rows[0]) if rows else [
+        "dataset", "split", "user", "history_length", "lag", "item", "target",
+        "negative_count", "margin_with_item", "margin_without_item", "margin_influence",
+        "target_score_influence", "rank_with_item", "rank_without_item", "rank_improvement",
+    ]
+    with destination.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+    return len(rows)
+
+
 def generate_reasons(samples, data, cache_dir, device, max_new_tokens, model_id=MAMBA_MODEL_ID):
     from transformers import AutoModelForCausalLM, AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir)
@@ -949,6 +1071,12 @@ def parse_args():
         "--score-file", default=None,
         help="Optional JSON path for validation/test ranking scores.",
     )
+    parser.add_argument(
+        "--history-influence-output", default=None,
+        help="Optional CSV path for per-item leave-one-out test-history influence.",
+    )
+    parser.add_argument("--history-influence-user-limit", type=int, default=0)
+    parser.add_argument("--history-influence-negatives", type=int, default=64)
     for agent in ("long", "short", "preference"):
         parser.add_argument(f"--use-{agent}", type=int, choices=(0, 1), default=1)
     args = parser.parse_args()
@@ -964,6 +1092,7 @@ def parse_args():
         args.candidates < 2 or args.batch_size < 1 or args.max_history < 1 or args.short_window < 1
         or args.mamba_encode_batch_size < 1 or args.mamba_max_tokens < 1
         or args.validation_user_limit < 0 or args.periodic_test_user_limit < -1
+        or args.history_influence_user_limit < 0 or args.history_influence_negatives < 1
         or args.preference_count < 2 or args.preference_hidden < 1
         or args.preference_temperature <= 0
         or args.future_horizon < 1 or args.candidates <= args.future_horizon
@@ -990,6 +1119,24 @@ def parse_args():
 
 def main():
     args = parse_args()
+    requested_gpus = os.environ.get("REQUESTED_GPU_IDS")
+    if requested_gpus:
+        expected = int(os.environ.get("EXPECTED_VISIBLE_GPUS", "0"))
+        visible = torch.cuda.device_count()
+        if expected < 1 or visible != expected:
+            raise RuntimeError(
+                f"GPU isolation mismatch: physical GPU_IDS={requested_gpus} expects "
+                f"{expected} visible device(s), but PyTorch sees {visible}"
+            )
+        for label, value in (("model", args.device),
+                             ("graph", args.graph_device or args.device)):
+            device = torch.device(value)
+            logical_index = 0 if device.index is None else device.index
+            if device.type != "cuda" or logical_index >= visible:
+                raise RuntimeError(
+                    f"{label} device {value} is outside selected physical GPU_IDS={requested_gpus}"
+                )
+        torch.cuda.set_device(torch.device(args.device))
     graph_only = not (args.use_long or args.use_short or args.use_preference)
     if graph_only:
         # Pure user-item graph dot products, without semantic features or catalog priors.
@@ -1002,6 +1149,11 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     logger = configure_logging(output / f"train_{run_id}.log")
     logger.info("run_id=%s dataset=%s device=%s", run_id, args.dataset, args.device)
+    if requested_gpus:
+        logger.info(
+            "CUDA_SCOPE requested_physical=%s visible_count=%d main_logical=%s graph_logical=%s",
+            requested_gpus, torch.cuda.device_count(), args.device, args.graph_device or args.device,
+        )
     logger.info(
         "MODEL recommender=%s semantic_encoder=%s semantic_model_id=%s graph_backbone=%s adaptation=%s",
         "LightGCN" if graph_only else "MultiAgentMambaRecommender",
@@ -1194,6 +1346,20 @@ def main():
         priors=catalog_priors, popularity_alpha=args.popularity_alpha,
         transition_beta=args.transition_beta,
     )
+    if args.history_influence_output:
+        influence_rows = measure_history_item_influence(
+            model, data, "test", args.eval_batch_size, args.max_history, args.device,
+            args.history_influence_output,
+            user_limit=args.history_influence_user_limit,
+            negative_count=args.history_influence_negatives,
+            seed=args.seed,
+            dataset=args.dataset,
+        )
+        logger.info(
+            "HISTORY_ITEM_INFLUENCE path=%s rows=%d users_limit=%d negatives=%d",
+            args.history_influence_output, influence_rows,
+            args.history_influence_user_limit, args.history_influence_negatives,
+        )
     log_metric_block(
         logger, "BEST CHECKPOINT VALIDATION", valid_metrics,
         monitor.best_stage, 0, monitor.best_step,

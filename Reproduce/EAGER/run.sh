@@ -7,7 +7,7 @@ WORKSPACE_ROOT="$(cd "$MEDIATEK_ROOT/.." && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-/dataspace/P78123011/miniconda3/envs/py31014/bin/python}"
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$PROJECT_ROOT/outputs}"
-GPU_IDS="${GPU_IDS:-1}"
+GPU_IDS="${GPU_IDS:-0}"
 DISTRIBUTED="${DISTRIBUTED:-0}"
 RERANK_BATCH_SIZE="${RERANK_BATCH_SIZE:-64}"
 SUBSETS="${SUBSETS:-all}"; REPEATS="${REPEATS:-1}"
@@ -22,8 +22,25 @@ SEMANTIC_MAX_TOKENS="${SEMANTIC_MAX_TOKENS:-64}"; EVAL_USER_LIMIT="${EVAL_USER_L
 PREDICT_CANDIDATES="${PREDICT_CANDIDATES:-50}"; SEED="${SEED:-2024}"; MAX_EVENTS="${MAX_EVENTS:-}"
 export HF_HOME="$CACHE_DIR" HF_DATASETS_CACHE="$CACHE_DIR/datasets" TRANSFORMERS_CACHE="$CACHE_DIR/transformers"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+export CUDA_DEVICE_ORDER=PCI_BUS_ID
+if [[ ! "$GPU_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+  echo "GPU_IDS must be a comma-separated list of physical GPU numbers, for example 1 or 1,3" >&2
+  exit 2
+fi
 IFS="," read -r -a GPU_ARRAY <<< "$GPU_IDS"
 [[ ${#GPU_ARRAY[@]} -ge 1 ]] || { echo "At least one GPU is required" >&2; exit 2; }
+declare -A SEEN_GPUS=()
+for gpu_id in "${GPU_ARRAY[@]}"; do
+  if [[ -n "${SEEN_GPUS[$gpu_id]:-}" ]]; then
+    echo "GPU_IDS contains duplicate GPU $gpu_id" >&2
+    exit 2
+  fi
+  SEEN_GPUS[$gpu_id]=1
+done
+if [[ "$DISTRIBUTED" != 0 && "$DISTRIBUTED" != 1 ]]; then
+  echo "DISTRIBUTED must be 0 or 1" >&2
+  exit 2
+fi
 
 should_run() { [[ "$SUBSETS" == all || ",$SUBSETS," == *",$1,"* ]]; }
 run_subset() {
@@ -44,19 +61,21 @@ run_subset() {
     --seed "$SEED" --device cuda)
   [[ -z "$MAX_EVENTS" ]] || args+=(--max-events "$MAX_EVENTS")
   if [[ "$DISTRIBUTED" == 1 ]]; then
-    CUDA_VISIBLE_DEVICES="$GPU_IDS" "$PYTHON_BIN" -m torch.distributed.run \
+    CUDA_VISIBLE_DEVICES="$GPU_IDS" REQUESTED_GPU_IDS="$GPU_IDS" \
+      EXPECTED_VISIBLE_GPUS="${#GPU_ARRAY[@]}" "$PYTHON_BIN" -m torch.distributed.run \
       --standalone --nproc_per_node="${#GPU_ARRAY[@]}" "$PROJECT_ROOT/train.py" "${args[@]}"
   else
-    CUDA_VISIBLE_DEVICES="$gpu" "$PYTHON_BIN" "$PROJECT_ROOT/train.py" "${args[@]}"
+    CUDA_VISIBLE_DEVICES="$gpu" REQUESTED_GPU_IDS="$gpu" EXPECTED_VISIBLE_GPUS=1 \
+      "$PYTHON_BIN" "$PROJECT_ROOT/train.py" "${args[@]}"
   fi
 }
-# "Full_Beauty|amazon-all-beauty" "Baby_Products|amazon:Baby_Products" \
+# "Full_Beauty|amazon-all-beauty" "Baby_Products|amazon:Baby_Products" "Sports_and_Outdoors|amazon-sports-and-outdoors"\
               
 mkdir -p "$OUTPUT_ROOT"
 for ((repeat=1; repeat<=REPEATS; repeat++)); do
   jobs=0
   pids=()
-  for spec in "Sports_and_Outdoors|amazon-sports-and-outdoors" "Toys_and_Games|amazon-toys-and-games"; do
+  for spec in "Toys_and_Games|amazon-toys-and-games"; do
     IFS="|" read -r subset dataset <<< "$spec"
     should_run "$subset" || continue
     gpu="${GPU_ARRAY[$((jobs % ${#GPU_ARRAY[@]}))]}"
