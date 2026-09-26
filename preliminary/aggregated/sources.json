@@ -1,0 +1,143 @@
+{
+  "sources": [
+    {
+      "folder": "amazon-all-beauty",
+      "dataset": "amazon-all-beauty",
+      "run": "run_20260924_182712",
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon-all-beauty/run_20260924_182712",
+      "sha256": {
+        "alignment_summary.csv": "bdc4446c7713bc941351a6abbffd7be8ef49898718c7cdc518193bf105683ca4",
+        "model_item_influence_summary.csv": "3814088c6d6b22c6d7cf52d53dbb94b389a56497494fb471e35999ae0da62590",
+        "information_coverage.csv": "ef7bf105624eaa399657501f1f72bd4e74e3b97dc86f4d049aba92b2fc415a52"
+      },
+      "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+      "settings": {
+        "max_users": 2000,
+        "max_lag": 100,
+        "short_window": 10,
+        "random_matches": 20,
+        "reference_items": 20000,
+        "normalization_pairs": 100000,
+        "cluster_items": 10000,
+        "clusters": 32,
+        "bootstrap": 2000,
+        "seed": 25252
+      },
+      "limitations": [
+        "Figure 3 uses sampled negatives rather than full-catalog reranking",
+        "Figures 1, 2, and 4 remain model-free text diagnostics",
+        "no timestamps in cached InteractionData",
+        "item_texts may include review fallback; provenance unavailable"
+      ]
+    },
+    {
+      "folder": "amazon_Baby_Products",
+      "dataset": "amazon:Baby_Products",
+      "run": "run_20260924_191554",
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon_Baby_Products/run_20260924_191554",
+      "sha256": {
+        "alignment_summary.csv": "80185f53d3b744af2bea73dc6a208977e7b8bb24599b84285f1ecb8bdf9da029",
+        "model_item_influence_summary.csv": "ea2867222f0c22abc75be7a17b66403f24516c67d2b3b5830d2c6b1665866546",
+        "information_coverage.csv": "b2b0e05e3a9a77d72f98e08e6420e0a66d016cdab9bef84efaa5a9d59f98b420"
+      },
+      "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+      "settings": {
+        "max_users": 2000,
+        "max_lag": 100,
+        "short_window": 10,
+        "random_matches": 20,
+        "reference_items": 20000,
+        "normalization_pairs": 100000,
+        "cluster_items": 10000,
+        "clusters": 32,
+        "bootstrap": 2000,
+        "seed": 25252
+      },
+      "limitations": [
+        "Figure 3 uses sampled negatives rather than full-catalog reranking",
+        "Figures 1, 2, and 4 remain model-free text diagnostics",
+        "no timestamps in cached InteractionData",
+        "item_texts may include review fallback; provenance unavailable"
+      ]
+    },
+    {
+      "folder": "amazon-sports-and-outdoors",
+      "dataset": "amazon-sports-and-outdoors",
+      "run": "run_20260924_205538",
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon-sports-and-outdoors/run_20260924_205538",
+      "sha256": {
+        "alignment_summary.csv": "372b91f68ffcfbbe4655e3f6ed7fd94e076a2bc7040a4a74d41ced65ac6cad52",
+        "model_item_influence_summary.csv": "fc600f1c3a3c7ac8b67f0f57289a3fb1f63441958b8cc8f21a5bff2f9b49cf33",
+        "information_coverage.csv": "56a6e5da6e9561e9be1c0769ca554c283bf131d71b448417c69c9986f9139bfa"
+      },
+      "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+      "settings": {
+        "max_users": 2000,
+        "max_lag": 100,
+        "short_window": 10,
+        "random_matches": 20,
+        "reference_items": 20000,
+        "normalization_pairs": 100000,
+        "cluster_items": 10000,
+        "clusters": 32,
+        "bootstrap": 2000,
+        "seed": 25252
+      },
+      "limitations": [
+        "Figure 3 uses sampled negatives rather than full-catalog reranking",
+        "Figures 1, 2, and 4 remain model-free text diagnostics",
+        "no timestamps in cached InteractionData",
+        "item_texts may include review fallback; provenance unavailable"
+      ]
+    },
+    {
+      "folder": "amazon-toys-and-games",
+      "dataset": "amazon-toys-and-games",
+      "run": "run_20260924_231724",
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon-toys-and-games/run_20260924_231724",
+      "sha256": {
+        "alignment_summary.csv": "a1bd2c22bbbde47ebf01fe0fdd895d589b71e599fa8b907688376373d2ce2425",
+        "model_item_influence_summary.csv": "fe1dbbdc88f3ce80c5e22d7c1b2b7c506fce67c4df41e7bd7ae13083b0ae67f0",
+        "information_coverage.csv": "e58e4b70bd1a662d0c22aea7a18dd96cdb7daff8dcfd497b2f09aebfc8680c51"
+      },
+      "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+      "settings": {
+        "max_users": 2000,
+        "max_lag": 100,
+        "short_window": 10,
+        "random_matches": 20,
+        "reference_items": 20000,
+        "normalization_pairs": 100000,
+        "cluster_items": 10000,
+        "clusters": 32,
+        "bootstrap": 2000,
+        "seed": 25252
+      },
+      "limitations": [
+        "Figure 3 uses sampled negatives rather than full-catalog reranking",
+        "Figures 1, 2, and 4 remain model-free text diagnostics",
+        "no timestamps in cached InteractionData",
+        "item_texts may include review fallback; provenance unavailable"
+      ]
+    }
+  ],
+  "split": "test",
+  "min_users_main": 100,
+  "missing_main_curves": {
+    "alignment/fixed_K16": [
+      "Baby Products"
+    ],
+    "preference/fixed_K16": [
+      "Baby Products"
+    ]
+  },
+  "formats": [
+    "pdf",
+    "png",
+    "svg"
+  ],
+  "png_dpi": 400,
+  "matplotlib_version": "3.10.6",
+  "numpy_version": "2.2.6",
+  "aggregation": "Overlay subset estimates; no pooling, smoothing, or recomputation."
+}

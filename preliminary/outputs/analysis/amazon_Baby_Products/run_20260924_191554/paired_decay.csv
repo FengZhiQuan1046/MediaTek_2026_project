@@ -1,0 +1,5 @@
+dataset,split,cohort,metric,mean,ci_low,ci_high,n_users,status
+amazon:Baby_Products,valid,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.2529958648983927,-0.13583689144364597,0.6944608810046105,77,exploratory_n_lt_100
+amazon:Baby_Products,valid,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.0535714285714286,-0.018269074675324674,0.1322321428571428,77,exploratory_n_lt_100
+amazon:Baby_Products,test,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.37851054173885956,0.05288492291564418,0.7826505721452448,84,exploratory_n_lt_100
+amazon:Baby_Products,test,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.12284226190476188,0.03494791666666666,0.2123567708333333,84,exploratory_n_lt_100

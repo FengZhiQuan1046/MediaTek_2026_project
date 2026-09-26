@@ -1,0 +1,5 @@
+dataset,split,cohort,metric,mean,ci_low,ci_high,n_users,status
+amazon-all-beauty,valid,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.4291516786414393,0.019246885595465963,0.9278462507667641,92,exploratory_n_lt_100
+amazon-all-beauty,valid,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.019633152173913055,-0.03383152173913043,0.07888926630434771,92,exploratory_n_lt_100
+amazon-all-beauty,test,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,1.1403148566841588,0.5234418660604212,1.863119632724205,105,estimated
+amazon-all-beauty,test,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.12113095238095238,0.050221726190476185,0.1955580357142856,105,estimated

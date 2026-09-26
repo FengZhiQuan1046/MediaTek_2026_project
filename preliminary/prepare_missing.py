@@ -29,6 +29,13 @@ SUBSET_SETTINGS = {
                                     "candidates": 256, "popularity_alpha": 0.35, "transition_beta": 0.5},
     "amazon-toys-and-games": {"max_transitions": 1_500_000,
                                "candidates": 192, "popularity_alpha": 0.30, "transition_beta": 0.5},
+    # Smaller Amazon Reviews 2023 raw categories; conservative single-GPU settings.
+    "amazon:Musical_Instruments": {"max_transitions": 500_000,
+                                   "candidates": 64, "popularity_alpha": 0.30, "transition_beta": 0.5},
+    "amazon:Video_Games": {"max_transitions": 500_000,
+                           "candidates": 64, "popularity_alpha": 0.30, "transition_beta": 0.5},
+    "amazon:Software": {"max_transitions": 500_000,
+                        "candidates": 64, "popularity_alpha": 0.30, "transition_beta": 0.5},
 }
 
 

@@ -3,13 +3,13 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE="$(cd "$HERE/../.." && pwd)"
-PYTHON_BIN="${PYTHON_BIN:-/dataspace/P78123011/miniconda3/envs/py31014/bin/python}"
+PYTHON_BIN="${PYTHON_BIN:-/workspace/P78123011/miniconda3/envs/py31014/bin/python}"
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE/cache}"
 OUTPUT_DIR="${OUTPUT_DIR:-$HERE/outputs}"
-DATASETS="${DATASETS:-amazon-all-beauty,amazon:Baby_Products,amazon-sports-and-outdoors,amazon-toys-and-games}"
+DATASETS="${DATASETS:-amazon:Musical_Instruments,amazon:Video_Games,amazon:Software}"
 # Physical CUDA device(s), for example GPU_IDS=0 or GPU_IDS=1,2.
 GPU_IDS="${GPU_IDS:-1}"
-
+# amazon-all-beauty,amazon:Baby_Products,amazon-sports-and-outdoors,amazon-toys-and-games,
 # Training settings: edit these defaults here, or override them as environment variables.
 LORA_RANK="${LORA_RANK:-16}"
 TRAIN_EPOCHS="${TRAIN_EPOCHS:-3}"

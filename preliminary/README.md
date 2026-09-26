@@ -22,7 +22,7 @@ training statistics are written below `preliminary/outputs/`:
 Subsets run as independent pipelines rather than one combined job. For each
 selected subset, `run.sh` completes training, immediately calculates its
 statistics, and writes Figure 1–4 before starting the next subset. The default
-four subsets therefore produce four separate figure sets; curves from different
+seven subsets therefore produce seven separate figure sets; curves from different
 subsets are no longer combined in one PDF.
 
 Every `bash run.sh` invocation first retrains a single full-history
@@ -36,6 +36,19 @@ complete test at the end of every epoch, followed by ver4's final best-model
 evaluation block. `--no-save-model-weights` remains enabled, so logs, scores,
 metrics, data caches, and statistical artifacts are retained without writing a
 model checkpoint or weight file.
+
+The three additional default Amazon Reviews 2023 subsets are `Musical_Instruments`,
+`Video_Games`, and `Software`. The [official dataset card](https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023)
+reports 3.0M, 4.6M, and 4.9M raw ratings respectively, versus 6.0M for
+the existing `Baby_Products` subset. They use at most 500,000 training
+transitions and 64 evaluation candidates each to keep the single-GPU
+training settings conservative. The loader still downloads each entire
+raw category and its metadata on first use; these limits do not cap
+preprocessing or full validation/test time. A complete run of these new
+categories has not yet been measured on this machine, so GPU memory use
+is an estimate based on dataset size and settings rather than a verified peak.
+To run one added subset at a time, set e.g.
+`GPU_IDS=1 DATASETS=amazon:Musical_Instruments bash run.sh`.
 
 The LoRA rank and epoch count are grouped near the top of `run.sh` as
 `LORA_RANK` and `TRAIN_EPOCHS`. Their defaults can also be overridden with the

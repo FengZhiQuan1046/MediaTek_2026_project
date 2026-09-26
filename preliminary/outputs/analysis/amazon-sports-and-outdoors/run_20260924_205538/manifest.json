@@ -1,0 +1,67 @@
+{
+  "status": "complete",
+  "mode": "pilot",
+  "ver4_revision": "6bac8cf43f766d4adffc418b06e834a0da2dbe1f",
+  "settings": {
+    "cache_dir": "/workspace/P78123011/cache",
+    "training_output_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/training",
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon-sports-and-outdoors",
+    "datasets": "amazon-sports-and-outdoors",
+    "max_users": 2000,
+    "max_lag": 100,
+    "short_window": 10,
+    "random_matches": 20,
+    "reference_items": 20000,
+    "normalization_pairs": 100000,
+    "cluster_items": 10000,
+    "clusters": 32,
+    "bootstrap": 2000,
+    "seed": 25252
+  },
+  "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+  "python_version": "3.10.14",
+  "numpy_version": "2.2.6",
+  "no_checkpoints_or_weights_saved": true,
+  "limitations": [
+    "Figure 3 uses sampled negatives rather than full-catalog reranking",
+    "Figures 1, 2, and 4 remain model-free text diagnostics",
+    "no timestamps in cached InteractionData",
+    "item_texts may include review fallback; provenance unavailable"
+  ],
+  "datasets": [
+    {
+      "dataset": "amazon-sports-and-outdoors",
+      "cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-sports-and-outdoors_fcc157f72b81.pkl",
+      "cache_sha256": "e2ad9bd37e7fe089d0b782c7e6d788e03adc99a329c1b746244b72e40f499c41",
+      "eligible_users": 625563,
+      "sampled_users": 2000,
+      "num_items": 401572,
+      "train_items": 370747,
+      "reference_items": 20000,
+      "vectorized_items": 32529,
+      "cosine_normalization": {
+        "basis": "random distinct usable item pairs sampled uniformly from the full dataset catalog",
+        "catalog_items": 401572,
+        "mean": 0.115386962890625,
+        "std": 0.05636992305517197,
+        "sampled_pairs": 100000
+      },
+      "information_coverage_users": {
+        "valid": 1862,
+        "test": 1923
+      },
+      "text_coverage": 1.0,
+      "cluster_fit_items": 10000,
+      "clusters": 32,
+      "matching_fallback_counts": {
+        "0": 26065,
+        "1": 70
+      },
+      "target_occurrences_in_random_references": 2,
+      "timestamp_status": "unavailable_in_ver4_cache",
+      "text_provenance": "metadata_or_review_fallback_unknown_per_item",
+      "model_item_influence_source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/training/amazon-sports-and-outdoors/history_item_influence.csv"
+    }
+  ],
+  "skipped_datasets": []
+}

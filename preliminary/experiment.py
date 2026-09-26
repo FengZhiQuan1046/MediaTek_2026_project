@@ -545,7 +545,9 @@ def analyse_dataset(dataset, args, output):
 def plot_results(summary, old_summary, influence_summary, coverage_summary, output):
     datasets = sorted({row["dataset"] for row in summary})
     names = {"amazon-all-beauty": "All Beauty", "amazon:Baby_Products": "Baby Products",
-             "amazon-sports-and-outdoors": "Sports & Outdoors", "amazon-toys-and-games": "Toys & Games"}
+             "amazon-sports-and-outdoors": "Sports & Outdoors", "amazon-toys-and-games": "Toys & Games",
+             "amazon:Musical_Instruments": "Musical Instruments", "amazon:Video_Games": "Video Games",
+             "amazon:Software": "Software"}
     figures = output / "figures"
     figures.mkdir(exist_ok=True)
     for metric, filename, title, ylabel in (
