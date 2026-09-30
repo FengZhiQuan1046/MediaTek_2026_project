@@ -1,0 +1,32 @@
+{
+  "dataset": "amazon-sports-and-outdoors",
+  "cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-sports-and-outdoors_fcc157f72b81.pkl",
+  "cache_sha256": "e2ad9bd37e7fe089d0b782c7e6d788e03adc99a329c1b746244b72e40f499c41",
+  "eligible_users": 625563,
+  "sampled_users": 2000,
+  "num_items": 401572,
+  "train_items": 370747,
+  "reference_items": 20000,
+  "vectorized_items": 32529,
+  "cosine_normalization": {
+    "basis": "random distinct usable item pairs sampled uniformly from the full dataset catalog",
+    "catalog_items": 401572,
+    "mean": 0.115386962890625,
+    "std": 0.05636992305517197,
+    "sampled_pairs": 100000
+  },
+  "information_coverage_users": {
+    "valid": 1862,
+    "test": 1923
+  },
+  "text_coverage": 1.0,
+  "cluster_fit_items": 10000,
+  "clusters": 32,
+  "matching_fallback_counts": {
+    "0": 26065,
+    "1": 70
+  },
+  "target_occurrences_in_random_references": 2,
+  "timestamp_status": "unavailable_in_ver4_cache",
+  "text_provenance": "metadata_or_review_fallback_unknown_per_item"
+}

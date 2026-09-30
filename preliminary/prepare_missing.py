@@ -53,6 +53,7 @@ def main():
     parser.add_argument("--influence-user-limit", type=int, required=True)
     parser.add_argument("--validation-user-limit", type=int, required=True)
     parser.add_argument("--seed", type=int, required=True)
+    parser.add_argument("--reverse-history-input", action="store_true")
     args = parser.parse_args()
     if args.lora_rank < 1:
         parser.error("--lora-rank must be positive")
@@ -86,7 +87,8 @@ def main():
         cache = ver4_cache_path(args.cache_dir, dataset)
         cache_status = "existing_reused_for_retraining" if cache.exists() else "created_by_training"
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_dir = output / safe_name(dataset) / f"single_mamba_lora_lightgcn_{stamp}"
+        run_name = "single_mamba_lora_lightgcn_inverse" if args.reverse_history_input else "single_mamba_lora_lightgcn"
+        run_dir = output / safe_name(dataset) / f"{run_name}_{stamp}"
         score_file = run_dir / f"{safe_name(dataset)}_scores.json"
         influence_file = output / safe_name(dataset) / "history_item_influence.csv"
         run_dir.mkdir(parents=True, exist_ok=False)
@@ -124,13 +126,16 @@ def main():
             "--coordinator-epochs", "0",
             "--joint-epochs", str(args.epochs),
             "--seed", str(args.seed),
+            *(["--reverse-history-input"] if args.reverse_history_input else []),
             "--validation-user-limit", str(args.validation_user_limit),
             "--periodic-test-user-limit", "0",
             "--history-influence-output", str(influence_file),
             "--history-influence-user-limit", str(args.influence_user_limit),
             "--history-influence-negatives", "64",
             "--output-run-dir", str(run_dir), "--score-file", str(score_file),
-            "--experiment-note", "preliminary single full-history Mamba+LoRA+LightGCN; no coordinator or short/preference agents; no saved weights",
+            "--experiment-note", ("preliminary inverse: reversed observed prefixes, chronological targets; "
+                                  if args.reverse_history_input else "preliminary: chronological prefixes and targets; ")
+                                 + "single full-history Mamba+LoRA+LightGCN; no saved weights",
         ]
         environment = os.environ.copy()
         environment.update({"PYTHON_BIN": args.python_bin, "CACHE_DIR": args.cache_dir,
@@ -153,6 +158,7 @@ def main():
                       "preference_agent": False,
                   },
                   "training_epochs": args.epochs,
+                  "history_input_order": "reversed" if args.reverse_history_input else "chronological",
                   "history_item_influence": str(influence_file),
                   "model_weights_saved": False,
                   "evaluation_schedule": {

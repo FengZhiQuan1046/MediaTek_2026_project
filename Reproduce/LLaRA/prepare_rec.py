@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from pathlib import Path
 import random
+import os
 import sys
 
 import torch
 from tqdm.auto import tqdm
 
-UPSTREAM = Path(__file__).resolve().parents[3] / "LLaRA"
+UPSTREAM = Path(os.environ.get("LLARA_UPSTREAM_DIR", Path(__file__).resolve().parents[3] / "LLaRA")).expanduser().resolve()
 for path in (UPSTREAM,):
     if str(path) not in sys.path: sys.path.insert(0, str(path))
 from recommender.A_SASRec_final_bce_llm import SASRec  # noqa: E402

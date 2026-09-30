@@ -162,6 +162,8 @@ def build_transitions(data, maximum: int | None, seed: int) -> list[Transition]:
 
 def history_batch(data, transitions: list[Transition], max_history: int, device: str):
     histories = [data.train_by_user[row.user][max(0, row.end - max_history):row.end] for row in transitions]
+    if getattr(data, "reverse_history_input", False):
+        histories = [history[::-1] for history in histories]
     lengths = torch.tensor([len(history) for history in histories], device=device)
     padded = torch.zeros((len(histories), max(int(lengths.max()), 1)), dtype=torch.long, device=device)
     for row, history in enumerate(histories):
@@ -179,7 +181,8 @@ def evaluation_history_batch(data, users: list[int], split: str, max_history: in
     lengths = torch.tensor([len(history) for history in histories], device=device)
     padded = torch.zeros((len(users), max(int(lengths.max()), 1)), dtype=torch.long, device=device)
     for row, history in enumerate(histories):
-        padded[row, :len(history)] = torch.tensor(history, device=device)
+        model_history = history[::-1] if getattr(data, "reverse_history_input", False) else history
+        padded[row, :len(history)] = torch.tensor(model_history, device=device)
     return padded, lengths, histories
 
 
@@ -800,7 +803,8 @@ def measure_history_item_influence(
             data.num_items, targets[user], history, negative_count, rng
         )
         if candidates is not None:
-            examples.append((int(user), history, candidates))
+            model_history = history[::-1] if getattr(data, "reverse_history_input", False) else history
+            examples.append((int(user), model_history, candidates))
 
     graph_items = model.graph_item_vectors()
 
@@ -998,6 +1002,10 @@ def parse_args():
         help="Fuse trainable LightGCN item embeddings with Mamba item vectors.",
     )
     parser.add_argument("--max-history", type=int, default=100)
+    parser.add_argument(
+        "--reverse-history-input", action="store_true",
+        help="Reverse each observed history prefix after truncation; keep targets and training graph unchanged.",
+    )
     parser.add_argument("--specialist-lr", type=float, default=2e-4)
     parser.add_argument("--coordinator-lr", type=float, default=2e-4)
     parser.add_argument("--joint-lr", type=float, default=5e-5)
@@ -1170,6 +1178,9 @@ def main():
     logger.info("EXPERIMENT_NOTE %s", args.experiment_note)
     logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
     data, interaction_artifact = load_recommendation_data_cached(args, logger)
+    # Keep the shared cached InteractionData chronological. Reverse only model inputs.
+    data.reverse_history_input = args.reverse_history_input
+    logger.info("HISTORY_INPUT_ORDER %s", "reversed" if args.reverse_history_input else "chronological")
     if args.eval_length_threshold is not None:
         # Attach only after cache loading/writing; never change shared cached data.
         data.evaluation_length_threshold = args.eval_length_threshold

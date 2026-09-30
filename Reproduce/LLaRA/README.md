@@ -1,30 +1,65 @@
-# LLaRA reproduction for MediaTek 2026
+# LLaRA reproduction
 
-This integration imports the upstream LLaRA `MInterface`, MLP projector,
-SASRec class, LoRA targets, language-model loss, prompt embedding replacement,
-and HR@1 generation evaluation. Amazon interactions are loaded exclusively
-through ver4's one-pass 5-core and chronological leave-two-out protocol.
+此目錄使用 [LLaRA 上游原始碼](../../../LLaRA) 的 `MInterface`、LoRA、MLP projector
+與 SASRec 類別，並沿用本專案 `ver4` 的 Amazon Reviews 2023 資料載入、一次性
+user/item 5-core 過濾、時間排序及最後兩筆 validation/test 切分。訓練只使用 training
+partition；validation/test 用固定候選集評估生成結果。候選數 `CANS_NUM` 與抽樣使用者
+數會影響 HR@1，因此不能直接與 SASRec/BERT4Rec 的 full-catalog NDCG 比較。
 
-The authors do not publish Amazon recommender checkpoints. On first use, the
-upstream SASRec class is pretrained on the ver4 training partition and cached
-under the shared `cache/llara` directory. No model checkpoint is written below
-the experiment output directory.
-
-Run the four requested subsets with two RTX 4090 GPUs:
+先在本目錄安裝依賴：
 
 ```bash
 cd /workspace/P78123011/MediaTek_2026_project/Reproduce/LLaRA
-GPU_IDS=0,1 bash run.sh
+/workspace/P78123011/miniconda3/envs/py31014/bin/python -m pip install -r requirements.txt
 ```
 
-`run.sh` resolves the existing Llama-2 snapshot below the same workspace cache
-used by ver4. If it is absent, set `LLM_PATH` to an accessible local snapshot
-or authenticate with Hugging Face before using the gated model ID.
+LLaRA 使用 Llama-2-7B-hf。該權重須可透過 Hugging Face 帳號取得，或將
+`LLM_PATH` 指向已下載的本地模型目錄。腳本會優先使用共享
+`CACHE_DIR/models--meta-llama--Llama-2-7b-hf` 或
+`CACHE_DIR/hub/models--meta-llama--Llama-2-7b-hf` 的 snapshot，預設
+`CACHE_DIR=/workspace/P78123011/cache`。執行前會檢查 Llama 設定是否可讀，
+以免在推薦器預訓練完成後才發現模型不可用。上游原始碼預設位於
+`/workspace/P78123011/LLaRA`；需要時可設 `LLARA_UPSTREAM_DIR`。
 
-Llama-2-7B LoRA training uses Lightning DDP, BF16, gradient checkpointing,
-batch size 1 per GPU, and gradient accumulation 16. Outputs contain only
-`config.json`, `metrics.json`, and `train_{time}.log`.
+從任意目錄執行單一 subset：
 
-Candidate-based LLM generation is expensive on the full Sports/Toys sets.
-Defaults cap training at 10,000 prefix examples and evaluation at 1,000 users.
-Set `MAX_TRAIN_SAMPLES=0 EVAL_USER_LIMIT=0` for all eligible examples/users.
+```bash
+SUBSETS=Toys_and_Games EPOCHS=5 GPU_IDS=0,1 \
+  bash /workspace/P78123011/MediaTek_2026_project/Reproduce/LLaRA/run.sh
+```
+
+也支援位置參數 `bash run.sh 0,1`。兩卡時由 PyTorch Lightning DDP 執行，
+`BATCH_SIZE` 是每張 GPU 的 microbatch size，`ACCUMULATE_GRAD_BATCHES`
+預設為 16。各 subset 依序執行。`SUBSETS=all` 包含與 SASRec/BERT4Rec 相同
+的八個 Amazon subsets；可用逗號選擇其中部分。`REPEATS` 控制重複次數。
+
+常用可覆寫的環境變數：
+
+| 變數 | 預設 | 意義 |
+| --- | --- | --- |
+| `GPU_IDS` | `0,1` | 使用的實體 GPU |
+| `EPOCHS` (`MAX_EPOCHS`) | `5` | LLaRA 最大 epoch；`EPOCHS` 優先 |
+| `BATCH_SIZE` | `1` | 每卡 microbatch |
+| `ACCUMULATE_GRAD_BATCHES` | `16` | 梯度累積次數 |
+| `LR` | `8e-4` | LLaRA learning rate |
+| `EARLY_STOPPING_PATIENCE` | `10` | Early stopping patience |
+| `MAXLEN` / `CANS_NUM` | `10` / `10` | 歷史長度／候選數 |
+| `REC_EPOCHS` / `REC_BATCH_SIZE` | `10` / `128` | 上游 SASRec 預訓練設定 |
+| `MAX_TRAIN_SAMPLES` / `EVAL_USER_LIMIT` | `10000` / `1000` | 資料量上限；0 表示全部 |
+| `NUM_WORKERS` | `4` | DataLoader workers |
+| `CACHE_DIR` / `OUTPUT_ROOT` | workspace `cache` / 本目錄 `outputs` | 快取／實驗輸出位置 |
+| `PYTHON_BIN` / `LLM_PATH` | workspace Python / Llama-2-7B-hf | 執行環境／模型位置 |
+
+正式完整資料評估請設定 `MAX_TRAIN_SAMPLES=0 EVAL_USER_LIMIT=0`。每個 run
+產生 `outputs/<subset>/llara_<timestamp>_r<repeat>/train_*.log`、
+`config.json` 和 `metrics.json`。`metrics.json` 內含候選式 validation/test
+HR@1、有效生成比例和資料統計。推薦器權重依資料切分與設定存於共享
+`cache/llara`，實驗輸出目錄不儲存模型 checkpoint。
+
+驗證啟動與資料 adapter：
+
+```bash
+bash -n run.sh
+PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
+python train.py --help
+```

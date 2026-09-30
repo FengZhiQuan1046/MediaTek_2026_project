@@ -16,6 +16,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib import font_manager
 from matplotlib.ticker import MaxNLocator, PercentFormatter
 import numpy as np
 
@@ -63,6 +64,9 @@ def load_sources(root, pinned=None):
                 rows = list(csv.DictReader(stream))
             if not rows or any(row['dataset'] != dataset for row in rows):
                 raise ValueError(f'Unexpected or missing dataset rows in {path}')
+            if filename == 'alignment_summary.csv' and not any(
+                    row['metric'] == 'history_normalized_cluster_match' for row in rows):
+                raise ValueError(f'History-normalized preference statistic missing from {path}')
             tables[filename].extend(rows)
         provenance.append({'folder': folder, 'dataset': dataset, 'run': selected.name,
                            'source': str(selected.resolve()), 'sha256': hashes,
@@ -71,17 +75,32 @@ def load_sources(root, pinned=None):
     return tables, provenance
 
 
-def style():
+def style(font_path=None):
+    if font_path:
+        font_path = Path(font_path).expanduser().resolve()
+        if not font_path.is_file():
+            raise FileNotFoundError(f'Times New Roman font not found: {font_path}')
+        font_manager.fontManager.addfont(str(font_path))
+        family = font_manager.FontProperties(fname=str(font_path)).get_name()
+        if family != 'Times New Roman':
+            raise ValueError(f'{font_path} is {family!r}, not Times New Roman')
+    else:
+        matches = [f for f in font_manager.fontManager.ttflist if f.name == 'Times New Roman']
+        family = 'Times New Roman' if matches else 'Liberation Serif'
+        if not matches:
+            print('WARNING: Times New Roman is unavailable; using Liberation Serif preview. '
+                  'Supply --font-path /path/to/times.ttf for final submission.')
     plt.rcParams.update({
-        'font.family': 'serif', 'font.serif': ['DejaVu Serif'],
+        'font.family': family,
         'font.size': 9, 'axes.titlesize': 10, 'axes.labelsize': 9,
         'xtick.labelsize': 8, 'ytick.labelsize': 8, 'legend.fontsize': 9,
         'axes.spines.top': False, 'axes.spines.right': False,
         'axes.linewidth': .65, 'axes.edgecolor': '#666666',
         'grid.color': '#D8DCE1', 'grid.linewidth': .5,
-        'pdf.fonttype': 42, 'ps.fonttype': 42, 'svg.fonttype': 'none',
+        'pdf.fonttype': 42, 'ps.fonttype': 42, 'svg.fonttype': 'path',
         'savefig.facecolor': 'white', 'figure.facecolor': 'white',
     })
+    return family
 
 
 def legend(fig):
@@ -105,11 +124,11 @@ def decorate(ax, title, ylabel, xlabel, zero=True):
         ax.axhline(0, color='#777777', lw=.75, ls='--', zorder=1)
 
 
-def draw(ax, tables, kind, min_users, cohort='all_available', full=False):
+def draw(ax, tables, kind, min_users, cohort='all_available', full=False, preference_count=None):
     missing = []
     for _, dataset, name, color, marker, ls in DATASETS:
         if kind in ('alignment', 'preference'):
-            metric = 'excess_cosine_z' if kind == 'alignment' else 'excess_cluster_match'
+            metric = 'excess_cosine_z' if kind == 'alignment' else 'history_normalized_cluster_match'
             rows = [r for r in tables[FILES[0]] if r['dataset'] == dataset and r['split'] == 'test'
                     and r['cohort'] == cohort and r['metric'] == metric
                     and int(r['n_users']) >= min_users]
@@ -144,6 +163,8 @@ def draw(ax, tables, kind, min_users, cohort='all_available', full=False):
     if kind in ('alignment', 'preference'):
         ax.set_xticks([1, 2, 3.5, 6.5, 12.5, 24.5][:6 if cohort == 'all_available' else 5])
         ax.set_xticklabels(['1', '2', '3–4', '5–8', '9–16', '17–32'][:6 if cohort == 'all_available' else 5])
+    if kind == 'preference':
+        ax.yaxis.set_major_formatter(PercentFormatter(1, decimals=0))
     if kind == 'coverage':
         ax.set_ylim(0, 103)
         ax.yaxis.set_major_formatter(PercentFormatter(100, decimals=0))
@@ -156,7 +177,7 @@ def draw(ax, tables, kind, min_users, cohort='all_available', full=False):
 
 LABELS = {
     'alignment': ('Semantic alignment', 'Excess cosine similarity (z)', 'Interaction lag (binned; 1 = most recent)'),
-    'preference': ('Preference alignment', 'Excess cluster-match probability', 'Interaction lag (binned; 1 = most recent)'),
+    'preference': ('Preference alignment', 'Excess match vs. history chance', 'Interaction lag (binned; 1 = most recent)'),
     'influence': ('History-item influence', 'Next-item margin change', 'Interaction lag (1 = most recent)'),
     'coverage': ('Cumulative signal coverage', 'Positive semantic signal covered', 'Number of most recent items'),
 }
@@ -176,6 +197,7 @@ def main():
     parser.add_argument('--min-users', type=int, default=100)
     parser.add_argument('--formats', nargs='+', choices=['pdf', 'png', 'svg'], default=['pdf', 'png', 'svg'])
     parser.add_argument('--dpi', type=int, default=400)
+    parser.add_argument('--font-path', type=Path, help='Times New Roman TTF/OTF file for final figures')
     args = parser.parse_args()
     if args.min_users < 1 or args.dpi < 1:
         parser.error('--min-users and --dpi must be positive')
@@ -185,29 +207,89 @@ def main():
     tables, provenance = load_sources(args.analysis_root, pinned)
     out = args.output_dir.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    style()
+    font_family = style(args.font_path)
     n = args.min_users
+    preference_count = provenance[0]['settings']['clusters']
     ci_note = f'Test split · Shading: 95% user-bootstrap CI · Points require n ≥ {n} users'
-    overview_note = (f'Test split · (a–c): 95% user-bootstrap CI, n ≥ {n} per point\n'
-                     '(d): mean and user interquartile range; users with zero positive signal excluded')
-    fig, axes = plt.subplots(2, 2, figsize=(10.4, 7.0))
-    for letter, ax, kind in zip('abcd', axes.flat, LABELS):
-        title, ylabel, xlabel = LABELS[kind]
-        decorate(ax, f'({letter}) {title}', ylabel, xlabel, kind != 'coverage')
+    # Three panel figure sized for a typical two-column conference page (7.15 in).
+    # The coverage panel focuses on the first 20 items; the standalone figure retains 1–100.
+    fig, axes = plt.subplots(1, 3, figsize=(7.15, 2.55))
+    specs = [
+        ('alignment', '(a) Semantic alignment', 'Excess cosine (z)', 'Lag bin'),
+        ('influence', '(c) Item influence', 'Margin change', 'Lag'),
+        ('coverage', '(d) Signal coverage', 'Signal covered (%)', 'Recent items'),
+    ]
+    for ax, (kind, title, ylabel, xlabel) in zip(axes, specs):
+        decorate(ax, title, ylabel, xlabel, kind != 'coverage')
         draw(ax, tables, kind, n)
+        if kind == 'coverage':
+            ax.set_xlim(.5, 20.5)
+            ax.set_xticks([1, 5, 10, 15, 20])
+        if kind == 'alignment':
+            ax.set_xticks([1, 3.5, 12.5, 24.5], labels=['1', '3–4', '9–16', '17–32'])
+        if kind == 'influence':
+            ax.set_xticks([1, 5, 10, 15])
+        ax.title.set_fontsize(8.5)
+        ax.xaxis.label.set_size(8)
+        ax.yaxis.label.set_size(8)
+        ax.tick_params(labelsize=7)
     legend(fig)
-    fig.text(.5, .012, overview_note, ha='center', fontsize=7.5, linespacing=1.6, color='#555555')
-    fig.subplots_adjust(left=.09, right=.985, top=.90, bottom=.13, hspace=.52, wspace=.30)
-    save(fig, out, 'figure0_preliminary_overview', args.formats, args.dpi)
+    fig.subplots_adjust(left=.085, right=.985, top=.78, bottom=.21, wspace=.20)
+    save(fig, out, 'figure0_acd_row', args.formats, args.dpi)
+
+    # Wider four-panel alternative, with a divider before the preference panel.
+    fig, axes = plt.subplots(1, 4, figsize=(8.80, 2.50))
+    four_specs = [
+        ('alignment', '(a) Semantic', 'Excess cosine (z)', 'Lag bin'),
+        ('influence', '(b) Influence', 'Margin change', 'Lag'),
+        ('coverage', '(c) Coverage', 'Signal (%)', 'Recent items'),
+        ('preference', '(d) Preference match', 'Excess match (pp)', 'Lag bin'),
+    ]
+    for ax, (kind, title, ylabel, xlabel) in zip(axes, four_specs):
+        decorate(ax, title, ylabel, xlabel, kind != 'coverage')
+        draw(ax, tables, kind, n, preference_count=preference_count)
+        if kind in ('alignment', 'preference'):
+            ax.set_xticks([1, 12.5, 24.5], labels=['1', '9–16', '17–32'])
+        elif kind == 'influence':
+            ax.set_xticks([1, 8, 16])
+        else:
+            ax.set_xlim(.5, 20.5)
+            ax.set_xticks([1, 10, 20])
+        ax.title.set_fontsize(8)
+        ax.xaxis.label.set_size(7.5)
+        ax.yaxis.label.set_size(7.5)
+        ax.tick_params(labelsize=6.5)
+    legend(fig)
+    fig.subplots_adjust(left=.075, right=.955, top=.77, bottom=.21, wspace=.28)
+    # Move the final panel right while preserving its width. The larger
+    # canvas supplies the extra space, so all four plotting areas stay equal.
+    right_panel = axes[3].get_position()
+    extra_gap = .029
+    axes[3].set_position([right_panel.x0 + extra_gap, right_panel.y0,
+                          right_panel.width, right_panel.height])
+    gap_left = axes[2].get_position().x1
+    gap_right = axes[3].get_position().x0
+    divider_x = gap_left + .30 * (gap_right - gap_left)
+    fig.add_artist(Line2D([divider_x, divider_x], [.15, .82],
+                          transform=fig.transFigure, color='#4B5563', lw=1.55))
+    save(fig, out, 'figure0_abcd_row', args.formats, args.dpi)
+
+    fig, ax = plt.subplots(figsize=(3.5, 2.55))
+    decorate(ax, '(b) Preference alignment', 'Excess match vs. history chance', 'Lag bin')
+    draw(ax, tables, 'preference', n, preference_count=preference_count)
+    ax.set_xticks([1, 3.5, 12.5, 24.5], labels=['1', '3–4', '9–16', '17–32'])
+    legend(fig)
+    fig.subplots_adjust(left=.20, right=.97, top=.77, bottom=.21)
+    save(fig, out, 'figure0_b_preference', args.formats, args.dpi)
     missing = {}
     for number, kind in enumerate(LABELS, 1):
         title, ylabel, xlabel = LABELS[kind]
         if number <= 2:
-            fig, axes = plt.subplots(1, 2, figsize=(10.4, 3.9), sharey=True)
+            fig, axes = plt.subplots(1, 2, figsize=(10.4, 3.9), sharey=(kind != 'preference'))
             for letter, ax, cohort, subtitle in zip('ab', axes, ['all_available', 'fixed_K16'],
                                                    ['Available-history cohort', 'Fixed cohort: history ≥ 16']):
                 decorate(ax, f'({letter}) {subtitle}', ylabel, xlabel)
-                omitted = draw(ax, tables, kind, n, cohort)
+                omitted = draw(ax, tables, kind, n, cohort, preference_count=preference_count)
                 if omitted:
                     missing[f'{kind}/{cohort}'] = omitted
             axes[1].set_ylabel('')
@@ -247,9 +329,13 @@ def main():
         'sources': provenance, 'split': 'test', 'min_users_main': n,
         'missing_main_curves': missing, 'formats': args.formats, 'png_dpi': args.dpi,
         'matplotlib_version': matplotlib.__version__, 'numpy_version': np.__version__,
+        'font_family': font_family, 'font_path': str(args.font_path) if args.font_path else None,
+        'paper_coverage_x_range': [1, 20],
         'aggregation': 'Overlay subset estimates; no pooling, smoothing, or recomputation.',
+        'preference_plot_metric': 'history_normalized_cluster_match',
+        'preference_reference': 'per-user 1/K if target cluster occurs in usable history, else 0',
     }, indent=2) + '\n')
-    print(f'Wrote 6 figures in {", ".join(args.formats)} to {out}')
+    print(f'Wrote 8 figures in {", ".join(args.formats)} to {out}; font: {font_family}')
     print(f'Omitted curves below the sample threshold: {missing}')
 
 

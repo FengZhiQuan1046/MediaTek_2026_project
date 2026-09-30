@@ -25,6 +25,8 @@ class AmazonData(Dataset):
     def __getitem__(self, index):
         user, history, target = self.examples[index]
         forbidden = set(history) | {target}
+        if self.cans_num > self.data.num_items - len(forbidden) + 1:
+            raise ValueError("cans_num exceeds the number of available candidates")
         candidates = []
         while len(candidates) < self.cans_num - 1:
             item = random.randrange(self.data.num_items)
@@ -80,7 +82,8 @@ class TrainCollater:
                   "len_seq": torch.tensor([x["len_seq"] for x in batch]),
                   "len_cans": torch.tensor([x["len_cans"] for x in batch]),
                   "item_id": torch.tensor([x["item_id"] for x in batch]),
-                  "flag": flag}
+                  "flag": flag,
+                  "user": [x["user"] for x in batch]}
         if not self.train:
             result.update(correct_answer=targets,
                           cans_name=[x["cans_name"] for x in batch])

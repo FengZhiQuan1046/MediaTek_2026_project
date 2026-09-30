@@ -1,0 +1,31 @@
+{
+  "dataset": "amazon:Baby_Products",
+  "cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon_Baby_Products_e6e228b87df8.pkl",
+  "cache_sha256": "08786c44c648f0532249fb039d11d2cc0607d56d20ca2357e8d1297f58938c6f",
+  "eligible_users": 184584,
+  "sampled_users": 2000,
+  "num_items": 77324,
+  "train_items": 71443,
+  "reference_items": 20000,
+  "vectorized_items": 26259,
+  "cosine_normalization": {
+    "basis": "random distinct usable item pairs sampled uniformly from the full dataset catalog",
+    "catalog_items": 77324,
+    "mean": 0.15379852056503296,
+    "std": 0.072021484375,
+    "sampled_pairs": 100000
+  },
+  "information_coverage_users": {
+    "valid": 1853,
+    "test": 1917
+  },
+  "text_coverage": 1.0,
+  "cluster_fit_items": 10000,
+  "clusters": 32,
+  "matching_fallback_counts": {
+    "0": 25947
+  },
+  "target_occurrences_in_random_references": 17,
+  "timestamp_status": "unavailable_in_ver4_cache",
+  "text_provenance": "metadata_or_review_fallback_unknown_per_item"
+}

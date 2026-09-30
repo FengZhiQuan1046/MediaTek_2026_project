@@ -2,16 +2,22 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from datetime import datetime
 import json
+import math
+import os
 from pathlib import Path
 import sys
 
 import torch
+import torch.distributed as dist
 from torch.utils.data import DataLoader
 
 ROOT = Path(__file__).resolve().parent
-UPSTREAM = ROOT.parents[2] / "LLaRA"
+UPSTREAM = Path(os.environ.get("LLARA_UPSTREAM_DIR", ROOT.parents[2] / "LLaRA")).expanduser().resolve()
+if not (UPSTREAM / "model" / "model_interface.py").is_file():
+    raise RuntimeError(f"LLaRA upstream source not found at {UPSTREAM}; set LLARA_UPSTREAM_DIR")
 for path in (ROOT, UPSTREAM):
     if str(path) not in sys.path: sys.path.insert(0, str(path))
 
@@ -36,7 +42,107 @@ def arguments():
     parser.add_argument("--eval-user-limit", type=int, default=1000); parser.add_argument("--rec-epochs", type=int, default=10)
     parser.add_argument("--rec-batch-size", type=int, default=256); parser.add_argument("--rec-size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=8e-4); parser.add_argument("--seed", type=int, default=1234)
-    return parser.parse_args()
+    parser.add_argument("--early-stopping-patience", type=int, default=10)
+    args = parser.parse_args()
+    if min(args.devices, args.batch_size, args.accumulate_grad_batches, args.max_epochs,
+           args.maxlen, args.cans_num, args.rec_epochs, args.rec_batch_size,
+           args.rec_size) < 1:
+        parser.error("device count, epochs, model sizes and batch sizes must be positive")
+    if args.max_train_samples < 0 or args.eval_user_limit < 0 or args.early_stopping_patience < 0:
+        parser.error("sample limits and stopping patience must be non-negative")
+    if args.lr <= 0 or args.num_workers < 0:
+        parser.error("learning rate must be positive and num_workers non-negative")
+    return args
+
+
+class ReproductionInterface(MInterface):
+    """Aggregate candidate evaluation across Lightning ranks and move SASRec indices."""
+    def wrap_emb(self, batch):
+        # Upstream writes into an embedding leaf view; clone keeps autograd valid.
+        ids = batch["tokens"].input_ids
+        embeddings = self.llama_model.get_input_embeddings()(ids).clone()
+        replacements = (
+            ("[HistoryEmb]", self.encode_items(batch["seq"]), batch["len_seq"]),
+            ("[CansEmb]", self.encode_items(batch["cans"]), batch["len_cans"]),
+            ("[ItemEmb]", self.encode_items(batch["item_id"]), None),
+        )
+        for marker, values, lengths in replacements:
+            token_id = self.llama_tokenizer(marker, return_tensors="pt",
+                                           add_special_tokens=False).input_ids.item()
+            for row in range(len(ids)):
+                positions = (ids[row] == token_id).nonzero(as_tuple=True)[0]
+                if len(positions):
+                    count = int(lengths[row]) if lengths is not None else 1
+                    if len(positions) != count:
+                        raise ValueError(f"{marker} count differs from input items")
+                    selected = values[row, :count] if lengths is not None else values[row].unsqueeze(0)
+                    embeddings[row, positions] = selected
+        return embeddings
+
+    def load_rec_model(self, rec_model_path):
+        # This is the trusted, locally generated upstream SASRec object.
+        self.rec_model = torch.load(rec_model_path, map_location="cpu", weights_only=False)
+        self.rec_model.eval()
+        for parameter in self.rec_model.parameters():
+            parameter.requires_grad_(False)
+
+    def on_fit_start(self):
+        self.rec_model.device = str(self.device)
+
+    def on_validation_start(self):
+        self.rec_model.device = str(self.device)
+
+    def on_test_start(self):
+        self.rec_model.device = str(self.device)
+
+    def on_validation_batch_end(self, outputs, batch, batch_idx, dataloader_idx=0):
+        for user, (generate, real, cans) in zip(batch["user"], outputs):
+            self.val_content["user"].append(user)
+            self.val_content["generate"].append(generate)
+            self.val_content["real"].append(real)
+            self.val_content["cans"].append(cans)
+
+    def on_test_batch_end(self, outputs, batch, batch_idx, dataloader_idx=0):
+        for user, (generate, real, cans) in zip(batch["user"], outputs):
+            self.test_content["user"].append(user)
+            self.test_content["generate"].append(generate)
+            self.test_content["real"].append(real)
+            self.test_content["cans"].append(cans)
+
+    def on_validation_epoch_start(self):
+        self.val_content = {key: [] for key in ("user", "generate", "real", "cans")}
+
+    def on_test_epoch_start(self):
+        self.test_content = {key: [] for key in ("user", "generate", "real", "cans")}
+
+    @staticmethod
+    def _merge_content(content):
+        parts = [content]
+        if dist.is_available() and dist.is_initialized():
+            parts = [None] * dist.get_world_size()
+            dist.all_gather_object(parts, content)
+        # Lightning's distributed sampler can pad the final batch with duplicate users.
+        rows = {}
+        for part in parts:
+            for user, generate, real, cans in zip(*(part[key] for key in
+                                                    ("user", "generate", "real", "cans"))):
+                rows.setdefault(user, (generate, real, cans))
+        return {key: [row[index] for row in rows.values()]
+                for index, key in enumerate(("generate", "real", "cans"))}
+
+    def on_validation_epoch_end(self):
+        content = self._merge_content(self.val_content)
+        ratio, hr = self.calculate_hr1(content)
+        self.log("val_prediction_valid", ratio, on_epoch=True, sync_dist=True)
+        self.log("val_hr", hr, on_epoch=True, sync_dist=True)
+        self.log("metric", ratio * hr, on_epoch=True, prog_bar=True, sync_dist=True)
+
+    def on_test_epoch_end(self):
+        content = self._merge_content(self.test_content)
+        ratio, hr = self.calculate_hr1(content)
+        self.log("test_prediction_valid", ratio, on_epoch=True, sync_dist=True)
+        self.log("test_hr", hr, on_epoch=True, sync_dist=True)
+        self.log("metric", ratio * hr, on_epoch=True, prog_bar=True, sync_dist=True)
 
 
 class AmazonModule(pl.LightningDataModule):
@@ -72,38 +178,52 @@ def scalar(value):
 
 
 def main():
-    args = arguments(); pl.seed_everything(args.seed)
+    args = arguments()
+    # Check gated model access before the expensive SASRec pretraining stage.
+    from transformers import AutoConfig
+    try:
+        AutoConfig.from_pretrained(args.llm_path, cache_dir=args.cache_dir)
+    except (OSError, ValueError) as error:
+        raise RuntimeError(
+            f"Cannot access Llama model {args.llm_path!r}. Set LLM_PATH to a "
+            "readable local snapshot, or authenticate for the gated model."
+        ) from error
+    pl.seed_everything(args.seed)
     output = Path(args.output_dir); output.mkdir(parents=True, exist_ok=True)
     data, interaction_cache = load_ver4_data(args.dataset, args.cache_dir, args.max_events, args.min_rating)
     safe = args.dataset.replace(":", "_").replace("/", "_")
-    rec_path = Path(args.cache_dir) / "llara" / f"{safe}_sasrec.pt"
+    identity = {"interaction_cache": str(interaction_cache), "maxlen": args.maxlen,
+                "rec_epochs": args.rec_epochs, "rec_size": args.rec_size,
+                "rec_batch_size": args.rec_batch_size, "seed": args.seed}
+    digest = hashlib.sha1(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:12]
+    rec_path = Path(args.cache_dir) / "llara" / f"{safe}_{digest}_sasrec.pt"
     train_rec_model(data, rec_path, "cuda", args.rec_epochs, args.rec_batch_size,
                     args.rec_size, args.maxlen, seed=args.seed)
-    artifact_output = Path(args.cache_dir) / "llara" / "generation" / safe
-    artifact_output.mkdir(parents=True, exist_ok=True)
     prompt_path = ROOT / "prompt.txt"
     hparams = dict(
         llm_path=args.llm_path, rec_model_path=str(rec_path), model_name="mlp_projector",
         rec_size=args.rec_size, loss="lm", llm_tuning="lora", peft_dir=None,
         peft_config=None, lora_r=8, lora_alpha=32, lora_dropout=0.1,
-        rec_embed="SASRec", output_dir=str(artifact_output), save="part",
+        rec_embed="SASRec", output_dir=str(output), save="part",
         lr=args.lr, weight_decay=1e-5, lr_scheduler="cosine",
         lr_decay_min_lr=8e-6, lr_warmup_start_lr=8e-6,
     )
-    model = MInterface(**hparams)
+    model = ReproductionInterface(**hparams)
     model.llama_model.gradient_checkpointing_enable()
     model.llama_model.enable_input_require_grads()
     prompts = [line.strip() for line in prompt_path.read_text().splitlines() if line.strip()]
     module = AmazonModule(args, data, model.llama_tokenizer, prompts)
-    model.hparams.max_steps = max(
-        len(module.trainset) * args.max_epochs //
-        (args.accumulate_grad_batches * args.batch_size * max(args.devices, 1)), 1
-    )
-    callbacks = [EarlyStopping(monitor="metric", mode="max", patience=10, min_delta=0.001)]
+    callbacks = [EarlyStopping(monitor="metric", mode="max", patience=args.early_stopping_patience, min_delta=0.001)]
     strategy = DDPStrategy(find_unused_parameters=True) if args.devices > 1 else "auto"
+    samples_per_rank = math.ceil(len(module.trainset) / args.devices)
+    batches_per_rank = samples_per_rank // args.batch_size
+    if batches_per_rank < 1:
+        raise ValueError("Training examples are fewer than devices * batch_size")
+    max_steps = args.max_epochs * math.ceil(batches_per_rank / args.accumulate_grad_batches)
     trainer = pl.Trainer(
         accelerator="gpu", devices=args.devices, strategy=strategy, precision="bf16-mixed",
-        max_epochs=args.max_epochs, accumulate_grad_batches=args.accumulate_grad_batches,
+        max_epochs=args.max_epochs, max_steps=max_steps,
+        accumulate_grad_batches=args.accumulate_grad_batches,
         callbacks=callbacks, logger=False, enable_checkpointing=False,
         check_val_every_n_epoch=1,
     )
@@ -112,7 +232,7 @@ def main():
     trainer.test(model=model, datamodule=module)
     test = {str(k): scalar(v) for k, v in trainer.callback_metrics.items() if str(k).startswith("test_") or str(k) == "metric"}
     if trainer.is_global_zero:
-        result = {"dataset": args.dataset, "validation": validation, "test": test,
+        result = {"method": "LLaRA", "dataset": args.dataset, "validation": validation, "test": test,
                   "num_users": data.num_users, "num_items": data.num_items,
                   "train_interactions": sum(map(len, data.train_by_user.values())),
                   "train_examples": len(module.trainset), "validation_examples": len(module.valset),

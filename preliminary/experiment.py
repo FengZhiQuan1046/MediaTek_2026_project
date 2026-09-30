@@ -37,7 +37,8 @@ LAG_BINS = ((1, 1), (2, 2), (3, 4), (5, 8), (9, 16),
 FIXED_K = (8, 16, 32)
 METRICS = ("raw_cosine", "random_cosine", "excess_cosine",
            "raw_cosine_z", "random_cosine_z", "excess_cosine_z",
-           "raw_cluster_match", "random_cluster_match", "excess_cluster_match")
+           "raw_cluster_match", "random_cluster_match", "excess_cluster_match",
+           "history_normalized_cluster_match")
 
 
 def bootstrap_mean(values, repetitions, seed):
@@ -54,6 +55,12 @@ def bootstrap_mean(values, repetitions, seed):
     for index in range(repetitions):
         means[index] = values[rng.integers(len(values), size=len(values))].mean()
     return (mean, *map(float, np.quantile(means, [0.025, 0.975])))
+
+
+def history_uniform_cluster_chance(history_clusters, target_cluster):
+    """Chance of target-group match when sampling one observed group uniformly."""
+    return (1.0 / len(history_clusters)
+            if len(history_clusters) and target_cluster in history_clusters else 0.0)
 
 
 def fixed_cohort(rows, k):
@@ -405,6 +412,8 @@ def analyse_dataset(dataset, args, output):
             if split == "test":
                 history.append(data.valid_target[user])
             history = history[-args.max_lag:]
+            if args.reverse_history_input:
+                history.reverse()
             target = int(data.valid_target[user] if split == "valid" else data.test_target[user])
             target_row = row_of[target]
             if not history or not usable[target_row]:
@@ -412,6 +421,14 @@ def analyse_dataset(dataset, args, output):
             target_vector = vectors[target_row]
             target_cluster = int(clusters[target_row])
             history_rows = np.array([row_of[item] for item in history], dtype=np.int32)
+            history_clusters = np.unique(clusters[history_rows[usable[history_rows]]])
+            history_preference_count = len(history_clusters)
+            if history_preference_count == 0:
+                continue
+            # Uniform draw over this user's distinct observed preference groups.
+            # A target group absent from history has zero chance of matching.
+            history_uniform_baseline = history_uniform_cluster_chance(
+                history_clusters, target_cluster)
             blocked = np.array(history, dtype=np.int32)
             user_lags = []
             for lag, item in enumerate(reversed(history), 1):
@@ -435,7 +452,10 @@ def analyse_dataset(dataset, args, output):
                 raw_cluster = float(clusters[item_row] == target_cluster)
                 random_cluster = float(np.mean(clusters[match_rows] == target_cluster))
                 row = {"dataset": dataset, "split": split, "user": user,
-                       "history_length": len(history), "lag": lag,
+                       "history_length": len(history),
+                       "history_preference_count": history_preference_count,
+                       "history_uniform_cluster_baseline": history_uniform_baseline,
+                       "lag": lag,
                        "item": item, "target": target, "raw_cosine": raw,
                        "random_cosine": random_cos, "excess_cosine": raw - random_cos,
                        "raw_cosine_z": raw_z, "random_cosine_z": random_z,
@@ -443,6 +463,7 @@ def analyse_dataset(dataset, args, output):
                        "raw_cluster_match": raw_cluster,
                        "random_cluster_match": random_cluster,
                        "excess_cluster_match": raw_cluster - random_cluster,
+                       "history_normalized_cluster_match": raw_cluster - history_uniform_baseline,
                        "matching_widened_bins": widening}
                 lag_rows.append(row)
                 user_lags.append(row)
@@ -502,7 +523,8 @@ def analyse_dataset(dataset, args, output):
     prefix = output / safe_name(dataset)
     prefix.mkdir(parents=True, exist_ok=True)
     write_csv(prefix / "alignment_per_position.csv", all_lag_rows,
-              ["dataset", "split", "user", "history_length", "lag", "item", "target",
+              ["dataset", "split", "user", "history_length", "history_preference_count",
+               "history_uniform_cluster_baseline", "lag", "item", "target",
                *METRICS, "matching_widened_bins"])
     write_csv(prefix / "alignment_summary.csv", summary_rows,
               ["dataset", "split", "cohort", "lag_bin", "lag_start", "lag_end",
@@ -536,6 +558,7 @@ def analyse_dataset(dataset, args, output):
                    "text_coverage": float(usable.mean()), "cluster_fit_items": len(fit_ids),
                    "clusters": n_clusters, "matching_fallback_counts": dict(fallback),
                    "target_occurrences_in_random_references": target_in_random,
+                   "history_input_order": "reversed" if args.reverse_history_input else "chronological",
                    "timestamp_status": "unavailable_in_ver4_cache",
                    "text_provenance": "metadata_or_review_fallback_unknown_per_item"}
     (prefix / "diagnostics.json").write_text(json.dumps(diagnostics, indent=2), encoding="utf-8")
@@ -554,9 +577,9 @@ def plot_results(summary, old_summary, influence_summary, coverage_summary, outp
             ("excess_cosine_z", "figure1_history_alignment.pdf",
              "How item relevance changes further back in the history",
              "Similarity to the next item above the subset baseline"),
-            ("excess_cluster_match", "figure2_preference_proxy.pdf",
+            ("history_normalized_cluster_match", "figure2_preference_proxy.pdf",
              "Does the user's broad preference remain visible in older items?",
-             "Extra chance of sharing the next item's preference group")):
+             "Same-group match above user-history uniform chance")):
         fig, axes = plt.subplots(1, 2, figsize=(12, 4.4), sharey=True)
         for axis, cohort in zip(axes, ("all_available", "fixed_K16")):
             for dataset in datasets:
@@ -656,6 +679,7 @@ def main():
     parser.add_argument("--max-users", type=int, default=2000)
     parser.add_argument("--max-lag", type=int, default=100)
     parser.add_argument("--short-window", type=int, default=10)
+    parser.add_argument("--reverse-history-input", action="store_true")
     parser.add_argument("--random-matches", type=int, default=20)
     parser.add_argument("--reference-items", type=int, default=20000)
     parser.add_argument("--normalization-pairs", type=int, default=100000)
@@ -677,7 +701,10 @@ def main():
     run.mkdir(parents=True, exist_ok=False)
     manifest = {"status": "running", "mode": "full" if args.max_users == 0 else "pilot",
                 "ver4_revision": git_revision(), "settings": vars(args),
-                "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+                "method": ("reversed_history_trained_model_and_text_diagnostics_v4"
+                           if args.reverse_history_input else
+                           "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4"),
+                "history_input_order": "reversed" if args.reverse_history_input else "chronological",
                 "python_version": platform.python_version(),
                 "numpy_version": np.__version__,
                 "no_checkpoints_or_weights_saved": True,
@@ -742,7 +769,8 @@ def main():
         audit.extend(["", "## Data and model contract", "",
                       "- Input is `ver4/src/train_mamba_rl.py`'s exact schema-v2 cached `InteractionData`; no legacy digest substitution.",
                       "- `ver4/src/data.py` uses one-pass user/item minimum interactions of 5, sorts each user by timestamp, then holds out the last two items for validation and test.",
-                      "- Validation history is train-only; test history is train plus the observed validation item. This analysis caps both at 100 interactions by default.",
+                      "- Validation history is train-only; test history is train plus the observed validation item. Histories are truncated before any reversal.",
+                      f"- Sequence order for model and text diagnostics: {manifest['history_input_order']}. In inverse mode, lag 1 means the last element of the reversed input (the oldest item in the truncated original history).",
                       "- The cache preserves integer item IDs and item text, but not the item-ID reverse mapping, timestamps or per-text metadata/review provenance.",
                       "- Item IDs are built from all filtered interactions before splitting; matching pools, popularity counts, reference cluster fit and text features selected for fit use training items only.",
                       "- `ver4/run_amazons_full_rl.sh` specifies frozen Mamba item encoding, dimension 128 online model, LoRA rank 16, long horizon 100, short window 10, and Long/Short/Preference/Graph enabled by default.",
@@ -773,11 +801,12 @@ def main():
             return next((row for row in contrasts if row["dataset"] == dataset
                          and row["split"] == "test" and row["metric"] == metric), None)
 
-        report = ["# Preliminary ver4 diagnostic", "", f"Mode: **{manifest['mode']}**; split: chronological leave-two-out.",
+        report = ["# Preliminary ver4 diagnostic", "", f"Mode: **{manifest['mode']}**; split: chronological leave-two-out; model input: **{manifest['history_input_order']}**.",
                   "", "These are hypothesis tests, not proofs of a noise cutoff or Mamba failure.",
                   "Text-hash features are independent of recommendation training but item-text provenance is unknown.",
                   "The preference cluster is a train-only coarse proxy, not the learned ver4 preference agent.",
                   "No timestamps survive the ver4 cached split; all lag results are interaction-based.",
+                  "In inverse mode, lag 1 is nearest the end of the reversed input, which is the oldest item in the truncated chronological prefix." if args.reverse_history_input else "Lag 1 is the latest chronological interaction.",
                   "", "## Coverage"]
         for d in diagnostics:
             report.append(f"- {d['dataset']}: {d['sampled_users']}/{d['eligible_users']} users; "

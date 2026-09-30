@@ -124,7 +124,43 @@ excess_cluster_match(u,k) = 1[cluster(history[-k]) = cluster(y)]
                             - mean_B 1[cluster(random) = cluster(y)]
 ```
 
+Figure 2 now uses a user-specific history baseline. For each user and split,
+let K be the number of distinct text-proxy preference clusters in the usable
+observed history (up to `MAX_LAG`). A uniform draw over those distinct groups
+would match the target cluster with probability `1/K` if the target group
+occurs in the history, or zero otherwise. At each lag, Figure 2 plots
+`1[cluster(history[-k]) = cluster(y)]` minus this user-specific chance.
+The metric is summarized per user and then across users, with a 95%
+user-bootstrap interval. The corresponding CSV metric is
+`history_normalized_cluster_match`; the original popularity-matched
+`excess_cluster_match` remains available in the CSV for comparison. Uniform
+over groups does not mean uniform over history items or the full catalog.
+
 Old-history item affinity and preference-cluster readouts evaluate the same
 held-out target and popularity-matched negatives. They are diagnostic encodings,
 not the learned ver4 preference agent. The report therefore does not claim that
 Mamba cannot perform multiple functions, and unfavorable results are retained.
+
+## Reversed-history control
+
+Run `GPU_IDS=1 bash run_inverse.sh` from this directory. The script uses the same
+training and analysis settings as `run.sh`, writes per-dataset training logs,
+score JSON, influence CSV, analysis CSV, reports, manifests, and PDF figures to
+`outputs_inverse/`, then renders the four-dataset figures in
+`aggregated_inverse/`. Set `DATASETS` to run a subset; cross-dataset figures are
+created once analyses for all four default categories are available. Set
+`AGGREGATE=0` to skip that final plotting step. The original `outputs/` and
+`aggregated/` are not used by this launcher.
+
+The inverse control keeps the chronological leave-two-out targets unchanged.
+For every training prefix and every validation/test history, it first takes the
+latest `MAX_LAG` interactions and then reverses that truncated sequence before
+feeding it to the model. The shared dataset cache, LightGCN interaction graph,
+training-only popularity/transition priors, and target labels remain in their
+original order. Model-item deletion scores are computed on the reversed input.
+The text diagnostics also reverse each observed history before assigning lag
+numbers; consequently, lag 1 denotes the oldest item *within the truncated
+original history*. Each inverse analysis manifest and report records this
+orientation. Compare the inverse and original runs under the same seed and
+settings when studying whether the trained sequence model relies on the end of
+its input. The analysis alone does not prove a causal learning mechanism.

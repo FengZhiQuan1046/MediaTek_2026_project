@@ -1,0 +1,5 @@
+dataset,split,cohort,metric,mean,ci_low,ci_high,n_users,status
+amazon-toys-and-games,valid,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,-0.37021873543349315,-0.6081996735376067,-0.15360665967296458,137,estimated
+amazon-toys-and-games,valid,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,-0.0572992700729927,-0.11291400547445256,-0.0020928375912409036,137,estimated
+amazon-toys-and-games,test,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,-0.2659567517246367,-0.4285275411028689,-0.09462102233485348,147,estimated
+amazon-toys-and-games,test,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.0005527210884353775,-0.056002338435374145,0.058630952380952374,147,estimated
