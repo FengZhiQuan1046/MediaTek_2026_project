@@ -10,6 +10,11 @@ import torch
 from tqdm.auto import tqdm
 
 UPSTREAM = Path(os.environ.get("LLARA_UPSTREAM_DIR", Path(__file__).resolve().parents[3] / "LLaRA")).expanduser().resolve()
+if not (UPSTREAM / "recommender" / "A_SASRec_final_bce_llm.py").is_file():
+    raise RuntimeError(
+        f"LLaRA recommender source not found at {UPSTREAM}; "
+        "set LLARA_UPSTREAM_DIR to a complete local LLaRA checkout"
+    )
 for path in (UPSTREAM,):
     if str(path) not in sys.path: sys.path.insert(0, str(path))
 from recommender.A_SASRec_final_bce_llm import SASRec  # noqa: E402

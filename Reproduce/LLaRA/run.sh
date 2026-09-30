@@ -4,6 +4,13 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MEDIATEK_ROOT="$(cd "$PROJECT_ROOT/../.." && pwd)"
 WORKSPACE_ROOT="$(cd "$MEDIATEK_ROOT/.." && pwd)"
+LLARA_UPSTREAM_DIR="${LLARA_UPSTREAM_DIR:-$WORKSPACE_ROOT/LLaRA}"
+if [[ ! -f "$LLARA_UPSTREAM_DIR/model/model_interface.py" ]]; then
+  echo "LLaRA upstream source is incomplete or missing: $LLARA_UPSTREAM_DIR" >&2
+  echo "Expected file: $LLARA_UPSTREAM_DIR/model/model_interface.py" >&2
+  exit 2
+fi
+export LLARA_UPSTREAM_DIR
 if [[ -z "${PYTHON_BIN:-}" ]]; then
   PYTHON_BIN="$WORKSPACE_ROOT/miniconda3/envs/py31014/bin/python"
   [[ -x "$PYTHON_BIN" ]] || PYTHON_BIN="$(command -v python3)"
@@ -11,7 +18,7 @@ fi
 command -v "$PYTHON_BIN" >/dev/null || { echo "Python executable not found: $PYTHON_BIN" >&2; exit 2; }
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$PROJECT_ROOT/outputs}"
-GPU_IDS="${1:-${GPU_IDS:-1}}"
+GPU_IDS="${1:-${GPU_IDS:-0,1}}"
 [[ "$GPU_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]] || { echo "Invalid GPU IDs: $GPU_IDS" >&2; exit 2; }
 IFS=',' read -r -a GPU_ARRAY <<< "$GPU_IDS"
 DEVICES="${#GPU_ARRAY[@]}"
@@ -71,11 +78,11 @@ fi
 mkdir -p "$OUTPUT_ROOT"
 for ((repeat=1; repeat<=REPEATS; repeat++)); do
   run_subset "Full_Beauty" "amazon-all-beauty" "$repeat"
-  run_subset "Beauty_and_Personal_Care" "amazon:Beauty_and_Personal_Care" "$repeat"
+  # run_subset "Beauty_and_Personal_Care" "amazon:Beauty_and_Personal_Care" "$repeat"
   run_subset "Baby_Products" "amazon:Baby_Products" "$repeat"
   run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" "$repeat"
-  run_subset "Books" "amazon-books" "$repeat"
+  # run_subset "Books" "amazon-books" "$repeat"
   run_subset "Toys_and_Games" "amazon-toys-and-games" "$repeat"
-  run_subset "Video_Games" "amazon-video-games" "$repeat"
-  run_subset "Clothing_Shoes_and_Jewelry" "amazon-clothing-shoes-and-jewelry" "$repeat"
+  # run_subset "Video_Games" "amazon-video-games" "$repeat"
+  # run_subset "Clothing_Shoes_and_Jewelry" "amazon-clothing-shoes-and-jewelry" "$repeat"
 done

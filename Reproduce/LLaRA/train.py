@@ -17,7 +17,10 @@ from torch.utils.data import DataLoader
 ROOT = Path(__file__).resolve().parent
 UPSTREAM = Path(os.environ.get("LLARA_UPSTREAM_DIR", ROOT.parents[2] / "LLaRA")).expanduser().resolve()
 if not (UPSTREAM / "model" / "model_interface.py").is_file():
-    raise RuntimeError(f"LLaRA upstream source not found at {UPSTREAM}; set LLARA_UPSTREAM_DIR")
+    raise RuntimeError(
+        f"LLaRA model source not found at {UPSTREAM}; "
+        "set LLARA_UPSTREAM_DIR to a complete local LLaRA checkout"
+    )
 for path in (ROOT, UPSTREAM):
     if str(path) not in sys.path: sys.path.insert(0, str(path))
 
