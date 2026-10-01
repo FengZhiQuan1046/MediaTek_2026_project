@@ -1,0 +1,23 @@
+{
+  "dataset": "amazon-all-beauty",
+  "cache_dir": "/workspace/P78123011/cache",
+  "output_dir": "/workspace/P78123011/MediaTek_2026_project/Reproduce/LLaRA/outputs/Full_Beauty/llara_20261001_001501_r1",
+  "max_events": null,
+  "min_rating": 4.0,
+  "llm_path": "/workspace/P78123011/cache/models--meta-llama--Llama-2-7b-hf/snapshots/01c7f73d771dfac7d292323805ebc428287df4f9",
+  "devices": 1,
+  "batch_size": 4,
+  "num_workers": 4,
+  "accumulate_grad_batches": 16,
+  "max_epochs": 5,
+  "maxlen": 10,
+  "cans_num": 10,
+  "max_train_samples": 10000,
+  "eval_user_limit": 1000,
+  "rec_epochs": 10,
+  "rec_batch_size": 128,
+  "rec_size": 64,
+  "lr": 0.0008,
+  "seed": 1234,
+  "early_stopping_patience": 10
+}

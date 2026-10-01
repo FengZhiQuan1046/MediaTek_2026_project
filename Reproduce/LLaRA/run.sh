@@ -12,13 +12,23 @@ if [[ ! -f "$LLARA_UPSTREAM_DIR/model/model_interface.py" ]]; then
 fi
 export LLARA_UPSTREAM_DIR
 if [[ -z "${PYTHON_BIN:-}" ]]; then
-  PYTHON_BIN="$WORKSPACE_ROOT/miniconda3/envs/py31014/bin/python"
+  PYTHON_BIN="$PROJECT_ROOT/.venv/bin/python"
+  [[ -x "$PYTHON_BIN" ]] || PYTHON_BIN="$WORKSPACE_ROOT/miniconda3/envs/py31014/bin/python"
   [[ -x "$PYTHON_BIN" ]] || PYTHON_BIN="$(command -v python3)"
 fi
 command -v "$PYTHON_BIN" >/dev/null || { echo "Python executable not found: $PYTHON_BIN" >&2; exit 2; }
+PYTHON_SITE="$($PYTHON_BIN -c 'import site; print(site.getsitepackages()[0])')"
+CUSPARSELT_LIB="$PYTHON_SITE/nvidia/cusparselt/lib"
+if [[ -f "$CUSPARSELT_LIB/libcusparseLt.so.0" ]]; then
+  export LD_LIBRARY_PATH="$CUSPARSELT_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+"$PYTHON_BIN" -c 'import torch; assert torch.cuda.is_available(), "CUDA is not available"' || {
+  echo "PyTorch/CUDA preflight failed for: $PYTHON_BIN" >&2
+  exit 2
+}
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$PROJECT_ROOT/outputs}"
-GPU_IDS="${1:-${GPU_IDS:-0,1}}"
+GPU_IDS="${1:-${GPU_IDS:-1}}"
 [[ "$GPU_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]] || { echo "Invalid GPU IDs: $GPU_IDS" >&2; exit 2; }
 IFS=',' read -r -a GPU_ARRAY <<< "$GPU_IDS"
 DEVICES="${#GPU_ARRAY[@]}"
@@ -37,7 +47,7 @@ if [[ -z "${LLM_PATH:-}" ]]; then
   done
 fi
 LLM_PATH="${LLM_PATH:-meta-llama/Llama-2-7b-hf}"
-BATCH_SIZE="${BATCH_SIZE:-1}"; ACCUMULATE_GRAD_BATCHES="${ACCUMULATE_GRAD_BATCHES:-16}"
+BATCH_SIZE="${BATCH_SIZE:-4}"; ACCUMULATE_GRAD_BATCHES="${ACCUMULATE_GRAD_BATCHES:-16}"
 MAX_EPOCHS="${EPOCHS:-${MAX_EPOCHS:-5}}"; MAXLEN="${MAXLEN:-10}"; CANS_NUM="${CANS_NUM:-10}"
 MAX_TRAIN_SAMPLES="${MAX_TRAIN_SAMPLES:-10000}"; EVAL_USER_LIMIT="${EVAL_USER_LIMIT:-1000}"
 REC_EPOCHS="${REC_EPOCHS:-10}"; REC_BATCH_SIZE="${REC_BATCH_SIZE:-128}"
@@ -62,7 +72,8 @@ run_subset() {
     --rec-batch-size "$REC_BATCH_SIZE" --num-workers "$NUM_WORKERS" --seed "$SEED"
     --lr "$LR" --early-stopping-patience "$EARLY_STOPPING_PATIENCE")
   [[ -z "$MAX_EVENTS" ]] || args+=(--max-events "$MAX_EVENTS")
-  CUDA_VISIBLE_DEVICES="$GPU_IDS" "$PYTHON_BIN" "$PROJECT_ROOT/train.py" "${args[@]}" 2>&1 | tee "$log_path"
+  CUDA_VISIBLE_DEVICES="$GPU_IDS" "$PYTHON_BIN" "$PROJECT_ROOT/train.py" "${args[@]}" 2>&1 |
+    tee >(perl -pe 's/[^\r]*\r//g' | grep -Ev '(Sanity Checking|Training:|Validation:|Testing:|Epoch [0-9]+|LLaRA SASRec).*\|' > "$log_path")
 }
 
 if [[ "$SUBSETS" != all ]]; then

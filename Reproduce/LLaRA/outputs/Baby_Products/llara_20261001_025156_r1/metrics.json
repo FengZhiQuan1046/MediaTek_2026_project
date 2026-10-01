@@ -1,0 +1,23 @@
+{
+  "method": "LLaRA",
+  "dataset": "amazon:Baby_Products",
+  "validation": {
+    "val_prediction_valid": 0.906000018119812,
+    "val_hr": 0.44150111079216003,
+    "metric": 0.4000000059604645
+  },
+  "test": {
+    "test_prediction_valid": 0.8970000147819519,
+    "test_hr": 0.4637681245803833,
+    "metric": 0.41600000858306885
+  },
+  "num_users": 184834,
+  "num_items": 77324,
+  "train_interactions": 1121805,
+  "train_examples": 10000,
+  "validation_examples": 1000,
+  "test_examples": 1000,
+  "visible_gpus": 1,
+  "interaction_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon_Baby_Products_e6e228b87df8.pkl",
+  "rec_model_cache": "/workspace/P78123011/cache/llara/amazon_Baby_Products_93a3d16456a7_sasrec.pt"
+}

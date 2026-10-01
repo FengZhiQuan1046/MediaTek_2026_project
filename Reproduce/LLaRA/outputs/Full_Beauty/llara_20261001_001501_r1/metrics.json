@@ -1,0 +1,23 @@
+{
+  "method": "LLaRA",
+  "dataset": "amazon-all-beauty",
+  "validation": {
+    "val_prediction_valid": 0.9620000123977661,
+    "val_hr": 0.6070685982704163,
+    "metric": 0.5839999914169312
+  },
+  "test": {
+    "test_prediction_valid": 0.9639999866485596,
+    "test_hr": 0.6275933384895325,
+    "metric": 0.6050000190734863
+  },
+  "num_users": 1603,
+  "num_items": 4090,
+  "train_interactions": 8445,
+  "train_examples": 6842,
+  "validation_examples": 1000,
+  "test_examples": 1000,
+  "visible_gpus": 1,
+  "interaction_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl",
+  "rec_model_cache": "/workspace/P78123011/cache/llara/amazon-all-beauty_99e895c60f74_sasrec.pt"
+}

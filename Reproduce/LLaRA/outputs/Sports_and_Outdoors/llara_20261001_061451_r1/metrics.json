@@ -1,0 +1,23 @@
+{
+  "method": "LLaRA",
+  "dataset": "amazon-sports-and-outdoors",
+  "validation": {
+    "val_prediction_valid": 0.9819999933242798,
+    "val_hr": 0.5773930549621582,
+    "metric": 0.5669999718666077
+  },
+  "test": {
+    "test_prediction_valid": 0.9829999804496765,
+    "test_hr": 0.5859613418579102,
+    "metric": 0.5759999752044678
+  },
+  "num_users": 631803,
+  "num_items": 401572,
+  "train_interactions": 3678023,
+  "train_examples": 10000,
+  "validation_examples": 1000,
+  "test_examples": 1000,
+  "visible_gpus": 1,
+  "interaction_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-sports-and-outdoors_fcc157f72b81.pkl",
+  "rec_model_cache": "/workspace/P78123011/cache/llara/amazon-sports-and-outdoors_809bea1c4a40_sasrec.pt"
+}
