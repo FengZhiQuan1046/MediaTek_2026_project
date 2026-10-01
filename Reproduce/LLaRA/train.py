@@ -31,6 +31,7 @@ from model.model_interface import MInterface  # noqa: E402
 from amazon_data import AmazonData, TrainCollater  # noqa: E402
 from data_adapter import load_ver4_data  # noqa: E402
 from prepare_rec import train_rec_model  # noqa: E402
+from ranking import candidate_scores, ranking_metrics  # noqa: E402
 
 
 def arguments():
@@ -89,6 +90,39 @@ class ReproductionInterface(MInterface):
         for parameter in self.rec_model.parameters():
             parameter.requires_grad_(False)
 
+    ranking_enabled = False
+
+    @torch.no_grad()
+    def _rank_batch(self, batch):
+        embeddings = self.wrap_emb(batch)
+        ranks = []
+        for row, names in enumerate(batch["cans_name"]):
+            prompt_length = int(batch["tokens"].attention_mask[row].sum())
+            scores = candidate_scores(
+                self.llama_model, self.llama_tokenizer,
+                embeddings[row, :prompt_length], names,
+            ).tolist()
+            candidates = batch["cans"][row].tolist()
+            target = int(batch["item_id"][row])
+            order = sorted(range(len(candidates)), key=lambda index: (-scores[index], index))
+            ranks.append(next(rank for rank, index in enumerate(order, 1)
+                              if candidates[index] == target))
+        return ranks
+
+    @torch.no_grad()
+    def validation_step(self, batch, batch_idx):
+        results = super().validation_step(batch, batch_idx)
+        if self.ranking_enabled:
+            return [(*result, rank) for result, rank in zip(results, self._rank_batch(batch))]
+        return results
+
+    @torch.no_grad()
+    def test_step(self, batch, batch_idx):
+        results = super().test_step(batch, batch_idx)
+        if self.ranking_enabled:
+            return [(*result, rank) for result, rank in zip(results, self._rank_batch(batch))]
+        return results
+
     def on_fit_start(self):
         self.rec_model.device = str(self.device)
 
@@ -99,24 +133,32 @@ class ReproductionInterface(MInterface):
         self.rec_model.device = str(self.device)
 
     def on_validation_batch_end(self, outputs, batch, batch_idx, dataloader_idx=0):
-        for user, (generate, real, cans) in zip(batch["user"], outputs):
+        for user, result in zip(batch["user"], outputs):
+            generate, real, cans = result[:3]
             self.val_content["user"].append(user)
             self.val_content["generate"].append(generate)
             self.val_content["real"].append(real)
             self.val_content["cans"].append(cans)
+            if self.ranking_enabled:
+                self.val_ranks.setdefault(user, result[3])
 
     def on_test_batch_end(self, outputs, batch, batch_idx, dataloader_idx=0):
-        for user, (generate, real, cans) in zip(batch["user"], outputs):
+        for user, result in zip(batch["user"], outputs):
+            generate, real, cans = result[:3]
             self.test_content["user"].append(user)
             self.test_content["generate"].append(generate)
             self.test_content["real"].append(real)
             self.test_content["cans"].append(cans)
+            if self.ranking_enabled:
+                self.test_ranks.setdefault(user, result[3])
 
     def on_validation_epoch_start(self):
         self.val_content = {key: [] for key in ("user", "generate", "real", "cans")}
+        self.val_ranks = {}
 
     def on_test_epoch_start(self):
         self.test_content = {key: [] for key in ("user", "generate", "real", "cans")}
+        self.test_ranks = {}
 
     @staticmethod
     def _merge_content(content):
@@ -133,12 +175,27 @@ class ReproductionInterface(MInterface):
         return {key: [row[index] for row in rows.values()]
                 for index, key in enumerate(("generate", "real", "cans"))}
 
+    @staticmethod
+    def _merge_ranks(ranks):
+        parts = [ranks]
+        if dist.is_available() and dist.is_initialized():
+            parts = [None] * dist.get_world_size()
+            dist.all_gather_object(parts, ranks)
+        merged = {}
+        for part in parts:
+            for user, rank in part.items():
+                merged.setdefault(user, rank)
+        return merged
+
     def on_validation_epoch_end(self):
         content = self._merge_content(self.val_content)
         ratio, hr = self.calculate_hr1(content)
         self.log("val_prediction_valid", ratio, on_epoch=True, sync_dist=True)
         self.log("val_hr", hr, on_epoch=True, sync_dist=True)
         self.log("metric", ratio * hr, on_epoch=True, prog_bar=True, sync_dist=True)
+        if self.ranking_enabled:
+            for name, value in ranking_metrics(self._merge_ranks(self.val_ranks).values()).items():
+                self.log("val_" + name, value, on_epoch=True, sync_dist=True)
 
     def on_test_epoch_end(self):
         content = self._merge_content(self.test_content)
@@ -146,6 +203,9 @@ class ReproductionInterface(MInterface):
         self.log("test_prediction_valid", ratio, on_epoch=True, sync_dist=True)
         self.log("test_hr", hr, on_epoch=True, sync_dist=True)
         self.log("metric", ratio * hr, on_epoch=True, prog_bar=True, sync_dist=True)
+        if self.ranking_enabled:
+            for name, value in ranking_metrics(self._merge_ranks(self.test_ranks).values()).items():
+                self.log("test_" + name, value, on_epoch=True, sync_dist=True)
 
 
 class AmazonModule(pl.LightningDataModule):
@@ -231,15 +291,25 @@ def main():
         check_val_every_n_epoch=1,
     )
     trainer.fit(model=model, datamodule=module)
-    validation = {str(k): scalar(v) for k, v in trainer.callback_metrics.items() if str(k).startswith("val_") or str(k) == "metric"}
-    trainer.test(model=model, datamodule=module)
-    test = {str(k): scalar(v) for k, v in trainer.callback_metrics.items() if str(k).startswith("test_") or str(k) == "metric"}
+    model.ranking_enabled = True
+    ranked_validation = trainer.validate(model=model, datamodule=module, verbose=False)[0]
+    metric_names = ("ndcg@5", "ndcg@10", "recall@5", "recall@10")
+    validation = {str(key): scalar(value) for key, value in ranked_validation.items()
+                  if str(key).startswith("val_") or str(key) == "metric"}
+    validation.update({name: validation["val_" + name] for name in metric_names})
+    test_results = trainer.test(model=model, datamodule=module, verbose=False)[0]
+    test = {str(k): scalar(v) for k, v in test_results.items()
+            if str(k).startswith("test_") or str(k) == "metric"}
+    test.update({name: test["test_" + name] for name in metric_names})
     if trainer.is_global_zero:
         result = {"method": "LLaRA", "dataset": args.dataset, "validation": validation, "test": test,
                   "num_users": data.num_users, "num_items": data.num_items,
                   "train_interactions": sum(map(len, data.train_by_user.values())),
                   "train_examples": len(module.trainset), "validation_examples": len(module.valset),
                   "test_examples": len(module.testset), "visible_gpus": torch.cuda.device_count(),
+                  "ranking_protocol": "sampled_candidates",
+                  "ranking_score": "mean_token_log_probability_of_candidate_name",
+                  "candidate_count": args.cans_num,
                   "interaction_cache": str(interaction_cache), "rec_model_cache": str(rec_path)}
         (output / "metrics.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
         (output / "config.json").write_text(json.dumps(vars(args), indent=2), encoding="utf-8")

@@ -3,8 +3,11 @@
 此目錄使用 [LLaRA 上游原始碼](../../../LLaRA) 的 `MInterface`、LoRA、MLP projector
 與 SASRec 類別，並沿用本專案 `ver4` 的 Amazon Reviews 2023 資料載入、一次性
 user/item 5-core 過濾、時間排序及最後兩筆 validation/test 切分。訓練只使用 training
-partition；validation/test 用固定候選集評估生成結果。候選數 `CANS_NUM` 與抽樣使用者
-數會影響 HR@1，因此不能直接與 SASRec/BERT4Rec 的 full-catalog NDCG 比較。
+partition；validation/test 對每位使用者抽樣候選商品，保留生成式 HR@1，並用模型對候選名稱的
+平均 token log probability 排名，計算 NDCG@5/10 與 Recall@5/10。這些是
+sampled-candidate 指標，不能與 SASRec/BERT4Rec 的 full-catalog 指標直接比較。
+預設 `CANS_NUM=10` 且每位使用者只有一個正例，因此 Recall@10 必然為 1.0；
+若要讓 Recall@10 有區分度，需增加 `CANS_NUM`，同時留意較長 prompt 的 GPU 記憶體。
 
 先在本目錄安裝依賴：
 
@@ -37,9 +40,9 @@ SUBSETS=Toys_and_Games EPOCHS=5 GPU_IDS=0,1 \
 
 | 變數 | 預設 | 意義 |
 | --- | --- | --- |
-| `GPU_IDS` | `0,1` | 使用的實體 GPU |
+| `GPU_IDS` | `1` | 使用的實體 GPU |
 | `EPOCHS` (`MAX_EPOCHS`) | `5` | LLaRA 最大 epoch；`EPOCHS` 優先 |
-| `BATCH_SIZE` | `1` | 每卡 microbatch |
+| `BATCH_SIZE` | `4` | 每卡 microbatch |
 | `ACCUMULATE_GRAD_BATCHES` | `16` | 梯度累積次數 |
 | `LR` | `8e-4` | LLaRA learning rate |
 | `EARLY_STOPPING_PATIENCE` | `10` | Early stopping patience |
@@ -53,7 +56,8 @@ SUBSETS=Toys_and_Games EPOCHS=5 GPU_IDS=0,1 \
 正式完整資料評估請設定 `MAX_TRAIN_SAMPLES=0 EVAL_USER_LIMIT=0`。每個 run
 產生 `outputs/<subset>/llara_<timestamp>_r<repeat>/train_*.log`、
 `config.json` 和 `metrics.json`。`metrics.json` 內含候選式 validation/test
-HR@1、有效生成比例和資料統計。推薦器權重依資料切分與設定存於共享
+HR@1、有效生成比例、候選式 NDCG@5/10、Recall@5/10 和資料統計。
+`tqdm` 進度條只顯示在終端，不寫入 `train_*.log`。推薦器權重依資料切分與設定存於共享
 `cache/llara`，實驗輸出目錄不儲存模型 checkpoint。
 
 驗證啟動與資料 adapter：

@@ -73,7 +73,7 @@ run_subset() {
     --lr "$LR" --early-stopping-patience "$EARLY_STOPPING_PATIENCE")
   [[ -z "$MAX_EVENTS" ]] || args+=(--max-events "$MAX_EVENTS")
   CUDA_VISIBLE_DEVICES="$GPU_IDS" "$PYTHON_BIN" "$PROJECT_ROOT/train.py" "${args[@]}" 2>&1 |
-    tee >(perl -pe 's/[^\r]*\r//g' | grep -Ev '(Sanity Checking|Training:|Validation:|Testing:|Epoch [0-9]+|LLaRA SASRec).*\|' > "$log_path")
+    "$PYTHON_BIN" -u "$PROJECT_ROOT/filter_progress.py" "$log_path"
 }
 
 if [[ "$SUBSETS" != all ]]; then
