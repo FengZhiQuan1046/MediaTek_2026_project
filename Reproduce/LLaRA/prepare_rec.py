@@ -1,23 +1,13 @@
-"""Pretrain the upstream LLaRA SASRec class for an Amazon catalog."""
+"""Pretrain the bundled LLaRA-style SASRec class for an Amazon catalog."""
 from __future__ import annotations
 
 from pathlib import Path
 import random
-import os
-import sys
 
 import torch
 from tqdm.auto import tqdm
 
-UPSTREAM = Path(os.environ.get("LLARA_UPSTREAM_DIR", Path(__file__).resolve().parents[3] / "LLaRA")).expanduser().resolve()
-if not (UPSTREAM / "recommender" / "A_SASRec_final_bce_llm.py").is_file():
-    raise RuntimeError(
-        f"LLaRA recommender source not found at {UPSTREAM}; "
-        "set LLARA_UPSTREAM_DIR to a complete local LLaRA checkout"
-    )
-for path in (UPSTREAM,):
-    if str(path) not in sys.path: sys.path.insert(0, str(path))
-from recommender.A_SASRec_final_bce_llm import SASRec  # noqa: E402
+from sasrec import SASRec
 
 
 def train_rec_model(data, output, device, epochs=10, batch_size=256,
@@ -27,7 +17,9 @@ def train_rec_model(data, output, device, epochs=10, batch_size=256,
         return output
     rng = random.Random(seed)
     eligible = [seq for seq in data.train_by_user.values() if len(seq) > 1]
-    model = SASRec(hidden_size, data.num_items, maxlen, 0.1, device).to(device)
+    if not eligible:
+        raise ValueError("SASRec pretraining requires a user with at least two training items")
+    model = SASRec(hidden_size, data.num_items, maxlen, 0.1).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     steps = max(1, sum(len(seq) - 1 for seq in eligible) // batch_size)
     for epoch in range(epochs):
@@ -46,5 +38,6 @@ def train_rec_model(data, output, device, epochs=10, batch_size=256,
             loss = torch.nn.functional.cross_entropy(model(states, lengths), targets)
             loss.backward(); optimizer.step()
     output.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(model.cpu(), output)
+    torch.save({"version": 1, "hidden_size": hidden_size, "item_num": data.num_items,
+                "state_size": maxlen, "state_dict": model.cpu().state_dict()}, output)
     return output

@@ -1,0 +1,42 @@
+{
+  "method": "LLaRA",
+  "dataset": "amazon-all-beauty",
+  "validation": {
+    "val_prediction_valid": 0.9950000047683716,
+    "val_hr": 0.6040201187133789,
+    "metric": 0.6010000109672546,
+    "val_ndcg@5": 0.6589053273200989,
+    "val_ndcg@10": 0.7222372889518738,
+    "val_recall@5": 0.8040000200271606,
+    "val_recall@10": 1.0,
+    "ndcg@5": 0.6589053273200989,
+    "ndcg@10": 0.7222372889518738,
+    "recall@5": 0.8040000200271606,
+    "recall@10": 1.0
+  },
+  "test": {
+    "test_prediction_valid": 0.996999979019165,
+    "test_hr": 0.6549649238586426,
+    "metric": 0.652999997138977,
+    "test_ndcg@5": 0.6934787631034851,
+    "test_ndcg@10": 0.7496592998504639,
+    "test_recall@5": 0.8240000009536743,
+    "test_recall@10": 1.0,
+    "ndcg@5": 0.6934787631034851,
+    "ndcg@10": 0.7496592998504639,
+    "recall@5": 0.8240000009536743,
+    "recall@10": 1.0
+  },
+  "num_users": 1603,
+  "num_items": 4090,
+  "train_interactions": 8445,
+  "train_examples": 6842,
+  "validation_examples": 1000,
+  "test_examples": 1000,
+  "visible_gpus": 1,
+  "ranking_protocol": "sampled_candidates",
+  "ranking_score": "mean_token_log_probability_of_candidate_name",
+  "candidate_count": 10,
+  "interaction_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl",
+  "rec_model_cache": "/workspace/P78123011/cache/llara/amazon-all-beauty_524932bce797_sasrec.pt"
+}

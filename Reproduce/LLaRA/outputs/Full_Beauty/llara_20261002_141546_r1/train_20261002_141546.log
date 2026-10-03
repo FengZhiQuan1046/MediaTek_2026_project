@@ -1,0 +1,113 @@
+/dataspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/transformers/utils/hub.py:111: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+Seed set to 25252
+EVAL_PLAN validation_users=1457 test_users=1457 catalog_items=4090 chunk_size=8
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [1]
+/dataspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+  | Name        | Type                 | Params | Mode  | FLOPs
+---------------------------------------------------------------------
+0 | llama_model | PeftModelForCausalLM | 6.8 B  | train | 0    
+1 | rec_model   | SASRec               | 555 K  | eval  | 0    
+2 | projector   | MlpProjector         | 17.0 M | train | 0    
+---------------------------------------------------------------------
+37.0 M    Trainable params
+6.7 B     Non-trainable params
+6.8 B     Total params
+27,104.192Total estimated model params size (MB)
+2248      Modules in train mode
+439       Modules in eval mode
+0         Total Flops
+/dataspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py:538: Found 439 module(s) in eval mode at the start of training. This may lead to unexpected behavior during training. If this is intentional, you can ignore this warning.
+EVAL_PROGRESS split=valid epoch=1 users=3/1457 current_user_items=1288/4090 elapsed_min=1.5 eta_min=675.8
+EVAL_PROGRESS split=valid epoch=1 users=5/1457 current_user_items=2312/4090 elapsed_min=2.6 eta_min=673.6
+EVAL_PROGRESS split=valid epoch=1 users=7/1457 current_user_items=3336/4090 elapsed_min=3.6 eta_min=672.2
+EVAL_PROGRESS split=valid epoch=1 users=11/1457 current_user_items=520/4090 elapsed_min=5.2 eta_min=671.9
+EVAL_PROGRESS split=valid epoch=1 users=13/1457 current_user_items=1288/4090 elapsed_min=6.2 eta_min=673.2
+EVAL_PROGRESS split=valid epoch=1 users=15/1457 current_user_items=1800/4090 elapsed_min=7.2 eta_min=676.5
+EVAL_PROGRESS split=valid epoch=1 users=17/1457 current_user_items=2824/4090 elapsed_min=8.3 eta_min=674.7
+EVAL_PROGRESS split=valid epoch=1 users=19/1457 current_user_items=3848/4090 elapsed_min=9.3 eta_min=672.9
+EVAL_PROGRESS split=valid epoch=1 users=23/1457 current_user_items=1288/4090 elapsed_min=10.9 eta_min=670.3
+EVAL_PROGRESS split=valid epoch=1 users=25/1457 current_user_items=2312/4090 elapsed_min=11.9 eta_min=668.7
+EVAL_PROGRESS split=valid epoch=1 users=27/1457 current_user_items=3336/4090 elapsed_min=13.0 eta_min=667.3
+EVAL_PROGRESS split=valid epoch=1 users=30/1457 current_user_items=3848/4090 elapsed_min=14.6 eta_min=670.9
+EVAL_PROGRESS split=valid epoch=1 users=33/1457 current_user_items=520/4090 elapsed_min=15.6 eta_min=671.1
+EVAL_PROGRESS split=valid epoch=1 users=35/1457 current_user_items=1032/4090 elapsed_min=16.6 eta_min=671.3
+EVAL_PROGRESS split=valid epoch=1 users=37/1457 current_user_items=2056/4090 elapsed_min=17.7 eta_min=669.4
+EVAL_PROGRESS split=valid epoch=1 users=39/1457 current_user_items=3080/4090 elapsed_min=18.7 eta_min=667.6
+EVAL_PROGRESS split=valid epoch=1 users=43/1457 current_user_items=520/4090 elapsed_min=20.3 eta_min=664.8
+EVAL_PROGRESS split=valid epoch=1 users=45/1457 current_user_items=1544/4090 elapsed_min=21.3 eta_min=663.4
+EVAL_PROGRESS split=valid epoch=1 users=47/1457 current_user_items=2568/4090 elapsed_min=22.4 eta_min=661.9
+EVAL_PROGRESS split=valid epoch=1 users=49/1457 current_user_items=3592/4090 elapsed_min=23.4 eta_min=660.6
+EVAL_PROGRESS split=valid epoch=1 users=53/1457 current_user_items=1032/4090 elapsed_min=25.0 eta_min=658.5
+EVAL_PROGRESS split=valid epoch=1 users=55/1457 current_user_items=2056/4090 elapsed_min=26.0 eta_min=657.1
+EVAL_PROGRESS split=valid epoch=1 users=57/1457 current_user_items=3080/4090 elapsed_min=27.1 eta_min=655.7
+EVAL_PROGRESS split=valid epoch=1 users=61/1457 current_user_items=520/4090 elapsed_min=28.6 eta_min=653.9
+EVAL_PROGRESS split=valid epoch=1 users=63/1457 current_user_items=1544/4090 elapsed_min=29.7 eta_min=652.4
+EVAL_PROGRESS split=valid epoch=1 users=65/1457 current_user_items=2568/4090 elapsed_min=30.7 eta_min=650.9
+EVAL_PROGRESS split=valid epoch=1 users=67/1457 current_user_items=3592/4090 elapsed_min=31.7 eta_min=649.6
+EVAL_PROGRESS split=valid epoch=1 users=71/1457 current_user_items=1032/4090 elapsed_min=33.3 eta_min=647.9
+EVAL_PROGRESS split=valid epoch=1 users=73/1457 current_user_items=2056/4090 elapsed_min=34.4 eta_min=646.6
+EVAL_PROGRESS split=valid epoch=1 users=75/1457 current_user_items=1800/4090 elapsed_min=35.4 eta_min=648.2
+EVAL_PROGRESS split=valid epoch=1 users=77/1457 current_user_items=2824/4090 elapsed_min=36.4 eta_min=646.9
+EVAL_PROGRESS split=valid epoch=1 users=79/1457 current_user_items=3848/4090 elapsed_min=37.5 eta_min=645.6
+EVAL_PROGRESS split=valid epoch=1 users=83/1457 current_user_items=1288/4090 elapsed_min=39.0 eta_min=643.7
+EVAL_PROGRESS split=valid epoch=1 users=85/1457 current_user_items=2312/4090 elapsed_min=40.1 eta_min=642.3
+EVAL_PROGRESS split=valid epoch=1 users=87/1457 current_user_items=3080/4090 elapsed_min=41.1 eta_min=641.6
+EVAL_PROGRESS split=valid epoch=1 users=91/1457 current_user_items=520/4090 elapsed_min=42.7 eta_min=639.9
+EVAL_PROGRESS split=valid epoch=1 users=93/1457 current_user_items=1032/4090 elapsed_min=43.7 eta_min=639.6
+EVAL_PROGRESS split=valid epoch=1 users=95/1457 current_user_items=2056/4090 elapsed_min=44.8 eta_min=638.3
+EVAL_PROGRESS split=valid epoch=1 users=97/1457 current_user_items=3080/4090 elapsed_min=45.8 eta_min=637.1
+EVAL_PROGRESS split=valid epoch=1 users=101/1457 current_user_items=520/4090 elapsed_min=47.4 eta_min=635.2
+EVAL_PROGRESS split=valid epoch=1 users=103/1457 current_user_items=1544/4090 elapsed_min=48.4 eta_min=634.1
+EVAL_PROGRESS split=valid epoch=1 users=105/1457 current_user_items=2568/4090 elapsed_min=49.5 eta_min=632.9
+EVAL_PROGRESS split=valid epoch=1 users=107/1457 current_user_items=3592/4090 elapsed_min=50.5 eta_min=631.7
+EVAL_PROGRESS split=valid epoch=1 users=111/1457 current_user_items=1032/4090 elapsed_min=52.1 eta_min=630.0
+EVAL_PROGRESS split=valid epoch=1 users=113/1457 current_user_items=2056/4090 elapsed_min=53.1 eta_min=628.8
+EVAL_PROGRESS split=valid epoch=1 users=115/1457 current_user_items=3080/4090 elapsed_min=54.2 eta_min=627.6
+EVAL_PROGRESS split=valid epoch=1 users=119/1457 current_user_items=520/4090 elapsed_min=55.7 eta_min=625.9
+EVAL_PROGRESS split=valid epoch=1 users=121/1457 current_user_items=1544/4090 elapsed_min=56.8 eta_min=624.7
+EVAL_PROGRESS split=valid epoch=1 users=123/1457 current_user_items=2568/4090 elapsed_min=57.8 eta_min=623.6
+EVAL_PROGRESS split=valid epoch=1 users=125/1457 current_user_items=3592/4090 elapsed_min=58.9 eta_min=622.4
+EVAL_PROGRESS split=valid epoch=1 users=129/1457 current_user_items=1032/4090 elapsed_min=60.4 eta_min=620.8
+EVAL_PROGRESS split=valid epoch=1 users=131/1457 current_user_items=2056/4090 elapsed_min=61.5 eta_min=619.6
+EVAL_PROGRESS split=valid epoch=1 users=133/1457 current_user_items=3080/4090 elapsed_min=62.5 eta_min=618.4
+EVAL_PROGRESS split=valid epoch=1 users=137/1457 current_user_items=520/4090 elapsed_min=64.1 eta_min=616.7
+EVAL_PROGRESS split=valid epoch=1 users=139/1457 current_user_items=1544/4090 elapsed_min=65.1 eta_min=615.4
+EVAL_PROGRESS split=valid epoch=1 users=141/1457 current_user_items=2568/4090 elapsed_min=66.1 eta_min=614.1
+EVAL_PROGRESS split=valid epoch=1 users=143/1457 current_user_items=3592/4090 elapsed_min=67.2 eta_min=613.0
+EVAL_PROGRESS split=valid epoch=1 users=147/1457 current_user_items=1032/4090 elapsed_min=68.7 eta_min=611.3
+EVAL_PROGRESS split=valid epoch=1 users=149/1457 current_user_items=2056/4090 elapsed_min=69.8 eta_min=610.2
+EVAL_PROGRESS split=valid epoch=1 users=151/1457 current_user_items=3080/4090 elapsed_min=70.8 eta_min=609.1
+EVAL_PROGRESS split=valid epoch=1 users=155/1457 current_user_items=520/4090 elapsed_min=72.4 eta_min=607.5
+EVAL_PROGRESS split=valid epoch=1 users=157/1457 current_user_items=1288/4090 elapsed_min=73.4 eta_min=606.5
+EVAL_PROGRESS split=valid epoch=1 users=159/1457 current_user_items=1800/4090 elapsed_min=74.4 eta_min=605.9
+EVAL_PROGRESS split=valid epoch=1 users=161/1457 current_user_items=2568/4090 elapsed_min=75.5 eta_min=604.9
+EVAL_PROGRESS split=valid epoch=1 users=163/1457 current_user_items=3592/4090 elapsed_min=76.5 eta_min=603.7
+EVAL_PROGRESS split=valid epoch=1 users=167/1457 current_user_items=1032/4090 elapsed_min=78.1 eta_min=602.1
+EVAL_PROGRESS split=valid epoch=1 users=169/1457 current_user_items=2056/4090 elapsed_min=79.1 eta_min=601.0
+EVAL_PROGRESS split=valid epoch=1 users=171/1457 current_user_items=1288/4090 elapsed_min=80.1 eta_min=601.5
+EVAL_PROGRESS split=valid epoch=1 users=173/1457 current_user_items=2056/4090 elapsed_min=81.2 eta_min=600.7
+EVAL_PROGRESS split=valid epoch=1 users=175/1457 current_user_items=3080/4090 elapsed_min=82.2 eta_min=599.5
+EVAL_PROGRESS split=valid epoch=1 users=179/1457 current_user_items=520/4090 elapsed_min=83.8 eta_min=597.7
+EVAL_PROGRESS split=valid epoch=1 users=181/1457 current_user_items=1544/4090 elapsed_min=84.8 eta_min=596.6
+EVAL_PROGRESS split=valid epoch=1 users=183/1457 current_user_items=2568/4090 elapsed_min=85.9 eta_min=595.4
+EVAL_PROGRESS split=valid epoch=1 users=185/1457 current_user_items=3592/4090 elapsed_min=86.9 eta_min=594.3
+EVAL_PROGRESS split=valid epoch=1 users=189/1457 current_user_items=1032/4090 elapsed_min=88.5 eta_min=592.7
+EVAL_PROGRESS split=valid epoch=1 users=191/1457 current_user_items=2056/4090 elapsed_min=89.5 eta_min=591.6
+EVAL_PROGRESS split=valid epoch=1 users=193/1457 current_user_items=3080/4090 elapsed_min=90.6 eta_min=590.6
+EVAL_PROGRESS split=valid epoch=1 users=197/1457 current_user_items=520/4090 elapsed_min=92.2 eta_min=589.0
+EVAL_PROGRESS split=valid epoch=1 users=199/1457 current_user_items=1288/4090 elapsed_min=93.2 eta_min=588.1
+EVAL_PROGRESS split=valid epoch=1 users=201/1457 current_user_items=1288/4090 elapsed_min=94.2 eta_min=587.8
+EVAL_PROGRESS split=valid epoch=1 users=203/1457 current_user_items=2312/4090 elapsed_min=95.3 eta_min=586.8
+EVAL_PROGRESS split=valid epoch=1 users=205/1457 current_user_items=3336/4090 elapsed_min=96.3 eta_min=585.7
+EVAL_PROGRESS split=valid epoch=1 users=209/1457 current_user_items=776/4090 elapsed_min=97.9 eta_min=584.2
+EVAL_PROGRESS split=valid epoch=1 users=211/1457 current_user_items=1800/4090 elapsed_min=99.0 eta_min=583.1
+EVAL_PROGRESS split=valid epoch=1 users=213/1457 current_user_items=2824/4090 elapsed_min=100.0 eta_min=582.0
+EVAL_PROGRESS split=valid epoch=1 users=215/1457 current_user_items=3848/4090 elapsed_min=101.1 eta_min=580.9
+EVAL_PROGRESS split=valid epoch=1 users=219/1457 current_user_items=1288/4090 elapsed_min=102.7 eta_min=579.3
+EVAL_PROGRESS split=valid epoch=1 users=221/1457 current_user_items=2312/4090 elapsed_min=103.7 eta_min=578.2
+EVAL_PROGRESS split=valid epoch=1 users=223/1457 current_user_items=3336/4090 elapsed_min=104.8 eta_min=577.2

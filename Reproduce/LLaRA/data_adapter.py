@@ -1,68 +1,57 @@
-"""Exact ver4 data boundary and LLaRA session conversion."""
+"""Use ver4's own cache, transition selection, and evaluation user protocol."""
 from __future__ import annotations
 
-import hashlib
-import json
+import logging
 from pathlib import Path
-import pickle
-import random
+from types import SimpleNamespace
 import sys
 
 ROOT = Path(__file__).resolve().parent
-MEDIATEK_ROOT = ROOT.parents[1]
-VER4_ROOT = MEDIATEK_ROOT / "ver4"
+VER4_ROOT = ROOT.parents[1] / "ver4"
 if str(VER4_ROOT) not in sys.path:
     sys.path.insert(0, str(VER4_ROOT))
 
-from src.data import MIN_INTERACTIONS  # noqa: E402
-from src.data_mamba_rl import load_recommendation_data  # noqa: E402
-
-
-def shared_cache_path(dataset, cache_dir, max_events=None, min_rating=4.0):
-    identity = {"dataset": dataset, "data_path": None, "max_events": max_events,
-                "min_rating": min_rating, "min_interactions": MIN_INTERACTIONS,
-                "schema_version": 2}
-    digest = hashlib.sha1(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:12]
-    safe = dataset.replace(":", "_").replace("/", "_")
-    return Path(cache_dir) / "mamba_multi_agent_data" / f"{safe}_{digest}.pkl"
+from src.train_mamba_rl import build_transitions, load_recommendation_data_cached  # noqa: E402
 
 
 def load_ver4_data(dataset, cache_dir, max_events=None, min_rating=4.0):
-    artifact = shared_cache_path(dataset, cache_dir, max_events, min_rating)
-    if artifact.exists():
-        with artifact.open("rb") as stream:
-            return pickle.load(stream), artifact
-    data = load_recommendation_data(dataset, None, cache_dir, max_events, min_rating)
-    artifact.parent.mkdir(parents=True, exist_ok=True)
-    temporary = artifact.with_suffix(".tmp")
-    with temporary.open("wb") as stream:
-        pickle.dump(data, stream, protocol=pickle.HIGHEST_PROTOCOL)
-    temporary.replace(artifact)
-    return data, artifact
+    options = SimpleNamespace(dataset=dataset, data_path=None, cache_dir=cache_dir,
+                              max_events=max_events, min_rating=min_rating,
+                              refresh_data_cache=False)
+    return load_recommendation_data_cached(options, logging.getLogger("llara.data"))
 
 
 def item_names(data):
     names = []
-    for index, text in enumerate(data.item_texts):
-        compact = " ".join(text.split())[:120]
+    for index, value in enumerate(data.item_texts):
+        compact = " ".join(value.split())[:64]
         names.append(f"item {index}: {compact or f'Amazon product {index}'}")
     return names
 
 
 def make_examples(data, split, maxlen, maximum, seed):
-    examples = []
     if split == "train":
-        for user, sequence in data.train_by_user.items():
-            for end in range(1, len(sequence)):
-                examples.append((user, sequence[max(0, end - maxlen):end], sequence[end]))
-    else:
-        targets = data.valid_target if split == "valid" else data.test_target
-        for user, target in targets.items():
-            history = list(data.train_by_user[user])
-            if split == "test":
-                history.append(data.valid_target[user])
-            examples.append((user, history[-maxlen:], target))
-    if maximum and len(examples) > maximum:
-        random.Random(seed).shuffle(examples)
-        examples = examples[:maximum]
+        rows = build_transitions(data, maximum, seed)
+        examples = []
+        for row in rows:
+            history = data.train_by_user[row.user][max(0, row.end - maxlen):row.end]
+            if getattr(data, "reverse_history_input", False):
+                history = history[::-1]
+            examples.append((row.user, history, row.target))
+        return examples
+    if split not in {"valid", "test"}:
+        raise ValueError(f"Unknown data split: {split}")
+    targets = data.valid_target if split == "valid" else data.test_target
+    users = sorted(targets)
+    if maximum > 0 and len(users) > maximum:
+        users = [users[index * len(users) // maximum] for index in range(maximum)]
+    examples = []
+    for user in users:
+        raw = list(data.train_by_user[user])
+        if split == "test":
+            raw.append(data.valid_target[user])
+        history = raw[-maxlen:]
+        if getattr(data, "reverse_history_input", False):
+            history = history[::-1]
+        examples.append((user, history, targets[user]))
     return examples

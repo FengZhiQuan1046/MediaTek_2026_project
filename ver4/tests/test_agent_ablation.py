@@ -1,9 +1,11 @@
 from contextlib import ExitStack
 import itertools
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import torch
 from src.model_mamba_rl import MultiAgentMambaRecommender
+from src.train_mamba_rl import Transition, evaluation_history_batch, history_batch, sequence_input_limit
 
 
 class AgentAblationTest(unittest.TestCase):
@@ -53,16 +55,51 @@ class AgentAblationTest(unittest.TestCase):
                         self.assertTrue((output['preference_weight'] == 0).all())
                     model.zero_grad(set_to_none=True)
 
-    def test_no_long_ignores_old_prefix_for_scores_and_gradients(self):
+    def test_preference_reads_full_history_without_long(self):
+        data = SimpleNamespace(
+            train_by_user={0: [1, 2, 3, 4, 5]},
+            valid_target={0: 6},
+        )
+        for use_short in (False, True):
+            with self.subTest(use_short=use_short):
+                model = MultiAgentMambaRecommender(
+                    torch.randn(20, 8), dim=8, preference_count=4, preference_hidden=8,
+                    use_graph_embeddings=False, use_long=False, use_short=use_short,
+                    use_preference=True, short_window=2, lora_dropout=0,
+                )
+                self.assertEqual(sequence_input_limit(model, 8), 8)
+                train_histories, train_lengths, _ = history_batch(
+                    data, [Transition(0, 5, 6)], sequence_input_limit(model, 8), 'cpu'
+                )
+                self.assertEqual(train_histories[0].tolist(), [1, 2, 3, 4, 5])
+                self.assertEqual(train_lengths.tolist(), [5])
+                valid_histories, valid_lengths, _ = evaluation_history_batch(data, [0], 'valid', 8, 'cpu')
+                test_histories, test_lengths, _ = evaluation_history_batch(data, [0], 'test', 8, 'cpu')
+                with patch.object(model.preference_agent, 'encode', wraps=model.preference_agent.encode) as preference_encode:
+                    with patch.object(model.short_agent, 'encode', wraps=model.short_agent.encode) as short_encode:
+                        model(valid_histories, valid_lengths, torch.tensor([[7, 8]]))
+                        self.assertEqual(preference_encode.call_args.args[1].tolist(), [5])
+                        self.assertEqual(preference_encode.call_args.args[0].size(1), 5)
+                        if use_short:
+                            self.assertEqual(short_encode.call_args.args[1].tolist(), [2])
+                            self.assertEqual(short_encode.call_args.args[0].size(1), 2)
+                        else:
+                            short_encode.assert_not_called()
+                        model.full_catalog_scores(test_histories, test_lengths)
+                        self.assertEqual(preference_encode.call_args.args[1].tolist(), [6])
+
+    def test_short_only_ignores_old_prefix_for_scores_and_gradients(self):
         model = MultiAgentMambaRecommender(
             torch.randn(20, 8), dim=8, preference_count=4, preference_hidden=8,
-            use_graph_embeddings=False, use_long=False, short_window=2, lora_dropout=0,
+            use_graph_embeddings=False, use_long=False, use_preference=False,
+            short_window=2, lora_dropout=0,
         )
+        self.assertEqual(sequence_input_limit(model, 8), 2)
         model.set_stage('joint')
         candidates = torch.tensor([[8, 9], [8, 9]])
         histories = torch.tensor([[1, 2, 3, 4, 5], [6, 7, 4, 5, 0]])
         lengths = torch.tensor([5, 4])
-        with patch.object(model.preference_agent, 'encode', wraps=model.preference_agent.encode) as encode:
+        with patch.object(model.short_agent, 'encode', wraps=model.short_agent.encode) as encode:
             full = model(histories, lengths, candidates)
             self.assertEqual(encode.call_args.args[0].size(1), 2)
             self.assertEqual(encode.call_args.args[1].tolist(), [2, 2])

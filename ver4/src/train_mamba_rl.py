@@ -160,6 +160,11 @@ def build_transitions(data, maximum: int | None, seed: int) -> list[Transition]:
     return result
 
 
+def sequence_input_limit(model: MultiAgentMambaRecommender, max_history: int) -> int:
+    """Retain full prefixes whenever long or preference needs them."""
+    return max_history if model.use_long or model.use_preference else min(max_history, model.short_window)
+
+
 def history_batch(data, transitions: list[Transition], max_history: int, device: str):
     histories = [data.train_by_user[row.user][max(0, row.end - max_history):row.end] for row in transitions]
     if getattr(data, "reverse_history_input", False):
@@ -466,7 +471,7 @@ def train_stage(model, data, transitions, stage, epochs, batch_size, candidates,
         for start in progress:
             batch = epoch_transitions[start:start + batch_size]
             histories, lengths, targets = history_batch(
-                data, batch, max_history if model.use_long else min(max_history, model.short_window), device
+                data, batch, sequence_input_limit(model, max_history), device
             )
             future_ids, future_weights = future_target_batch(
                 data, batch, future_horizon, future_decay, device
@@ -1172,9 +1177,12 @@ def main():
     )
     logger.info("ABLATION USE_LONG=%d USE_SHORT=%d USE_PREFERENCE=%d USE_GCN=%d",
                 args.use_long, args.use_short, args.use_preference, int(args.use_graph_embeddings))
-    logger.info("AGENT_HISTORY mode=%s effective_max_history=%d",
-                "none" if graph_only else "full_history" if args.use_long else "short_window_only",
-                0 if graph_only else args.max_history if args.use_long else min(args.max_history, args.short_window))
+    logger.info("AGENT_HISTORY mode=%s effective_max_history=%d long=%d short=%d preference=%d",
+                "none" if graph_only else "full_history" if args.use_long or args.use_preference else "short_window_only",
+                0 if graph_only else args.max_history if args.use_long or args.use_preference else min(args.max_history, args.short_window),
+                args.max_history if args.use_long else 0,
+                min(args.max_history, args.short_window) if args.use_short else 0,
+                args.max_history if args.use_preference else 0)
     logger.info("EXPERIMENT_NOTE %s", args.experiment_note)
     logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
     data, interaction_artifact = load_recommendation_data_cached(args, logger)
@@ -1453,8 +1461,11 @@ def main():
         "graph_backbone": "LightGCN" if args.use_graph_embeddings else None,
         "graph_layers": model.graph.layers if args.use_graph_embeddings else 0,
         "recommendation_dim": args.dim,
-        "agent_history_mode": "none" if graph_only else "full_history" if args.use_long else "short_window_only",
-        "effective_agent_max_history": 0 if graph_only else args.max_history if args.use_long else min(args.max_history, args.short_window),
+        "agent_history_mode": "none" if graph_only else "full_history" if args.use_long or args.use_preference else "short_window_only",
+        "effective_agent_max_history": 0 if graph_only else args.max_history if args.use_long or args.use_preference else min(args.max_history, args.short_window),
+        "long_history_limit": args.max_history if args.use_long else 0,
+        "short_history_limit": min(args.max_history, args.short_window) if args.use_short else 0,
+        "preference_history_limit": args.max_history if args.use_preference else 0,
         "adaptation_mode": model.adaptation_mode,
     }
     if args.save_model_weights:

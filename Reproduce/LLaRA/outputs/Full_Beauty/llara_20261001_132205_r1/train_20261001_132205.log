@@ -1,0 +1,28 @@
+/dataspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/transformers/utils/hub.py:111: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+Seed set to 1234
+`torch_dtype` is deprecated! Use `dtype` instead!
+The new embeddings will be initialized from a multivariate normal distribution that has old embeddings' mean and covariance. As described in this article: https://nlp.stanford.edu/~johnhew/vocab-expansion.html. To disable this, use `mean_resizing=False`
+The new lm_head weights will be initialized from a multivariate normal distribution that has old embeddings' mean and covariance. As described in this article: https://nlp.stanford.edu/~johnhew/vocab-expansion.html. To disable this, use `mean_resizing=False`
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+You are using a CUDA device ('NVIDIA A100 80GB PCIe') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [1]
+/dataspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+  | Name        | Type                 | Params | Mode  | FLOPs
+---------------------------------------------------------------------
+0 | llama_model | PeftModelForCausalLM | 6.8 B  | train | 0    
+1 | rec_model   | SASRec               | 549 K  | eval  | 0    
+2 | projector   | MlpProjector         | 17.0 M | train | 0    
+---------------------------------------------------------------------
+37.0 M    Trainable params
+6.7 B     Non-trainable params
+6.8 B     Total params
+27,104.169Total estimated model params size (MB)
+2248      Modules in train mode
+439       Modules in eval mode
+0         Total Flops
+/dataspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py:538: Found 439 module(s) in eval mode at the start of training. This may lead to unexpected behavior during training. If this is intentional, you can ignore this warning.
+FINAL_RESULT {"method": "LLaRA", "dataset": "amazon-all-beauty", "validation": {"val_prediction_valid": 0.9950000047683716, "val_hr": 0.6040201187133789, "metric": 0.6010000109672546, "val_ndcg@5": 0.6589053273200989, "val_ndcg@10": 0.7222372889518738, "val_recall@5": 0.8040000200271606, "val_recall@10": 1.0, "ndcg@5": 0.6589053273200989, "ndcg@10": 0.7222372889518738, "recall@5": 0.8040000200271606, "recall@10": 1.0}, "test": {"test_prediction_valid": 0.996999979019165, "test_hr": 0.6549649238586426, "metric": 0.652999997138977, "test_ndcg@5": 0.6934787631034851, "test_ndcg@10": 0.7496592998504639, "test_recall@5": 0.8240000009536743, "test_recall@10": 1.0, "ndcg@5": 0.6934787631034851, "ndcg@10": 0.7496592998504639, "recall@5": 0.8240000009536743, "recall@10": 1.0}, "num_users": 1603, "num_items": 4090, "train_interactions": 8445, "train_examples": 6842, "validation_examples": 1000, "test_examples": 1000, "visible_gpus": 1, "ranking_protocol": "sampled_candidates", "ranking_score": "mean_token_log_probability_of_candidate_name", "candidate_count": 10, "interaction_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl", "rec_model_cache": "/workspace/P78123011/cache/llara/amazon-all-beauty_524932bce797_sasrec.pt"}

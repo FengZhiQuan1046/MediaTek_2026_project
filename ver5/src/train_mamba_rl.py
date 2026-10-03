@@ -1,0 +1,1661 @@
+"""Two-agent Mamba training: supervised specialists, then joint RL fine-tuning."""
+from __future__ import annotations
+
+import argparse
+import csv
+from contextlib import nullcontext
+from dataclasses import dataclass, field
+from datetime import datetime
+import hashlib
+import json
+import logging
+import math
+import os
+from pathlib import Path
+import pickle
+import random
+import time
+
+import numpy as np
+import torch
+from torch.nn import functional as F
+from tqdm.auto import tqdm
+
+from src.data import MIN_INTERACTIONS, edge_index
+from src.data_mamba_rl import load_recommendation_data
+from src.model import MAMBA_MODEL_ID, load_or_encode_text
+from src.model_mamba_rl import MultiAgentMambaRecommender
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SHARED_CACHE_ROOT = PROJECT_ROOT.parents[1] / "cache"
+
+
+@dataclass(frozen=True)
+class Transition:
+    user: int
+    end: int
+    target: int
+
+
+@dataclass
+class TrainingMonitor:
+    """Track periodic validation and retain the best deployable policy."""
+    metric_name: str
+    checkpoint_path: Path | None
+    global_step: int = 0
+    best_score: float = -math.inf
+    best_step: int = 0
+    best_stage: str = ""
+    best_metrics: dict[str, float] | None = None
+    best_state: dict[str, torch.Tensor] | None = None
+    checks_without_improvement: int = 0
+    stopped_early: bool = False
+    history: list[dict[str, object]] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class CatalogPriors:
+    """Training-only catalog statistics used to complement semantic policy scores."""
+    popularity: torch.Tensor
+    transitions: dict[int, dict[int, float]]
+
+
+def seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+def configure_logging(path: Path) -> logging.Logger:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger("multi_agent_mamba_rl")
+    logger.handlers.clear()
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
+    for handler in (logging.FileHandler(path, encoding="utf-8"), logging.StreamHandler()):
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    return logger
+
+
+def load_recommendation_data_cached(args, logger):
+    """Cache the normalized split so repeated tuning does not rescan raw datasets."""
+    identity = {
+        "dataset": args.dataset,
+        "data_path": str(Path(args.data_path).resolve()) if args.data_path else None,
+        "max_events": args.max_events,
+        "min_rating": args.min_rating,
+        "min_interactions": MIN_INTERACTIONS,
+        "schema_version": 2,
+    }
+    digest = hashlib.sha1(json.dumps(identity, sort_keys=True).encode("utf-8")).hexdigest()[:12]
+    safe_dataset = args.dataset.replace(":", "_").replace("/", "_")
+    artifact = Path(args.cache_dir) / "mamba_multi_agent_data" / f"{safe_dataset}_{digest}.pkl"
+    if artifact.exists() and not args.refresh_data_cache:
+        with artifact.open("rb") as stream:
+            data = pickle.load(stream)
+        logger.info("INTERACTION_CACHE hit path=%s", artifact)
+        return data, artifact
+
+    data = load_recommendation_data(
+        args.dataset, args.data_path, args.cache_dir, args.max_events,
+        args.min_rating,
+    )
+    artifact.parent.mkdir(parents=True, exist_ok=True)
+    temporary = artifact.with_suffix(".tmp")
+    with temporary.open("wb") as stream:
+        pickle.dump(data, stream, protocol=pickle.HIGHEST_PROTOCOL)
+    temporary.replace(artifact)
+    logger.info("INTERACTION_CACHE miss_saved path=%s", artifact)
+    return data, artifact
+
+
+def build_transitions(data, maximum: int | None, seed: int) -> list[Transition]:
+    """Bound training samples while maximising eligible-user coverage."""
+    rng = random.Random(seed)
+    eligible = [
+        (user, len(history) - 1)
+        for user, history in data.train_by_user.items()
+        if len(history) > 1
+    ]
+    total = sum(count for _, count in eligible)
+    budget = total if maximum is None or maximum <= 0 else min(maximum, total)
+    rng.shuffle(eligible)
+
+    # Give as many users as possible one randomly selected prefix before
+    # spending the remaining budget on additional interactions.
+    selected_ends: dict[int, int] = {}
+    result: list[Transition] = []
+    for user, count in eligible[:budget]:
+        end = rng.randint(1, count)
+        selected_ends[user] = end
+        result.append(Transition(user, end, data.train_by_user[user][end]))
+
+    remaining_budget = budget - len(result)
+    reservoir: list[Transition] = []
+    seen_remaining = 0
+    if remaining_budget > 0:
+        for user, count in eligible:
+            selected = selected_ends.get(user)
+            history = data.train_by_user[user]
+            for end in range(1, count + 1):
+                if end == selected:
+                    continue
+                transition = Transition(user, end, history[end])
+                seen_remaining += 1
+                if len(reservoir) < remaining_budget:
+                    reservoir.append(transition)
+                else:
+                    replacement = rng.randrange(seen_remaining)
+                    if replacement < remaining_budget:
+                        reservoir[replacement] = transition
+        result.extend(reservoir)
+    if not result:
+        raise RuntimeError("No train prefixes exist after interaction filtering; load more interactions.")
+    rng.shuffle(result)
+    return result
+
+
+def sequence_input_limit(model: MultiAgentMambaRecommender, max_history: int) -> int:
+    """Preference sees the full configured history; short-only sees its window."""
+    return (max_history if model.use_preference
+            else min(max_history, model.short_window))
+
+
+def history_batch(data, transitions: list[Transition], max_history: int, device: str):
+    histories = [data.train_by_user[row.user][max(0, row.end - max_history):row.end] for row in transitions]
+    if getattr(data, "reverse_history_input", False):
+        histories = [history[::-1] for history in histories]
+    lengths = torch.tensor([len(history) for history in histories], device=device)
+    padded = torch.zeros((len(histories), max(int(lengths.max()), 1)), dtype=torch.long, device=device)
+    for row, history in enumerate(histories):
+        padded[row, :len(history)] = torch.tensor(history, device=device)
+    return padded, lengths, torch.tensor([row.target for row in transitions], device=device)
+
+
+def evaluation_history_batch(data, users: list[int], split: str, max_history: int, device: str):
+    histories = []
+    for user in users:
+        history = list(data.train_by_user[user])
+        if split == "test":
+            history.append(data.valid_target[user])
+        histories.append(history[-max_history:])
+    lengths = torch.tensor([len(history) for history in histories], device=device)
+    padded = torch.zeros((len(users), max(int(lengths.max()), 1)), dtype=torch.long, device=device)
+    for row, history in enumerate(histories):
+        model_history = history[::-1] if getattr(data, "reverse_history_input", False) else history
+        padded[row, :len(history)] = torch.tensor(model_history, device=device)
+    return padded, lengths, histories
+
+
+def candidate_slates(targets: torch.Tensor, num_items: int, count: int) -> torch.Tensor:
+    negatives = torch.randint(num_items, (targets.size(0), count - 1), device=targets.device)
+    while torch.any(negatives == targets.unsqueeze(1)):
+        clashes = negatives == targets.unsqueeze(1)
+        negatives[clashes] = torch.randint(num_items, (int(clashes.sum()),), device=targets.device)
+    return torch.cat((targets.unsqueeze(1), negatives), dim=1)
+
+
+def future_target_batch(data, transitions, horizon, decay, device):
+    """Training-only multi-step targets; validation/test items are never read."""
+    ids = torch.zeros((len(transitions), horizon), dtype=torch.long, device=device)
+    weights = torch.zeros((len(transitions), horizon), dtype=torch.float32, device=device)
+    for row, transition in enumerate(transitions):
+        sequence = data.train_by_user[transition.user]
+        future = sequence[transition.end:min(transition.end + horizon, len(sequence))]
+        if not future:
+            future = [transition.target]
+        values = torch.tensor(future, dtype=torch.long, device=device)
+        ids[row, :len(future)] = values
+        ids[row, len(future):] = values[-1]
+        weights[row, :len(future)] = torch.tensor(
+            [decay ** offset for offset in range(len(future))],
+            device=device,
+        )
+    return ids, weights / weights.sum(1, keepdim=True).clamp_min(1e-8)
+
+
+def soft_target_ranking_loss(logits, target_positions, target_weights):
+    log_probabilities = F.log_softmax(logits, dim=-1)
+    selected = log_probabilities.gather(1, target_positions)
+    return -(selected * target_weights).sum(1).mean()
+
+
+def sampled_topk_policy_loss(logits, target_positions, target_weights, topk: int):
+    """REINFORCE on sampled rankings with training-only future-item NDCG reward.
+
+    The reward is an offline proxy: unseen recommendations have no observed
+    user response. The greedy ranking is an action-independent baseline.
+    """
+    scores = logits.float()
+    batch_size, candidate_count = scores.shape
+    k = min(topk, candidate_count)
+    if k < 1:
+        raise ValueError("topk must be positive")
+    gains = torch.zeros_like(scores).scatter_add_(1, target_positions, target_weights.float())
+    discounts = torch.log2(torch.arange(k, device=scores.device, dtype=scores.dtype) + 2).reciprocal()
+    ideal = (gains.topk(k, dim=1).values * discounts).sum(1).clamp_min(1e-8)
+    with torch.no_grad():
+        sampled = torch.multinomial(torch.softmax(scores.detach(), dim=1), k, replacement=False)
+        greedy = scores.detach().topk(k, dim=1).indices
+        reward = (gains.gather(1, sampled) * discounts).sum(1) / ideal
+        baseline = (gains.gather(1, greedy) * discounts).sum(1) / ideal
+    remaining = scores
+    log_probability = scores.new_zeros(batch_size)
+    for rank in range(k):
+        choice = sampled[:, rank:rank + 1]
+        log_probability = log_probability + F.log_softmax(remaining, dim=1).gather(1, choice).squeeze(1)
+        if rank + 1 < k:
+            remaining = remaining.scatter(1, choice, float("-inf"))
+    return -((reward - baseline) * log_probability).mean(), reward.mean().detach()
+
+
+def preference_contrastive_loss(states, target_vectors, target_ids, temperature=0.1):
+    """In-batch multi-positive contrastive alignment without false duplicate negatives."""
+    similarities = F.normalize(states, dim=-1) @ F.normalize(target_vectors, dim=-1).T
+    similarities = similarities / temperature
+    positive_mask = target_ids.unsqueeze(1) == target_ids.unsqueeze(0)
+    log_denominator = torch.logsumexp(similarities, dim=1)
+    positive_logits = similarities.masked_fill(~positive_mask, -torch.inf)
+    log_numerator = torch.logsumexp(positive_logits, dim=1)
+    return (log_denominator - log_numerator).mean()
+
+
+def model_hard_negative_slates(
+    model, states, data, transitions, future_ids, count, pool_multiplier, graph_items,
+    hard_fraction=0.75, use_in_batch=True,
+):
+    """Mix model-mined, random and in-batch negatives without known positives."""
+    negative_count = max(count - future_ids.size(1), 1)
+    pool_size = max(negative_count * pool_multiplier, negative_count)
+    pool = torch.randint(
+        data.num_items, (len(transitions), pool_size), device=future_ids.device
+    )
+    if use_in_batch and len(transitions) > 1:
+        in_batch = future_ids.reshape(1, -1).expand(len(transitions), -1)
+        pool = torch.cat((pool, in_batch), dim=1)
+    with torch.no_grad():
+        pool_vectors = model.project_ids(pool, graph_items)
+        pool_scores = model.logits_from_states(states, pool_vectors)["coordinator"].float()
+        for row, transition in enumerate(transitions):
+            known = torch.tensor(
+                list(set(data.train_by_user[transition.user])),
+                device=pool.device,
+                dtype=pool.dtype,
+            )
+            if known.numel():
+                pool_scores[row].masked_fill_(
+                    (pool[row].unsqueeze(1) == known.unsqueeze(0)).any(1), -torch.inf
+                )
+        hard_count = min(round(negative_count * hard_fraction), negative_count)
+        random_count = negative_count - hard_count
+        pieces = []
+        if hard_count:
+            hard_indices = pool_scores.topk(hard_count, dim=1).indices
+            pieces.append(hard_indices)
+            pool_scores.scatter_(1, hard_indices, -torch.inf)
+        if random_count:
+            random_scores = torch.rand_like(pool_scores).masked_fill(
+                ~torch.isfinite(pool_scores), -torch.inf
+            )
+            pieces.append(random_scores.topk(random_count, dim=1).indices)
+        selected = torch.cat(pieces, dim=1)
+    negatives = pool.gather(1, selected)
+    return torch.cat((future_ids, negatives), dim=1)
+
+
+def build_catalog_priors(data, device: str) -> CatalogPriors:
+    """Build popularity and first-order transition priors from training histories only."""
+    popularity = torch.zeros(data.num_items, dtype=torch.float32)
+    transition_counts: dict[int, dict[int, int]] = {}
+    for history in data.train_by_user.values():
+        for item in history:
+            popularity[item] += 1
+        for previous, following in zip(history, history[1:]):
+            row = transition_counts.setdefault(previous, {})
+            row[following] = row.get(following, 0) + 1
+    popularity = torch.log1p(popularity)
+    popularity = (popularity - popularity.mean()) / popularity.std().clamp_min(1e-6)
+    transitions = {
+        previous: {following: math.log1p(count) for following, count in row.items()}
+        for previous, row in transition_counts.items()
+    }
+    return CatalogPriors(popularity.to(device), transitions)
+
+
+def amp_context(device: str):
+    return torch.autocast(device_type="cuda", dtype=torch.float16) if device.startswith("cuda") else nullcontext()
+
+
+def record_validation(model, metrics, stage, epoch, monitor, logger) -> bool:
+    """Record a validation check and atomically persist a newly best model."""
+    score = float(metrics[monitor.metric_name])
+    monitor.history.append({
+        "global_step": monitor.global_step,
+        "stage": stage,
+        "epoch": epoch,
+        **{name: value if name == "sequence_length" else float(value)
+           for name, value in metrics.items()},
+    })
+    improved = score > monitor.best_score
+    logger.info(
+        "VALID_STEP step=%d stage=%s epoch=%d %s=%.6f recall@10=%.6f improved=%s",
+        monitor.global_step, stage, epoch, monitor.metric_name, score,
+        metrics["recall@10"], improved,
+    )
+    if improved:
+        monitor.best_score = score
+        monitor.best_step = monitor.global_step
+        monitor.best_stage = stage
+        monitor.best_metrics = dict(metrics)
+        monitor.best_state = {
+            name: tensor.detach().cpu().clone()
+            for name, tensor in model.state_dict().items()
+        }
+        monitor.checks_without_improvement = 0
+        if monitor.checkpoint_path is not None:
+            payload = {
+                "model": monitor.best_state,
+                "valid_metrics": monitor.best_metrics,
+                "monitor_metric": monitor.metric_name,
+                "best_score": monitor.best_score,
+                "best_step": monitor.best_step,
+                "best_stage": monitor.best_stage,
+            }
+            temporary = monitor.checkpoint_path.with_suffix(".tmp")
+            torch.save(payload, temporary)
+            temporary.replace(monitor.checkpoint_path)
+            logger.info(
+                "BEST_CHECKPOINT step=%d stage=%s %s=%.6f path=%s",
+                monitor.best_step, monitor.best_stage, monitor.metric_name,
+                monitor.best_score, monitor.checkpoint_path,
+            )
+        else:
+            logger.info(
+                "BEST_MODEL_IN_MEMORY step=%d stage=%s %s=%.6f",
+                monitor.best_step, monitor.best_stage, monitor.metric_name,
+                monitor.best_score,
+            )
+    elif stage == "joint":
+        monitor.checks_without_improvement += 1
+    return improved
+
+
+def log_metric_block(logger, label, metrics, stage, epoch, step) -> None:
+    """Log the six ranking metrics as one readable multi-line record."""
+    logger.info(
+        "\n========== %s ==========\n"
+        "stage=%s | epoch=%d | step=%d | users=%d/%d\n"
+        "NDCG  | @5 %.6f | @10 %.6f\n"
+        "Recall| @5 %.6f | @10 %.6f\n"
+        "Hit   | @5 %.6f | @10 %.6f\n"
+        "================================",
+        label, stage, epoch, step,
+        int(metrics.get("evaluated_users", 0)), int(metrics.get("total_users", 0)),
+        metrics["ndcg@5"], metrics["ndcg@10"],
+        metrics["recall@5"], metrics["recall@10"],
+        metrics["hit@5"], metrics["hit@10"],
+    )
+
+    if "sequence_length" in metrics:
+        logger.info("%s SEQUENCE_LENGTH %s", label, json.dumps(metrics["sequence_length"], sort_keys=True))
+
+
+def preference_auxiliary_losses(model, output, target_vectors):
+    """Supervise next-preference prediction and prevent prototype collapse."""
+    target_assignment = model.preference_targets(target_vectors)
+    target_preference = target_assignment.detach()
+    predicted = output["preference_next"].clamp_min(1e-8)
+    current = output["preference_current"].detach().clamp_min(1e-8)
+    prediction = F.kl_div(predicted.log(), target_preference, reduction="batchmean")
+    midpoint = 0.5 * (current + target_preference)
+    js_divergence = 0.5 * (
+        (current * (current.log() - midpoint.clamp_min(1e-8).log())).sum(-1)
+        + (target_preference * (target_preference.clamp_min(1e-8).log()
+                                - midpoint.clamp_min(1e-8).log())).sum(-1)
+    )
+    change_target = (js_divergence / math.log(2.0)).clamp(0.0, 1.0)
+    transition = F.binary_cross_entropy_with_logits(
+        output["preference_change_logit"], change_target
+    )
+    assignment = target_assignment.clamp_min(1e-8)
+    mean_assignment = assignment.mean(0).clamp_min(1e-8)
+    balance = (mean_assignment * (mean_assignment.log() + math.log(mean_assignment.numel()))).sum()
+    sharpness = -(assignment * assignment.log()).sum(-1).mean() / math.log(
+        assignment.size(-1)
+    )
+    prototypes = F.normalize(model.preference_agent.prototypes, dim=-1)
+    gram = prototypes @ prototypes.T
+    identity = torch.eye(gram.size(0), device=gram.device, dtype=gram.dtype)
+    separation = ((gram - identity) ** 2).mean()
+    return prediction, transition, balance, separation, sharpness
+
+
+def agent_diversity_loss(states, active=(True, True)):
+    """Softly discourage short and preference agents from identical states."""
+    specialists = [F.normalize(state, dim=-1) for state, enabled in zip((states[0], states[2]), active) if enabled]
+    similarities = [
+        (specialists[left] * specialists[right]).sum(-1).square().mean()
+        for left in range(len(specialists))
+        for right in range(left + 1, len(specialists))
+    ]
+    return torch.stack(similarities).mean() if similarities else states[0].new_zeros(())
+
+
+def evaluation_interval(configured_steps: int, steps_per_epoch: int) -> int:
+    """Cap periodic evaluation at one epoch while preserving zero as disabled."""
+    return min(configured_steps, steps_per_epoch) if configured_steps > 0 else 0
+
+
+def train_stage(model, data, transitions, stage, epochs, batch_size, candidates, max_history,
+                learning_rate, device, logger,
+                monitor, validate_every_steps, eval_batch_size, early_stopping_patience,
+                lr_patience, full_catalog_supervised, catalog_priors, popularity_alpha,
+                transition_beta, validation_user_limit, periodic_test_user_limit,
+                preference_coef, preference_transition_coef, preference_balance_coef,
+                preference_separation_coef, future_horizon, future_decay,
+                hard_negative_pool_multiplier, hard_negative_fraction,
+                hard_negative_warmup_epochs, use_in_batch_negatives,
+                preference_contrastive_coef, preference_sharpness_coef,
+                agent_diversity_coef, rl_coef, rl_topk, seed):
+    if epochs == 0:
+        logger.info("SKIP_STAGE stage=%s epochs=%d", stage, epochs)
+        return []
+    model.set_stage(stage)
+    trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
+    optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-5)
+    logger.info(
+        "TRAINING_BRANCHES stage=%s short=%s preference=%s gcn=%s "
+        "preference_auxiliary=%s preference_contrastive=%s diversity_pairs=%d "
+        "policy_gradient=%s trainable_parameters=%d",
+        stage, model.use_short, model.use_preference, model.use_graph_embeddings,
+        model.use_preference, model.use_preference and stage in {"joint", "all_dl"},
+        int(model.use_short and model.use_preference and stage in {"joint", "all_dl"}),
+        stage == "joint" and rl_coef > 0,
+        sum(parameter.numel() for parameter in trainable),
+    )
+    scheduler = None
+    if stage in {"joint", "all_dl"} and validate_every_steps > 0:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="max", factor=0.5, patience=lr_patience, min_lr=1e-6
+        )
+    scaler = torch.amp.GradScaler("cuda", enabled=device.startswith("cuda"))
+    step_losses = []
+    for epoch in range(1, epochs + 1):
+        epoch_transitions = build_transitions(
+            data, len(transitions), seed + epoch * 1009 + monitor.global_step
+        )
+        model.train()
+        total = 0.0
+        total_reward = 0.0
+        completed_steps = 0
+        completed_examples = 0
+        validation_seconds = 0.0
+        steps = math.ceil(len(epoch_transitions) / batch_size)
+        evaluation_steps = evaluation_interval(validate_every_steps, steps)
+        started = time.perf_counter()
+        progress = tqdm(range(0, len(epoch_transitions), batch_size), total=steps,
+                        desc=f"{stage} {epoch}/{epochs}", unit="step", dynamic_ncols=True)
+        for start in progress:
+            batch = epoch_transitions[start:start + batch_size]
+            histories, lengths, targets = history_batch(
+                data, batch, sequence_input_limit(model, max_history), device
+            )
+            future_ids, future_weights = future_target_batch(
+                data, batch, future_horizon, future_decay, device
+            )
+            with amp_context(device):
+                graph_items = model.graph_item_vectors()
+                states = model.encode_states(
+                    histories, lengths, graph_items,
+                    user_ids=torch.tensor([row.user for row in batch], device=device),
+                )
+                if full_catalog_supervised:
+                    candidate_vectors = model.project_all(graph_items)
+                    output = model.logits_from_states(states, candidate_vectors)
+                    target_positions = future_ids
+                    target_vectors = candidate_vectors[targets]
+                else:
+                    slates = model_hard_negative_slates(
+                        model, states, data, batch, future_ids, candidates,
+                        hard_negative_pool_multiplier, graph_items,
+                        hard_fraction=hard_negative_fraction * min(
+                            1.0, epoch / max(hard_negative_warmup_epochs, 1)
+                        ),
+                        use_in_batch=use_in_batch_negatives,
+                    )
+                    candidate_vectors = model.project_ids(slates, graph_items)
+                    output = model.logits_from_states(states, candidate_vectors)
+                    target_positions = torch.arange(
+                        future_horizon, device=device
+                    ).unsqueeze(0).expand(len(batch), -1)
+                    target_vectors = candidate_vectors[:, 0]
+                preference_terms = (preference_auxiliary_losses(model, output, target_vectors)
+                                    if model.use_preference else (0.0,) * 5)
+                preference_auxiliary = (
+                    preference_coef * preference_terms[0]
+                    + preference_transition_coef * preference_terms[1]
+                    + preference_balance_coef * preference_terms[2]
+                    + preference_separation_coef * preference_terms[3]
+                    + preference_sharpness_coef * preference_terms[4]
+                )
+                ranking_losses = {
+                    name: soft_target_ranking_loss(
+                        output[name], target_positions, future_weights
+                    )
+                    for name in ("short", "preference", "coordinator")
+                    if (name == "coordinator" and (model.use_coordinator or model.graph_only))
+                    or (name != "coordinator" and getattr(model, f"use_{name}"))
+                }
+                if stage == "specialists":
+                    loss = (
+                        sum(value for name, value in ranking_losses.items() if name != "coordinator" or model.graph_only)
+                        + preference_auxiliary
+                    )
+                else:
+                    supervised = sum(ranking_losses.values()) / len(ranking_losses)
+                    contrastive = preference_contrastive_loss(
+                        output["states"][2], target_vectors, targets
+                    ) if model.use_preference else 0.0
+                    loss = (
+                        supervised + preference_auxiliary
+                        + preference_contrastive_coef * contrastive
+                        + agent_diversity_coef * agent_diversity_loss(
+                            output["states"], (model.use_short, model.use_preference)
+                        )
+                    )
+                    if stage == "joint" and rl_coef > 0:
+                        policy_loss, mean_reward = sampled_topk_policy_loss(
+                            output["coordinator"], target_positions, future_weights, rl_topk
+                        )
+                        loss = loss + rl_coef * policy_loss
+                        total_reward += mean_reward.item()
+            optimizer.zero_grad(set_to_none=True)
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(trainable, 1.0)
+            scaler.step(optimizer)
+            scaler.update()
+
+            monitor.global_step += 1
+            completed_steps += 1
+            completed_examples += len(batch)
+            total += loss.item()
+            step_losses.append(loss.item())
+            progress.set_postfix(
+                loss=f"{loss.item():.4f}",
+                step=monitor.global_step,
+            )
+
+            if evaluation_steps > 0 and completed_steps % evaluation_steps == 0:
+                validation_started = time.perf_counter()
+                valid_metrics, _ = evaluate(
+                    model, data, "valid", eval_batch_size, max_history, device,
+                    priors=catalog_priors, popularity_alpha=popularity_alpha,
+                    transition_beta=transition_beta, user_limit=validation_user_limit,
+                )
+                log_metric_block(
+                    logger, "PERIODIC VALIDATION", valid_metrics,
+                    stage, epoch, monitor.global_step,
+                )
+                if periodic_test_user_limit >= 0:
+                    test_metrics, _ = evaluate(
+                        model, data, "test", eval_batch_size, max_history, device,
+                        priors=catalog_priors, popularity_alpha=popularity_alpha,
+                        transition_beta=transition_beta, user_limit=periodic_test_user_limit,
+                    )
+                    log_metric_block(
+                        logger, "PERIODIC TEST", test_metrics,
+                        stage, epoch, monitor.global_step,
+                    )
+                    if hasattr(data, "periodic_test_scores"):
+                        data.periodic_test_scores.record(test_metrics, stage, epoch, monitor.global_step)
+                validation_seconds += time.perf_counter() - validation_started
+                record_validation(model, valid_metrics, stage, epoch, monitor, logger)
+                if scheduler is not None:
+                    scheduler.step(valid_metrics[monitor.metric_name])
+                    logger.info(
+                        "LEARNING_RATE step=%d stage=%s lr=%.8g",
+                        monitor.global_step, stage, optimizer.param_groups[0]["lr"],
+                    )
+                model.train()
+                if (
+                    stage == "joint"
+                    and early_stopping_patience > 0
+                    and monitor.checks_without_improvement >= early_stopping_patience
+                ):
+                    monitor.stopped_early = True
+                    logger.info(
+                        "EARLY_STOP step=%d checks_without_improvement=%d best_step=%d best_%s=%.6f",
+                        monitor.global_step, monitor.checks_without_improvement,
+                        monitor.best_step, monitor.metric_name, monitor.best_score,
+                    )
+                    break
+
+        average = total / max(completed_steps, 1)
+        training_seconds = max(
+            time.perf_counter() - started - validation_seconds, 1e-9
+        )
+        if stage == "joint" and rl_coef > 0:
+            logger.info(
+                "stage=%s epoch=%d loss=%.6f sampled_ndcg_reward=%.6f steps=%d transitions/s=%.2f",
+                stage, epoch, average, total_reward / max(completed_steps, 1),
+                completed_steps, completed_examples / training_seconds,
+            )
+        else:
+            logger.info(
+                "stage=%s epoch=%d loss=%.6f steps=%d transitions/s=%.2f",
+                stage, epoch, average, completed_steps, completed_examples / training_seconds,
+            )
+        if monitor.stopped_early:
+            break
+    return step_losses
+
+
+@torch.inference_mode()
+def evaluate(
+    model, data, split, batch_size, max_history, device, sample_count=0,
+    priors: CatalogPriors | None = None, popularity_alpha: float = 0.0,
+    transition_beta: float = 0.0, user_limit: int = 0,
+):
+    model.eval()
+    targets = data.valid_target if split == "valid" else data.test_target
+    users = sorted(targets)
+    total_users = len(users)
+    if user_limit > 0 and total_users > user_limit:
+        # Evenly cover the stable sorted user list without relying on global RNG state.
+        users = [users[index * total_users // user_limit] for index in range(user_limit)]
+    totals = {
+        "recall@5": 0.0, "recall@10": 0.0,
+        "ndcg@5": 0.0, "ndcg@10": 0.0,
+        "hit@5": 0.0, "hit@10": 0.0,
+        "preference_change_probability": 0.0,
+        "preference_current_entropy": 0.0,
+        "preference_next_entropy": 0.0,
+        "preference_ranking_weight": 0.0,
+        "short_agent_weight": 0.0,
+        "preference_agent_weight": 0.0,
+        "short_preference_state_cosine": 0.0,
+    }
+    length_threshold = getattr(data, "evaluation_length_threshold", None)
+    length_groups = None
+    if length_threshold is not None:
+        from .sequence_length_metrics import SequenceLengthMetrics
+        basis = getattr(data, "evaluation_length_basis", "untruncated_train_history")
+        sequence_lengths = None
+        if basis == "filtered_full_sequence":
+            sequence_lengths = {
+                user: len(data.train_by_user[user]) + int(user in data.valid_target) + int(user in data.test_target)
+                for user in targets
+            }
+        length_groups = SequenceLengthMetrics(
+            data.train_by_user, targets, length_threshold, lengths=sequence_lengths, basis=basis
+        )
+    samples = []
+    with amp_context(device):
+        graph_items = model.graph_item_vectors()
+        projected_items = model.project_all(graph_items)
+    if device.startswith("cuda"):
+        torch.cuda.synchronize()
+    started = time.perf_counter()
+    for start in tqdm(range(0, len(users), batch_size), desc=f"full-catalog {split}", unit="batch"):
+        batch_users = users[start:start + batch_size]
+        histories, lengths, raw_histories = evaluation_history_batch(data, batch_users, split, max_history, device)
+        with amp_context(device):
+            output = model.full_catalog_scores(
+                histories, lengths, projected_items, graph_items,
+                user_ids=torch.tensor(batch_users, device=device),
+            )
+        scores = output["coordinator"].float()
+        gold = torch.tensor([targets[user] for user in batch_users], device=device)
+        if priors is not None:
+            scores += popularity_alpha * priors.popularity.unsqueeze(0)
+        for row, history in enumerate(raw_histories):
+            if priors is not None and transition_beta != 0.0:
+                transition_row = priors.transitions.get(history[-1], {})
+                if transition_row:
+                    item_ids = list(transition_row)
+                    values = torch.tensor(
+                        list(transition_row.values()), device=device, dtype=scores.dtype
+                    )
+                    scores[row, item_ids] += transition_beta * values
+            seen = set(history) - {int(gold[row])}
+            if seen:
+                scores[row, list(seen)] = -torch.inf
+        ranks = (scores >= scores.gather(1, gold.unsqueeze(1))).sum(1)
+        if length_groups is not None:
+            length_groups.update(batch_users, ranks.tolist())
+        current_preference = output["preference_current"].float().clamp_min(1e-8)
+        next_preference = output["preference_next"].float().clamp_min(1e-8)
+        totals["preference_change_probability"] += output["preference_change"].float().sum().item()
+        totals["preference_current_entropy"] += (
+            -(current_preference * current_preference.log()).sum(-1).sum().item()
+        )
+        totals["preference_next_entropy"] += (
+            -(next_preference * next_preference.log()).sum(-1).sum().item()
+        )
+        totals["preference_ranking_weight"] += output["preference_weight"].float().sum().item()
+        totals["short_agent_weight"] += output["weights"][:, 0].float().sum().item()
+        totals["preference_agent_weight"] += output["weights"][:, 1].float().sum().item()
+        short_state, _, preference_state = output["states"]
+        totals["short_preference_state_cosine"] += F.cosine_similarity(
+            short_state.float(), preference_state.float(), dim=-1
+        ).sum().item()
+        for cutoff in (5, 10):
+            hits = (ranks <= cutoff).sum().item()
+            # There is one held-out target per user, so Recall and Hit are
+            # numerically equal. Keep both names for standard reports.
+            totals[f"recall@{cutoff}"] += hits
+            totals[f"hit@{cutoff}"] += hits
+            totals[f"ndcg@{cutoff}"] += torch.where(
+                ranks <= cutoff, 1 / torch.log2(ranks.float() + 1), torch.zeros_like(ranks, dtype=torch.float)
+            ).sum().item()
+        remaining = max(sample_count - len(samples), 0)
+        if remaining:
+            top = torch.topk(scores, k=min(10, data.num_items), dim=1).indices
+            for row in range(min(remaining, len(batch_users))):
+                preference_top_k = min(3, current_preference.size(1))
+                current_values, current_ids = torch.topk(current_preference[row], preference_top_k)
+                next_values, next_ids = torch.topk(next_preference[row], preference_top_k)
+                samples.append({
+                    "user_index": batch_users[row], "history": raw_histories[row], "target": int(gold[row]),
+                    "top_items": top[row].tolist(),
+                    "agent_weights": {"short": round(float(output["weights"][row, 0]), 6),
+                                      "preference": round(float(output["weights"][row, 1]), 6)},
+                    "preference_analysis": {
+                        "current_top": [
+                            {"preference_id": int(index), "probability": round(float(value), 6)}
+                            for index, value in zip(current_ids, current_values)
+                        ],
+                        "predicted_next_top": [
+                            {"preference_id": int(index), "probability": round(float(value), 6)}
+                            for index, value in zip(next_ids, next_values)
+                        ],
+                        "transition_probability": round(
+                            float(output["preference_change"][row]), 6
+                        ),
+                        "ranking_weight": round(float(output["preference_weight"][row, 0]), 6),
+                        "uncertainty": round(float(output["preference_uncertainty"][row]), 6),
+                    },
+                })
+    if device.startswith("cuda"):
+        torch.cuda.synchronize()
+    seconds = max(time.perf_counter() - started, 1e-9)
+    metrics = {name: value / len(users) for name, value in totals.items()}
+    metrics.update({"users_per_second": len(users) / seconds,
+                    "scores_per_second": len(users) * data.num_items / seconds,
+                    "evaluated_users": len(users), "total_users": total_users})
+    if length_groups is not None:
+        metrics["sequence_length"] = length_groups.report()
+    return metrics, samples
+
+
+def _sample_influence_candidates(num_items, target, history, negative_count, rng):
+    """Sample one fixed unseen comparison slate for a user's ablations."""
+    blocked = set(map(int, history)) | {int(target)}
+    available = num_items - len(blocked)
+    if available < 1:
+        return None
+    wanted = min(negative_count, available)
+    chosen, seen = [], set()
+    while len(chosen) < wanted:
+        draws = rng.integers(0, num_items, size=max(64, 3 * (wanted - len(chosen))))
+        for item in draws:
+            item = int(item)
+            if item not in blocked and item not in seen:
+                chosen.append(item)
+                seen.add(item)
+                if len(chosen) == wanted:
+                    break
+    return [int(target), *chosen]
+
+
+@torch.inference_mode()
+def measure_history_item_influence(
+    model, data, split, batch_size, max_history, device, output_path,
+    user_limit=0, negative_count=64, seed=25252, dataset="",
+):
+    """Measure each item's contribution by deleting it from a fixed history.
+
+    Positive margin influence means the item raises the true next item's score
+    relative to the same fixed sampled negatives. This runs on the restored best
+    model before it is released and writes statistics only, never model weights.
+    """
+    model.eval()
+    targets = data.valid_target if split == "valid" else data.test_target
+    users = sorted(targets)
+    if user_limit > 0 and len(users) > user_limit:
+        total = len(users)
+        users = [users[index * total // user_limit] for index in range(user_limit)]
+    rng = np.random.default_rng(seed)
+    examples = []
+    for user in users:
+        history = list(data.train_by_user[user])
+        if split == "test":
+            history.append(data.valid_target[user])
+        history = history[-max_history:]
+        if len(history) < 2:
+            continue
+        candidates = _sample_influence_candidates(
+            data.num_items, targets[user], history, negative_count, rng
+        )
+        if candidates is not None:
+            model_history = history[::-1] if getattr(data, "reverse_history_input", False) else history
+            examples.append((int(user), model_history, candidates))
+
+    graph_items = model.graph_item_vectors()
+
+    def score(records):
+        margins, target_scores, ranks = [], [], []
+        for start in range(0, len(records), batch_size):
+            batch = records[start:start + batch_size]
+            lengths = torch.tensor([len(row[1]) for row in batch], device=device)
+            padded = torch.zeros((len(batch), int(lengths.max())), dtype=torch.long, device=device)
+            for index, (_, history, _) in enumerate(batch):
+                padded[index, :len(history)] = torch.tensor(history, dtype=torch.long, device=device)
+            candidates = torch.tensor([row[2] for row in batch], dtype=torch.long, device=device)
+            with amp_context(device):
+                candidate_vectors = model.project_ids(candidates, graph_items)
+                states = model.encode_states(
+                    padded, lengths, graph_items,
+                    user_ids=torch.tensor([row[0] for row in batch], device=device),
+                )
+                output = model.logits_from_states(states, candidate_vectors)
+            logits = output["coordinator"].float()
+            margins.extend((logits[:, 0] - logits[:, 1:].mean(1)).cpu().tolist())
+            target_scores.extend(logits[:, 0].cpu().tolist())
+            ranks.extend((logits >= logits[:, :1]).sum(1).cpu().tolist())
+        return margins, target_scores, ranks
+
+    full_records = [(user, history, candidates) for user, history, candidates in examples]
+    full_margins, full_targets, full_ranks = score(full_records)
+    rows = []
+    for start in tqdm(range(0, len(examples), batch_size),
+                      desc=f"history-item influence {split}", unit="user-batch"):
+        batch = examples[start:start + batch_size]
+        ablations, metadata = [], []
+        for local_index, (user, history, candidates) in enumerate(batch):
+            global_index = start + local_index
+            for lag in range(1, len(history) + 1):
+                removed_index = len(history) - lag
+                without = history[:removed_index] + history[removed_index + 1:]
+                ablations.append((user, without, candidates))
+                metadata.append((global_index, lag, history[removed_index]))
+        without_margins, without_targets, without_ranks = score(ablations)
+        for (global_index, lag, item), margin_without, target_without, rank_without in zip(
+                metadata, without_margins, without_targets, without_ranks):
+            user, history, candidates = examples[global_index]
+            rows.append({
+                "dataset": dataset, "split": split, "user": user,
+                "history_length": len(history), "lag": lag, "item": item,
+                "target": int(targets[user]), "negative_count": len(candidates) - 1,
+                "margin_with_item": full_margins[global_index],
+                "margin_without_item": margin_without,
+                "margin_influence": full_margins[global_index] - margin_without,
+                "target_score_influence": full_targets[global_index] - target_without,
+                "rank_with_item": full_ranks[global_index],
+                "rank_without_item": rank_without,
+                "rank_improvement": rank_without - full_ranks[global_index],
+            })
+    destination = Path(output_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    columns = list(rows[0]) if rows else [
+        "dataset", "split", "user", "history_length", "lag", "item", "target",
+        "negative_count", "margin_with_item", "margin_without_item", "margin_influence",
+        "target_score_influence", "rank_with_item", "rank_without_item", "rank_improvement",
+    ]
+    with destination.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+    return len(rows)
+
+
+def generate_reasons(samples, data, cache_dir, device, max_new_tokens, model_id=MAMBA_MODEL_ID):
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir)
+    generator = AutoModelForCausalLM.from_pretrained(
+        model_id, cache_dir=cache_dir,
+        torch_dtype=torch.float16 if device.startswith("cuda") else torch.float32,
+    ).to(device).eval()
+    for sample in tqdm(samples, desc="Generating recommendation reasons", unit="user"):
+        history = " | ".join(data.item_texts[item] for item in sample["history"][-10:])
+        item = sample["top_items"][0]
+        prompt = (
+            "Explain this recommendation in one concise sentence using only the supplied history. "
+            f"Short-term agent weight={sample['agent_weights']['short']}; "
+            f"preference agent weight={sample['agent_weights']['preference']}. "
+            f"History: {history}. Recommended item: {data.item_texts[item]}. Reason:"
+        )
+        encoded = tokenizer(prompt, truncation=True, max_length=256, return_tensors="pt").to(device)
+        with torch.inference_mode():
+            output = generator.generate(**encoded, max_new_tokens=max_new_tokens, do_sample=False,
+                                        pad_token_id=tokenizer.eos_token_id)
+        reason = tokenizer.decode(output[0, encoded["input_ids"].size(1):], skip_special_tokens=True).strip()
+        sample["recommendation"] = {
+            "item_index": item, "item_text": data.item_texts[item],
+            "reason": reason or "The item matches the user's recent behavior and learned preferences.",
+        }
+
+
+def readable_recommendation_samples(samples, data):
+    """Convert internal integer item indices into inspectable JSON records.
+
+    Training and evaluation intentionally keep compact integer indices.  This
+    conversion is applied only at serialization time, so it cannot alter model
+    inputs, rankings, or metrics.
+    """
+    def item_record(item):
+        item = int(item)
+        return {"item_index": item, "item_name": data.item_texts[item]}
+
+    readable = []
+    for sample in samples:
+        preference = dict(sample["preference_analysis"])
+        for field in ("current_top", "predicted_next_top"):
+            preference[field] = [
+                {
+                    "preference": f"latent_preference_{entry['preference_id']}",
+                    "probability": entry["probability"],
+                }
+                for entry in preference[field]
+            ]
+        recommendation = dict(sample["recommendation"])
+        recommendation["item_name"] = recommendation.pop("item_text")
+        readable.append({
+            "user": {
+                "user_index": sample["user_index"],
+                "display_name": f"anonymous_user_{sample['user_index']}",
+            },
+            "history": [item_record(item) for item in sample["history"]],
+            "target": item_record(sample["target"]),
+            "top_items": [item_record(item) for item in sample["top_items"]],
+            "agent_weights": sample["agent_weights"],
+            "preference_analysis": preference,
+            "recommendation": recommendation,
+        })
+    return readable
+
+
+def save_loss_curve(losses, path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    path.parent.mkdir(parents=True, exist_ok=True)
+    figure, axis = plt.subplots(figsize=(8, 4))
+    offset = 0
+    for stage, values in losses.items():
+        xs = list(range(offset + 1, offset + len(values) + 1))
+        axis.plot(xs, values, marker="o", markersize=2, linewidth=1, label=stage)
+        offset += len(values)
+    axis.set(xlabel="Optimizer step", ylabel="Loss", title="Multi-agent Mamba-RL training loss per step")
+    axis.grid(alpha=0.3)
+    axis.legend()
+    figure.tight_layout()
+    figure.savefig(path, dpi=160)
+    plt.close(figure)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Short/preference multi-LoRA Mamba recommender")
+    parser.add_argument("--dataset", default="movielens-1m")
+    parser.add_argument("--data-path", default=None)
+    parser.add_argument("--cache-dir", default=str(SHARED_CACHE_ROOT))
+    parser.add_argument("--refresh-data-cache", action="store_true")
+    parser.add_argument("--max-events", type=int, default=None)
+    parser.add_argument("--max-transitions", type=int, default=500_000)
+    parser.add_argument("--min-rating", type=float, default=4.0)
+    parser.add_argument("--specialist-epochs", type=int, default=3)
+    parser.add_argument(
+        "--joint-epochs", "--rl-epochs", dest="joint_epochs", type=int, default=20,
+        help="Joint supervised plus RL epochs; 0 trains all enabled modules together with DL for --specialist-epochs.",
+    )
+    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--eval-batch-size", type=int, default=128)
+    parser.add_argument("--validate-every-steps", type=int, default=1000)
+    parser.add_argument("--monitor-metric", choices=("ndcg@10", "recall@10"), default="ndcg@10")
+    parser.add_argument("--early-stopping-patience", type=int, default=12)
+    parser.add_argument("--lr-patience", type=int, default=3)
+    parser.add_argument("--candidates", type=int, default=64)
+    parser.add_argument("--dim", type=int, default=128)
+    parser.add_argument("--lora-rank", type=int, default=8)
+    parser.add_argument("--lora-alpha", type=float, default=16.0)
+    parser.add_argument("--lora-dropout", type=float, default=0.05)
+    parser.add_argument(
+        "--enable-lora", type=int, choices=(0, 1), default=1,
+        help=(
+            "1 uses a disjoint LoRA bank automatically routed by agent; "
+            "0 preserves trainable full-rank updates."
+        ),
+    )
+    parser.add_argument("--short-window", type=int, default=10)
+    parser.add_argument("--preference-count", type=int, default=32)
+    parser.add_argument("--preference-temperature", type=float, default=0.2)
+    parser.add_argument("--preference-score-weight", type=float, default=0.2)
+    parser.add_argument(
+        "--use-graph-embeddings", action=argparse.BooleanOptionalAction, default=True,
+        help="Fuse trainable LightGCN item embeddings with Mamba item vectors.",
+    )
+    parser.add_argument(
+        "--use-coordinator", action=argparse.BooleanOptionalAction, default=True,
+        help="Learn to fuse short and preference; when disabled, use a fixed score mixture.",
+    )
+    parser.add_argument("--max-history", type=int, default=100)
+    parser.add_argument(
+        "--reverse-history-input", action="store_true",
+        help="Reverse each observed history prefix after truncation; keep targets and training graph unchanged.",
+    )
+    parser.add_argument("--specialist-lr", type=float, default=2e-4)
+    parser.add_argument("--joint-lr", type=float, default=5e-5)
+    parser.add_argument("--rl-coef", type=float, default=0.1,
+                        help="Weight of sampled Top-K policy gradient in joint training; 0 disables it.")
+    parser.add_argument("--rl-topk", type=int, default=10,
+                        help="Number of ranked items sampled for the training-only NDCG reward.")
+    parser.add_argument("--preference-coef", type=float, default=0.2)
+    parser.add_argument("--preference-transition-coef", type=float, default=0.1)
+    parser.add_argument("--preference-balance-coef", type=float, default=0.01)
+    parser.add_argument("--preference-separation-coef", type=float, default=0.01)
+    parser.add_argument("--preference-sharpness-coef", type=float, default=0.05)
+    parser.add_argument("--future-horizon", type=int, default=3)
+    parser.add_argument("--future-decay", type=float, default=0.5)
+    parser.add_argument("--hard-negative-pool-multiplier", type=int, default=12)
+    parser.add_argument("--hard-negative-fraction", type=float, default=0.75)
+    parser.add_argument("--hard-negative-warmup-epochs", type=int, default=2)
+    parser.add_argument(
+        "--use-in-batch-negatives", action=argparse.BooleanOptionalAction, default=True,
+    )
+    parser.add_argument("--preference-contrastive-coef", type=float, default=0.05)
+    parser.add_argument("--agent-diversity-coef", type=float, default=0.02)
+    parser.add_argument("--full-catalog-supervised", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--popularity-alpha", type=float, default=0.0)
+    parser.add_argument("--transition-beta", type=float, default=0.0)
+    parser.add_argument("--seed", type=int, default=25252)
+    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--skip-mamba", action="store_true")
+    parser.add_argument(
+        "--graph-device", default=None,
+        help="Optional device for LightGCN parameters/edges; use cuda:1 for two-GPU model parallelism.",
+    )
+    parser.add_argument("--mamba-encode-batch-size", type=int, default=4)
+    parser.add_argument("--mamba-max-tokens", type=int, default=48)
+    parser.add_argument(
+        "--mamba-model-id", default=MAMBA_MODEL_ID,
+        help="Hugging Face model ID used to encode item text, e.g. state-spaces/mamba-1.4b-hf.",
+    )
+    parser.add_argument(
+        "--item-prompt-prefix",
+        default="Preference-aware product representation: ",
+        help="Short prefix for frozen Mamba item encoding; excluded from mean pooling.",
+    )
+    parser.add_argument("--validation-user-limit", type=int, default=0)
+    parser.add_argument(
+        "--periodic-test-user-limit", type=int, default=-1,
+        help="Users in each periodic test; 0 means all and -1 disables periodic test.",
+    )
+    parser.add_argument("--generate-reasons", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--save-model-weights", action=argparse.BooleanOptionalAction, default=True,
+        help="Persist checkpoints/model weights; loss.png is always written.",
+    )
+    parser.add_argument("--reason-count", type=int, default=20)
+    parser.add_argument("--reason-max-new-tokens", type=int, default=40)
+    parser.add_argument("--item-vector-artifact", default=None)
+    parser.add_argument("--resume-checkpoint", default=None)
+    parser.add_argument(
+        "--eval-length-basis", choices=("untruncated_train_history", "filtered_full_sequence"),
+        default="untruncated_train_history",
+        help="Length grouping basis; full sequence includes both held-out positions, not their identities.",
+    )
+    parser.add_argument(
+        "--eval-length-threshold", type=int, default=None,
+        help="Opt-in length groups: short <= threshold, long > threshold; uses untruncated training history.",
+    )
+    parser.add_argument("--experiment-note", default="No experiment note supplied.")
+    parser.add_argument("--target-recall-at-10", type=float, default=0.15)
+    parser.add_argument("--output-dir", default=str(PROJECT_ROOT / "outputs_mamba_rl"))
+    parser.add_argument(
+        "--output-run-dir", default=None,
+        help="Write directly to this directory instead of dataset/run_id nesting.",
+    )
+    parser.add_argument(
+        "--score-file", default=None,
+        help="Optional JSON path for validation/test ranking scores.",
+    )
+    parser.add_argument(
+        "--history-influence-output", default=None,
+        help="Optional CSV path for per-item leave-one-out test-history influence.",
+    )
+    parser.add_argument("--history-influence-user-limit", type=int, default=0)
+    parser.add_argument("--history-influence-negatives", type=int, default=64)
+    for agent in ("short", "preference"):
+        parser.add_argument(f"--use-{agent}", type=int, choices=(0, 1), default=1)
+    args = parser.parse_args()
+    if not (args.use_short or args.use_preference or args.use_graph_embeddings):
+        parser.error("All agents disabled requires USE_GCN=1")
+    if args.eval_length_threshold is not None and args.eval_length_threshold < 1:
+        parser.error("--eval-length-threshold must be positive")
+    if min(args.specialist_epochs, args.joint_epochs) < 0:
+        parser.error("stage epoch counts cannot be negative")
+    if args.rl_coef < 0 or args.rl_topk < 1:
+        parser.error("--rl-coef must be nonnegative and --rl-topk must be positive")
+    if min(args.validate_every_steps, args.early_stopping_patience, args.lr_patience) < 0:
+        parser.error("validation interval and patience values cannot be negative")
+    if (
+        args.candidates < 2 or args.batch_size < 1 or args.max_history < 1 or args.short_window < 1
+        or args.mamba_encode_batch_size < 1 or args.mamba_max_tokens < 1
+        or args.validation_user_limit < 0 or args.periodic_test_user_limit < -1
+        or args.history_influence_user_limit < 0 or args.history_influence_negatives < 1
+        or args.preference_count < 2
+        or args.preference_temperature <= 0
+        or args.future_horizon < 1 or args.candidates <= args.future_horizon
+        or args.hard_negative_pool_multiplier < 1 or args.hard_negative_warmup_epochs < 1
+    ):
+        parser.error("candidate count must be >=2 and batch/history sizes must be positive")
+    if not 0.0 <= args.target_recall_at_10 <= 1.0:
+        parser.error("--target-recall-at-10 must be in [0, 1]")
+    if not 0.0 < args.preference_score_weight < 1.0:
+        parser.error("--preference-score-weight must be in (0, 1)")
+    if min(
+        args.preference_coef, args.preference_transition_coef,
+        args.preference_balance_coef, args.preference_separation_coef,
+        args.preference_contrastive_coef, args.preference_sharpness_coef,
+        args.agent_diversity_coef,
+    ) < 0:
+        parser.error("preference loss coefficients cannot be negative")
+    if not 0.0 < args.future_decay <= 1.0:
+        parser.error("--future-decay must be in (0, 1]")
+    if not 0.0 <= args.hard_negative_fraction <= 1.0:
+        parser.error("--hard-negative-fraction must be in [0, 1]")
+    return args
+
+
+def main():
+    args = parse_args()
+    requested_gpus = os.environ.get("REQUESTED_GPU_IDS")
+    if requested_gpus:
+        expected = int(os.environ.get("EXPECTED_VISIBLE_GPUS", "0"))
+        visible = torch.cuda.device_count()
+        if expected < 1 or visible != expected:
+            raise RuntimeError(
+                f"GPU isolation mismatch: physical GPU_IDS={requested_gpus} expects "
+                f"{expected} visible device(s), but PyTorch sees {visible}"
+            )
+        for label, value in (("model", args.device),
+                             ("graph", args.graph_device or args.device)):
+            device = torch.device(value)
+            logical_index = 0 if device.index is None else device.index
+            if device.type != "cuda" or logical_index >= visible:
+                raise RuntimeError(
+                    f"{label} device {value} is outside selected physical GPU_IDS={requested_gpus}"
+                )
+        torch.cuda.set_device(torch.device(args.device))
+    graph_only = not (args.use_short or args.use_preference)
+    agent_history_mode = (
+        "none" if graph_only else
+        "full_history" if args.use_preference else "short_window_only"
+    )
+    effective_agent_max_history = (
+        0 if graph_only else args.max_history if args.use_preference
+        else min(args.max_history, args.short_window)
+    )
+    short_history_limit = min(args.max_history, args.short_window) if args.use_short else 0
+    preference_history_limit = args.max_history if args.use_preference else 0
+    if graph_only:
+        # Pure user-item graph dot products, without semantic features or catalog priors.
+        args.popularity_alpha = args.transition_beta = 0.0
+        args.generate_reasons = False
+    seed_everything(args.seed)
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_dataset = args.dataset.replace(":", "_").replace("/", "_")
+    output = Path(args.output_run_dir) if args.output_run_dir else Path(args.output_dir) / safe_dataset / run_id
+    output.mkdir(parents=True, exist_ok=True)
+    logger = configure_logging(output / f"train_{run_id}.log")
+    logger.info("run_id=%s dataset=%s device=%s", run_id, args.dataset, args.device)
+    if requested_gpus:
+        logger.info(
+            "CUDA_SCOPE requested_physical=%s visible_count=%d main_logical=%s graph_logical=%s",
+            requested_gpus, torch.cuda.device_count(), args.device, args.graph_device or args.device,
+        )
+    logger.info(
+        "MODEL recommender=%s semantic_encoder=%s semantic_model_id=%s graph_backbone=%s adaptation=%s",
+        "LightGCN" if graph_only else "MultiAgentMambaRecommender",
+        "none" if graph_only else "MambaTextEncoder" if not args.skip_mamba else "random_features",
+        args.mamba_model_id if not args.skip_mamba and not graph_only else "none",
+        "LightGCN" if args.use_graph_embeddings else "none",
+        "multi_lora" if args.enable_lora else "full_rank",
+    )
+    logger.info("ABLATION USE_SHORT=%d USE_PREFERENCE=%d USE_GCN=%d USE_COORDINATOR=%d",
+                args.use_short, args.use_preference, int(args.use_graph_embeddings), int(args.use_coordinator))
+    logger.info(
+        "AGENT_HISTORY mode=%s effective_max_history=%d short=%d preference=%d",
+        agent_history_mode, effective_agent_max_history,
+        short_history_limit, preference_history_limit,
+    )
+    logger.info("EXPERIMENT_NOTE %s", args.experiment_note)
+    logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
+    data, interaction_artifact = load_recommendation_data_cached(args, logger)
+    # Keep the shared cached InteractionData chronological. Reverse only model inputs.
+    data.reverse_history_input = args.reverse_history_input
+    logger.info("HISTORY_INPUT_ORDER %s", "reversed" if args.reverse_history_input else "chronological")
+    if args.eval_length_threshold is not None:
+        # Attach only after cache loading/writing; never change shared cached data.
+        data.evaluation_length_threshold = args.eval_length_threshold
+        data.evaluation_length_basis = args.eval_length_basis
+        from .sequence_length_metrics import PeriodicTestScores
+        data.periodic_test_scores = PeriodicTestScores(output, vars(args), run_id)
+        (output / "dataset_config.json").write_text(
+            json.dumps(vars(args), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        logger.info("LENGTH_SPLIT preprocessing=original_one_pass_user_item_min_%d basis=%s short<=%d long>%d",
+                    MIN_INTERACTIONS, args.eval_length_basis, args.eval_length_threshold, args.eval_length_threshold)
+    logger.info("users=%d items=%d train_interactions=%d",
+                data.num_users, data.num_items, sum(map(len, data.train_by_user.values())))
+    catalog_priors = (
+        build_catalog_priors(data, args.device)
+        if args.popularity_alpha != 0.0 or args.transition_beta != 0.0
+        else None
+    )
+    logger.info(
+        "CATALOG_PRIORS popularity_alpha=%.6f transition_beta=%.6f "
+        "source=train_histories_only enabled=%s",
+        args.popularity_alpha, args.transition_beta, catalog_priors is not None,
+    )
+
+    vector_identity = args.mamba_model_id + "\n" + args.item_prompt_prefix + "\n" + "\n".join(data.item_texts)
+    fingerprint = hashlib.sha1(vector_identity.encode("utf-8")).hexdigest()[:12]
+    artifact = (
+        Path(args.item_vector_artifact)
+        if args.item_vector_artifact
+        else Path(args.cache_dir) / "mamba_multi_agent" / (
+            f"{safe_dataset}_{data.num_items}_{fingerprint}_prompt_tok{args.mamba_max_tokens}.pt"
+        )
+    )
+    if graph_only:
+        item_features = torch.zeros(data.num_items, 1)
+        logger.info("LIGHTGCN_ONLY: semantic encoder disabled; user/item graph dot-product scoring")
+    elif args.skip_mamba:
+        generator = torch.Generator().manual_seed(args.seed)
+        item_features = torch.randn(data.num_items, args.dim, generator=generator)
+        logger.warning("--skip-mamba uses random item features; it is only a smoke-test mode")
+    else:
+        item_features = load_or_encode_text(
+            data.item_texts, str(artifact), args.device, False, args.cache_dir,
+            batch_size=args.mamba_encode_batch_size, max_tokens=args.mamba_max_tokens,
+            prompt_prefix=args.item_prompt_prefix, model_id=args.mamba_model_id,
+        )
+        assert item_features is not None
+    if item_features.size(0) != data.num_items:
+        raise ValueError(
+            f"Item-vector rows ({item_features.size(0)}) do not match catalog size ({data.num_items}); "
+            "the explicit artifact is incompatible with this data split."
+        )
+    logger.info("ITEM_VECTOR_ARTIFACT path=%s fingerprint=%s", artifact, fingerprint)
+    logger.info(
+        "SEMANTIC_BACKBONE model_id=%s hidden_size=%d frozen=%s usage=%s",
+        args.mamba_model_id if not args.skip_mamba and not graph_only else "none", item_features.size(1),
+        not args.skip_mamba,
+        "shared_cached_item_vectors" if not args.skip_mamba else "smoke_test_random_features",
+    )
+    item_features = item_features.to(dtype=torch.float16 if args.device.startswith("cuda") else torch.float32)
+    graph_edges = edge_index(data) if args.use_graph_embeddings else None
+    logger.info(
+        "GRAPH_EMBEDDINGS enabled=%s source=train_histories_only main_device=%s graph_device=%s",
+        args.use_graph_embeddings, args.device,
+        args.graph_device or args.device,
+    )
+    model = MultiAgentMambaRecommender(
+        item_features, args.dim, args.lora_rank, args.lora_alpha, args.lora_dropout, args.short_window,
+        graph_edges=graph_edges, graph_users=data.num_users,
+        use_graph_embeddings=args.use_graph_embeddings,
+        preference_count=args.preference_count,
+        preference_temperature=args.preference_temperature,
+        preference_score_weight=args.preference_score_weight,
+        enable_lora=bool(args.enable_lora),
+        use_short=bool(args.use_short), use_preference=bool(args.use_preference),
+        use_coordinator=args.use_coordinator,
+    )
+    if args.resume_checkpoint:
+        resume_path = Path(args.resume_checkpoint)
+        resume_payload = torch.load(resume_path, map_location="cpu", weights_only=True)
+        resume_state = resume_payload.get("model", resume_payload)
+        model.load_state_dict(resume_state)
+        logger.info("RESUME_CHECKPOINT path=%s", resume_path)
+    model.place_devices(args.device, args.graph_device)
+    logger.info(
+        "ADAPTATION_MODE mode=%s enable_lora=%d",
+        model.adaptation_mode, args.enable_lora,
+    )
+    logger.info("ADAPTER_ROUTES %s", model.adapter_routes())
+    logger.info("agent_parameters=%s", model.agent_parameter_counts())
+    logger.info("PREDICTION_PATH graph_only=%s active_agents=%d coordinator=%s",
+                model.graph_only, model.active_agent_count, model.use_coordinator)
+    transitions = build_transitions(data, args.max_transitions, args.seed)
+    logger.info("training_transitions=%d", len(transitions))
+    single_stage_dl = args.joint_epochs == 0
+    logger.info(
+        "schedule mode=%s specialist_dl_epochs=%d joint_dl_rl_epochs=%d effective_rl_coef=%.4f effective_rl_topk=%d "
+        "validate_every_steps=%d validation_users=%d periodic_test_users=%d "
+        "monitor=%s early_stopping_patience=%d",
+        "single_stage_dl" if single_stage_dl else "specialists_then_joint",
+        args.specialist_epochs, args.joint_epochs, 0.0 if single_stage_dl else args.rl_coef,
+        0 if single_stage_dl or args.rl_coef == 0 else args.rl_topk,
+        args.validate_every_steps, args.validation_user_limit,
+        args.periodic_test_user_limit, args.monitor_metric, args.early_stopping_patience,
+    )
+    monitor = TrainingMonitor(
+        metric_name=args.monitor_metric,
+        checkpoint_path=(output / "best_validation.pt") if args.save_model_weights else None,
+    )
+    if args.resume_checkpoint:
+        resumed_metrics, _ = evaluate(
+            model, data, "valid", args.eval_batch_size, args.max_history, args.device,
+            priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+            transition_beta=args.transition_beta, user_limit=args.validation_user_limit,
+        )
+        log_metric_block(logger, "RESUME VALIDATION", resumed_metrics, "resume", 0, monitor.global_step)
+        record_validation(model, resumed_metrics, "resume", 0, monitor, logger)
+    common = dict(
+        model=model, data=data, transitions=transitions, batch_size=args.batch_size,
+        candidates=args.candidates, max_history=args.max_history,
+        device=args.device, logger=logger, monitor=monitor,
+        validate_every_steps=args.validate_every_steps, eval_batch_size=args.eval_batch_size,
+        early_stopping_patience=args.early_stopping_patience, lr_patience=args.lr_patience,
+        full_catalog_supervised=args.full_catalog_supervised,
+        catalog_priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+        transition_beta=args.transition_beta,
+        validation_user_limit=args.validation_user_limit,
+        periodic_test_user_limit=args.periodic_test_user_limit,
+        preference_coef=args.preference_coef,
+        preference_transition_coef=args.preference_transition_coef,
+        preference_balance_coef=args.preference_balance_coef,
+        preference_separation_coef=args.preference_separation_coef,
+        preference_sharpness_coef=args.preference_sharpness_coef,
+        future_horizon=args.future_horizon, future_decay=args.future_decay,
+        hard_negative_pool_multiplier=args.hard_negative_pool_multiplier,
+        hard_negative_fraction=args.hard_negative_fraction,
+        hard_negative_warmup_epochs=args.hard_negative_warmup_epochs,
+        use_in_batch_negatives=args.use_in_batch_negatives,
+        preference_contrastive_coef=args.preference_contrastive_coef,
+        agent_diversity_coef=args.agent_diversity_coef,
+        rl_coef=args.rl_coef, rl_topk=args.rl_topk,
+        seed=args.seed,
+    )
+    if single_stage_dl:
+        losses = {
+            "all_dl": train_stage(stage="all_dl", epochs=args.specialist_epochs,
+                                  learning_rate=args.specialist_lr, **common),
+        }
+    else:
+        losses = {
+            "specialists": train_stage(stage="specialists", epochs=args.specialist_epochs,
+                                       learning_rate=args.specialist_lr, **common),
+            "joint": train_stage(stage="joint", epochs=args.joint_epochs,
+                                 learning_rate=args.joint_lr, **common),
+        }
+
+    final_current_metrics, _ = evaluate(
+        model, data, "valid", args.eval_batch_size, args.max_history, args.device,
+        priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+        transition_beta=args.transition_beta, user_limit=args.validation_user_limit,
+    )
+    log_metric_block(
+        logger, "FINAL CURRENT VALIDATION", final_current_metrics,
+        "final", 0, monitor.global_step,
+    )
+    record_validation(model, final_current_metrics, "final", 0, monitor, logger)
+    if monitor.best_state is None:
+        raise RuntimeError("Training finished without producing a validation checkpoint.")
+    model.load_state_dict(monitor.best_state)
+    logger.info(
+        "RESTORE_BEST step=%d stage=%s %s=%.6f",
+        monitor.best_step, monitor.best_stage, monitor.metric_name, monitor.best_score,
+    )
+    valid_metrics, _ = evaluate(
+        model, data, "valid", args.eval_batch_size, args.max_history, args.device,
+        priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+        transition_beta=args.transition_beta, user_limit=args.validation_user_limit,
+    )
+    test_metrics, samples = evaluate(
+        model, data, "test", args.eval_batch_size, args.max_history, args.device, args.reason_count,
+        priors=catalog_priors, popularity_alpha=args.popularity_alpha,
+        transition_beta=args.transition_beta,
+    )
+    if args.history_influence_output:
+        influence_rows = measure_history_item_influence(
+            model, data, "test", args.eval_batch_size, args.max_history, args.device,
+            args.history_influence_output,
+            user_limit=args.history_influence_user_limit,
+            negative_count=args.history_influence_negatives,
+            seed=args.seed,
+            dataset=args.dataset,
+        )
+        logger.info(
+            "HISTORY_ITEM_INFLUENCE path=%s rows=%d users_limit=%d negatives=%d",
+            args.history_influence_output, influence_rows,
+            args.history_influence_user_limit, args.history_influence_negatives,
+        )
+    log_metric_block(
+        logger, "BEST CHECKPOINT VALIDATION", valid_metrics,
+        monitor.best_stage, 0, monitor.best_step,
+    )
+    log_metric_block(
+        logger, "FINAL FULL TEST", test_metrics,
+        monitor.best_stage, 0, monitor.best_step,
+    )
+    logger.info("VALID_BEST %s", json.dumps(valid_metrics, sort_keys=True))
+    logger.info("TEST_FINAL %s", json.dumps(test_metrics, sort_keys=True))
+    target_achieved = test_metrics["recall@10"] > args.target_recall_at_10
+    logger.info(
+        "TARGET_RESULT metric=recall@10 target=>%.6f actual=%.6f achieved=%s",
+        args.target_recall_at_10, test_metrics["recall@10"], target_achieved,
+    )
+    training_summary = {
+        "adaptation_mode": model.adaptation_mode,
+        "enable_lora": bool(args.enable_lora),
+        "adapter_routes": model.adapter_routes(),
+        "monitor_metric": monitor.metric_name,
+        "best_score": monitor.best_score,
+        "best_step": monitor.best_step,
+        "best_stage": monitor.best_stage,
+        "global_steps": monitor.global_step,
+        "stopped_early": monitor.stopped_early,
+        "target_recall_at_10": args.target_recall_at_10,
+        "target_achieved": target_achieved,
+        "experiment_note": args.experiment_note,
+        "training_objective": {
+            "type": ("single_stage_supervised_ranking" if single_stage_dl else
+                     "specialist_supervised_then_joint_supervised_policy_gradient" if args.rl_coef > 0 else
+                     "two_stage_supervised_ranking"),
+            "reward": "training_future_items_sampled_topk_ndcg_proxy" if not single_stage_dl and args.rl_coef > 0 else None,
+            "reward_is_observed_user_feedback": False,
+            "rl_coef": 0.0 if single_stage_dl else args.rl_coef,
+            "rl_topk": args.rl_topk if not single_stage_dl and args.rl_coef > 0 else None,
+            "long_short_orthogonality_removed": True,
+            "prefix_sampling": "resampled_each_epoch",
+            "future_horizon": args.future_horizon,
+            "future_decay": args.future_decay,
+            "negative_mining": "curriculum_mixed_model_hard_random_and_in_batch",
+            "hard_negative_pool_multiplier": args.hard_negative_pool_multiplier,
+            "hard_negative_fraction": args.hard_negative_fraction,
+            "hard_negative_warmup_epochs": args.hard_negative_warmup_epochs,
+            "use_in_batch_negatives": args.use_in_batch_negatives,
+            "preference_contrastive_coef": args.preference_contrastive_coef,
+            "agent_diversity_coef": args.agent_diversity_coef,
+        },
+        "catalog_prior": {
+            "popularity_alpha": args.popularity_alpha,
+            "transition_beta": args.transition_beta,
+            "source": "train_histories_only",
+        },
+        "preference_agent": {
+            "preference_count": args.preference_count,
+            "sequence_encoder": "selective_mamba_lora" if args.enable_lora else "selective_mamba_full_rank",
+            "state_dim": args.dim,
+            "assignment_temperature": args.preference_temperature,
+            "adapter": "lora" if args.enable_lora else "full_rank",
+            "adapter_rank": args.lora_rank if args.enable_lora else None,
+            "adapter_alpha": args.lora_alpha if args.enable_lora else None,
+            "learned_ranking_weight": float(
+                torch.sigmoid(model.coordinator.preference_score_logit).detach().cpu()
+            ) if model.use_coordinator and model.use_preference else None,
+            "fixed_ranking_weight": args.preference_score_weight if (
+                args.use_short and args.use_preference and not model.use_coordinator
+            ) else None,
+            "objectives": {
+                "next_preference": args.preference_coef,
+                "transition_detection": args.preference_transition_coef,
+                "prototype_balance": args.preference_balance_coef,
+                "prototype_separation": args.preference_separation_coef,
+                "assignment_sharpness": args.preference_sharpness_coef,
+            },
+        },
+        "validation_history": monitor.history,
+    }
+    model_summary = {
+        "recommender": "LightGCN" if graph_only else "MultiAgentMambaRecommender",
+        "agents": [name for name, enabled in (("short", args.use_short),
+                   ("preference_transition", args.use_preference)) if enabled],
+        "coordinator_enabled": model.use_coordinator,
+        "ablation": {"USE_SHORT": args.use_short,
+                     "USE_PREFERENCE": args.use_preference, "USE_GCN": int(args.use_graph_embeddings),
+                     "USE_COORDINATOR": int(args.use_coordinator)},
+        "semantic_encoder": None if graph_only else "MambaTextEncoder" if not args.skip_mamba else "random_features",
+        "huggingface_model_id": args.mamba_model_id if not args.skip_mamba and not graph_only else None,
+        "semantic_hidden_size": None if graph_only else int(item_features.size(1)),
+        "semantic_encoder_frozen": not args.skip_mamba and not graph_only,
+        "semantic_usage": "disabled" if graph_only else "shared_cached_item_vectors" if not args.skip_mamba else "smoke_test_random_features",
+        "graph_backbone": "LightGCN" if args.use_graph_embeddings else None,
+        "graph_layers": model.graph.layers if args.use_graph_embeddings else 0,
+        "recommendation_dim": args.dim,
+        "agent_history_mode": agent_history_mode,
+        "effective_agent_max_history": effective_agent_max_history,
+        "short_history_limit": short_history_limit,
+        "preference_history_limit": preference_history_limit,
+        "adaptation_mode": model.adaptation_mode,
+    }
+    if args.save_model_weights:
+        checkpoint = {
+            "model": {key: value.detach().cpu() for key, value in model.state_dict().items()},
+            "config": vars(args), "valid_metrics": valid_metrics, "test_metrics": test_metrics,
+            "training": training_summary, "model_info": model_summary,
+            "item_vector_artifact": str(artifact),
+            "interaction_artifact": str(interaction_artifact),
+            "semantic_backbone": {
+                "model_id": args.mamba_model_id,
+                "stored_in_checkpoint": False,
+                "usage": "shared_cached_item_vectors",
+            },
+        }
+        torch.save(checkpoint, output / "multi_agent_lora.pt")
+    save_loss_curve(losses, output / "loss.png")
+    if args.generate_reasons and samples:
+        model.to("cpu")
+        del model
+        if args.device.startswith("cuda"):
+            torch.cuda.empty_cache()
+        generate_reasons(
+            samples, data, args.cache_dir, args.device, args.reason_max_new_tokens,
+            model_id=args.mamba_model_id,
+        )
+    else:
+        for sample in samples:
+            item = sample["top_items"][0]
+            sample["recommendation"] = {"item_index": item, "item_text": data.item_texts[item], "reason": None}
+    readable_samples = readable_recommendation_samples(samples, data)
+    (output / "recommendations.json").write_text(
+        json.dumps(readable_samples, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    preference_report = {
+        "summary": {
+            "mean_transition_probability": test_metrics["preference_change_probability"],
+            "mean_current_entropy": test_metrics["preference_current_entropy"],
+            "mean_predicted_next_entropy": test_metrics["preference_next_entropy"],
+            "mean_ranking_weight": test_metrics["preference_ranking_weight"],
+            "preference_count": args.preference_count,
+        },
+        "samples": [
+            {
+                "user_index": sample["user_index"],
+                "history": sample["history"],
+                "target": sample["target"],
+                **sample["preference_analysis"],
+            }
+            for sample in samples
+        ],
+    }
+    (output / "preference_analysis.json").write_text(
+        json.dumps(preference_report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (output / "metrics.json").write_text(
+        json.dumps({
+            "model": model_summary,
+            "valid": valid_metrics,
+            "test": test_metrics,
+            "training": training_summary,
+        }, indent=2), encoding="utf-8"
+    )
+    if "sequence_length" in valid_metrics:
+        requested_names = ("ndcg@5", "ndcg@10", "recall@5", "recall@10", "hit@5", "hit@10")
+        (output / "dataset_config.json").write_text(
+            json.dumps(vars(args), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        for group in ("short", "long"):
+            group_report = {
+                "dataset": args.dataset, "run_id": run_id, "group": group,
+                "length_basis": args.eval_length_basis,
+                "status": "final_best_model",
+                "periodic_test_history": data.periodic_test_scores.history[group],
+                "length_rule": "length <= threshold" if group == "short" else "length > threshold",
+                "length_threshold": args.eval_length_threshold,
+                "config": vars(args),
+            }
+            for split, metrics in (("valid", valid_metrics), ("test", test_metrics)):
+                values = metrics["sequence_length"][group]
+                group_report[split] = {name: values[name] for name in requested_names}
+                group_report[f"{split}_users"] = {
+                    name: values[name] for name in ("total_users", "evaluated_users")
+                }
+                logger.info(
+                    "FINAL_LENGTH_SCORES dataset=%s group=%s split=%s threshold=%d users=%d/%d scores=%s",
+                    args.dataset, group, split, args.eval_length_threshold,
+                    values["evaluated_users"], values["total_users"],
+                    json.dumps(group_report[split], sort_keys=True),
+                )
+            group_path = output / f"{group}_scores.json"
+            group_path.write_text(
+                json.dumps(group_report, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            logger.info("%s_scores=%s", group, group_path)
+    if args.score_file:
+        requested_names = ("ndcg@5", "ndcg@10", "recall@5", "recall@10", "hit@5", "hit@10")
+        score_path = Path(args.score_file)
+        score_path.parent.mkdir(parents=True, exist_ok=True)
+        score_path.write_text(
+            json.dumps(
+                {
+                    "dataset": args.dataset,
+                    "run_id": run_id,
+                    "model": model_summary,
+                    "valid": {name: valid_metrics[name] for name in requested_names},
+                    "test": {name: test_metrics[name] for name in requested_names},
+                    **({"sequence_length": {
+                        "valid": valid_metrics["sequence_length"],
+                        "test": test_metrics["sequence_length"],
+                    }} if "sequence_length" in valid_metrics else {}),
+                    "config": vars(args),
+                    "artifacts": str(output),
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        logger.info("scores=%s", score_path)
+    logger.info("outputs=%s", output)
+
+
+if __name__ == "__main__":
+    main()

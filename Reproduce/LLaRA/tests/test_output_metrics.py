@@ -28,12 +28,13 @@ class RankingMetricsTest(unittest.TestCase):
 
 
 class ProgressOutputTest(unittest.TestCase):
-    def test_progress_stays_on_terminal_and_out_of_log(self):
+    def test_tqdm_is_filtered_but_evaluation_status_is_logged(self):
         output = (
             b"Loading LLAMA Done\n"
             b"\rEpoch 0:  50%|#####| 2/4 [00:01<00:01]\r"
             b"Generating full split: 123 examples [00:01, 123 examples/s]\n"
             b"\x1b[AValidation DataLoader 0:  25%|##| 1/4 [00:01<00:03]\n"
+            b"EVAL_PROGRESS split=valid users=2/1457 eta_min=560.0\n"
             b"warning: keep this\nTraceback: keep this too\n"
         )
         with tempfile.TemporaryDirectory() as directory:
@@ -45,7 +46,9 @@ class ProgressOutputTest(unittest.TestCase):
             self.assertEqual(result.stdout, output)
             self.assertEqual(
                 log.read_bytes(),
-                b"Loading LLAMA Done\nwarning: keep this\nTraceback: keep this too\n",
+                b"Loading LLAMA Done\n"
+                b"EVAL_PROGRESS split=valid users=2/1457 eta_min=560.0\n"
+                b"warning: keep this\nTraceback: keep this too\n",
             )
 
 

@@ -357,9 +357,9 @@ class MultiAgentMambaRecommender(nn.Module):
             change = zero.new_zeros(state.size(0))
             return (zero, zero, state, zero.new_zeros((state.size(0), 2)), zero,
                     preferences, preferences, change, change)
-        # Disabling LONG also removes full-history input from preference/coordinator.
-        # Apply here so direct forward, hard-negative mining and evaluation agree.
-        if not self.use_long:
+        # Long and preference both read the supplied full history. Only a
+        # short-only model can discard the older prefix before projection.
+        if not (self.use_long or self.use_preference):
             histories, lengths = self._short_histories(
                 histories, lengths, min(self.short_window, histories.size(1))
             )
