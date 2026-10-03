@@ -19,3 +19,157 @@
 2026-10-03 13:03:32,458 | INFO | training_transitions=6842
 2026-10-03 13:03:32,458 | INFO | schedule mode=single_stage_dl specialist_dl_epochs=6 joint_dl_rl_epochs=0 effective_rl_coef=0.0000 effective_rl_topk=0 validate_every_steps=250 validation_users=0 periodic_test_users=0 monitor=ndcg@10 early_stopping_patience=6
 2026-10-03 13:03:33,277 | INFO | TRAINING_BRANCHES stage=all_dl short=True preference=True gcn=True preference_auxiliary=True preference_contrastive=True diversity_pairs=1 policy_gradient=False trainable_parameters=872515
+2026-10-03 13:03:54,562 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=all_dl | epoch=1 | step=54 | users=1457/1457
+NDCG  | @5 0.090289 | @10 0.092449
+Recall| @5 0.094715 | @10 0.101579
+Hit   | @5 0.094715 | @10 0.101579
+================================
+2026-10-03 13:03:54,563 | INFO | PERIODIC VALIDATION SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0502283105022831, "hit@5": 0.0365296803652968, "ndcg@10": 0.03509263772811926, "ndcg@5": 0.03087607080887176, "recall@10": 0.0502283105022831, "recall@5": 0.0365296803652968, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.11066235864297254, "hit@5": 0.1050080775444265, "ndcg@10": 0.10259467792775476, "ndcg@5": 0.10079944062881512, "recall@10": 0.11066235864297254, "recall@5": 0.1050080775444265, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:03:57,723 | INFO | 
+========== PERIODIC TEST ==========
+stage=all_dl | epoch=1 | step=54 | users=1457/1457
+NDCG  | @5 0.104333 | @10 0.105635
+Recall| @5 0.109128 | @10 0.113246
+Hit   | @5 0.109128 | @10 0.113246
+================================
+2026-10-03 13:03:57,724 | INFO | PERIODIC TEST SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0502283105022831, "hit@5": 0.0410958904109589, "ndcg@10": 0.03451767137734901, "ndcg@5": 0.03155512247269576, "recall@10": 0.0502283105022831, "recall@5": 0.0410958904109589, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.12439418416801293, "hit@5": 0.12116316639741519, "ndcg@10": 0.11821521800605049, "ndcg@5": 0.11720768003775173, "recall@10": 0.12439418416801293, "recall@5": 0.12116316639741519, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:03:57,724 | INFO | VALID_STEP step=54 stage=all_dl epoch=1 ndcg@10=0.092449 recall@10=0.101579 improved=True
+2026-10-03 13:03:57,727 | INFO | BEST_MODEL_IN_MEMORY step=54 stage=all_dl ndcg@10=0.092449
+2026-10-03 13:03:57,727 | INFO | LEARNING_RATE step=54 stage=all_dl lr=0.0001
+2026-10-03 13:03:57,728 | INFO | stage=all_dl epoch=1 loss=4.516930 steps=54 transitions/s=379.59
+2026-10-03 13:04:18,360 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=all_dl | epoch=2 | step=108 | users=1457/1457
+NDCG  | @5 0.090415 | @10 0.092600
+Recall| @5 0.094029 | @10 0.100892
+Hit   | @5 0.094029 | @10 0.100892
+================================
+2026-10-03 13:04:18,360 | INFO | PERIODIC VALIDATION SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0502283105022831, "hit@5": 0.0365296803652968, "ndcg@10": 0.03563585500768713, "ndcg@5": 0.03147392356490581, "recall@10": 0.0502283105022831, "recall@5": 0.0365296803652968, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.1098546042003231, "hit@5": 0.10420032310177706, "ndcg@10": 0.10267683679313243, "ndcg@5": 0.10084107300451836, "recall@10": 0.1098546042003231, "recall@5": 0.10420032310177706, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:04:21,522 | INFO | 
+========== PERIODIC TEST ==========
+stage=all_dl | epoch=2 | step=108 | users=1457/1457
+NDCG  | @5 0.104886 | @10 0.106683
+Recall| @5 0.109815 | @10 0.115305
+Hit   | @5 0.109815 | @10 0.115305
+================================
+2026-10-03 13:04:21,522 | INFO | PERIODIC TEST SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0410958904109589, "hit@5": 0.0410958904109589, "ndcg@10": 0.03095726971666171, "ndcg@5": 0.03095726971666171, "recall@10": 0.0410958904109589, "recall@5": 0.0410958904109589, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.1284329563812601, "hit@5": 0.12197092084006463, "ndcg@10": 0.12007818827245484, "ndcg@5": 0.11796423335887711, "recall@10": 0.1284329563812601, "recall@5": 0.12197092084006463, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:04:21,523 | INFO | VALID_STEP step=108 stage=all_dl epoch=2 ndcg@10=0.092600 recall@10=0.100892 improved=True
+2026-10-03 13:04:21,527 | INFO | BEST_MODEL_IN_MEMORY step=108 stage=all_dl ndcg@10=0.092600
+2026-10-03 13:04:21,527 | INFO | LEARNING_RATE step=108 stage=all_dl lr=0.0001
+2026-10-03 13:04:21,528 | INFO | stage=all_dl epoch=2 loss=4.506215 steps=54 transitions/s=392.58
+2026-10-03 13:04:39,070 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=all_dl | epoch=3 | step=162 | users=1457/1457
+NDCG  | @5 0.090848 | @10 0.092356
+Recall| @5 0.094029 | @10 0.098833
+Hit   | @5 0.094029 | @10 0.098833
+================================
+2026-10-03 13:04:39,070 | INFO | PERIODIC VALIDATION SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.045662100456621, "hit@5": 0.0365296803652968, "ndcg@10": 0.034370559770373, "ndcg@5": 0.03147392356490581, "recall@10": 0.045662100456621, "recall@5": 0.0365296803652968, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.10823909531502424, "hit@5": 0.10420032310177706, "ndcg@10": 0.10261306543998772, "ndcg@5": 0.10135070931596542, "recall@10": 0.10823909531502424, "recall@5": 0.10420032310177706, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:04:41,414 | INFO | 
+========== PERIODIC TEST ==========
+stage=all_dl | epoch=3 | step=162 | users=1457/1457
+NDCG  | @5 0.105808 | @10 0.107318
+Recall| @5 0.111187 | @10 0.115992
+Hit   | @5 0.111187 | @10 0.115992
+================================
+2026-10-03 13:04:41,414 | INFO | PERIODIC TEST SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0410958904109589, "hit@5": 0.0410958904109589, "ndcg@10": 0.03095726971666171, "ndcg@5": 0.03095726971666171, "recall@10": 0.0410958904109589, "recall@5": 0.0410958904109589, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.12924071082390953, "hit@5": 0.12358642972536349, "ndcg@10": 0.12082583188772059, "ndcg@5": 0.119049071045788, "recall@10": 0.12924071082390953, "recall@5": 0.12358642972536349, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:04:41,415 | INFO | VALID_STEP step=162 stage=all_dl epoch=3 ndcg@10=0.092356 recall@10=0.098833 improved=False
+2026-10-03 13:04:41,415 | INFO | LEARNING_RATE step=162 stage=all_dl lr=0.0001
+2026-10-03 13:04:41,416 | INFO | stage=all_dl epoch=3 loss=4.478210 steps=54 transitions/s=408.90
+2026-10-03 13:05:02,282 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=all_dl | epoch=4 | step=216 | users=1457/1457
+NDCG  | @5 0.090848 | @10 0.093003
+Recall| @5 0.094029 | @10 0.100892
+Hit   | @5 0.094029 | @10 0.100892
+================================
+2026-10-03 13:05:02,282 | INFO | PERIODIC VALIDATION SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0502283105022831, "hit@5": 0.0365296803652968, "ndcg@10": 0.035745125960619496, "ndcg@5": 0.03147392356490581, "recall@10": 0.0502283105022831, "recall@5": 0.0365296803652968, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.1098546042003231, "hit@5": 0.10420032310177706, "ndcg@10": 0.103132291854891, "ndcg@5": 0.10135070931596542, "recall@10": 0.1098546042003231, "recall@5": 0.10420032310177706, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:05:07,894 | INFO | 
+========== PERIODIC TEST ==========
+stage=all_dl | epoch=4 | step=216 | users=1457/1457
+NDCG  | @5 0.106026 | @10 0.107869
+Recall| @5 0.111874 | @10 0.117364
+Hit   | @5 0.111874 | @10 0.117364
+================================
+2026-10-03 13:05:07,894 | INFO | PERIODIC TEST SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.045662100456621, "hit@5": 0.0410958904109589, "ndcg@10": 0.0325837865527714, "ndcg@5": 0.03095726971666171, "recall@10": 0.045662100456621, "recall@5": 0.0410958904109589, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.13004846526655897, "hit@5": 0.12439418416801293, "ndcg@10": 0.12118674359180875, "ndcg@5": 0.11930555680128713, "recall@10": 0.13004846526655897, "recall@5": 0.12439418416801293, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:05:07,895 | INFO | VALID_STEP step=216 stage=all_dl epoch=4 ndcg@10=0.093003 recall@10=0.100892 improved=True
+2026-10-03 13:05:07,899 | INFO | BEST_MODEL_IN_MEMORY step=216 stage=all_dl ndcg@10=0.093003
+2026-10-03 13:05:07,900 | INFO | LEARNING_RATE step=216 stage=all_dl lr=0.0001
+2026-10-03 13:05:07,900 | INFO | stage=all_dl epoch=4 loss=4.455327 steps=54 transitions/s=409.31
+2026-10-03 13:05:45,151 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=all_dl | epoch=5 | step=270 | users=1457/1457
+NDCG  | @5 0.090925 | @10 0.092249
+Recall| @5 0.093342 | @10 0.097461
+Hit   | @5 0.093342 | @10 0.097461
+================================
+2026-10-03 13:05:45,151 | INFO | PERIODIC VALIDATION SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0502283105022831, "hit@5": 0.0365296803652968, "ndcg@10": 0.03569049048415331, "ndcg@5": 0.03147392356490581, "recall@10": 0.0502283105022831, "recall@5": 0.0365296803652968, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.10581583198707593, "hit@5": 0.10339256865912763, "ndcg@10": 0.10225390203809187, "ndcg@5": 0.10144210446359503, "recall@10": 0.10581583198707593, "recall@5": 0.10339256865912763, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:05:52,346 | INFO | 
+========== PERIODIC TEST ==========
+stage=all_dl | epoch=5 | step=270 | users=1457/1457
+NDCG  | @5 0.107461 | @10 0.109007
+Recall| @5 0.115305 | @10 0.120110
+Hit   | @5 0.115305 | @10 0.120110
+================================
+2026-10-03 13:05:52,346 | INFO | PERIODIC TEST SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.045662100456621, "hit@5": 0.045662100456621, "ndcg@10": 0.03324037473949276, "ndcg@5": 0.03324037473949276, "recall@10": 0.045662100456621, "recall@5": 0.045662100456621, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.1332794830371567, "hit@5": 0.12762520193861066, "ndcg@10": 0.12241021946829679, "ndcg@5": 0.1205908839255012, "recall@10": 0.1332794830371567, "recall@5": 0.12762520193861066, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:05:52,347 | INFO | VALID_STEP step=270 stage=all_dl epoch=5 ndcg@10=0.092249 recall@10=0.097461 improved=False
+2026-10-03 13:05:52,347 | INFO | LEARNING_RATE step=270 stage=all_dl lr=0.0001
+2026-10-03 13:05:52,348 | INFO | stage=all_dl epoch=5 loss=4.437093 steps=54 transitions/s=232.85
+2026-10-03 13:06:31,144 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=all_dl | epoch=6 | step=324 | users=1457/1457
+NDCG  | @5 0.091179 | @10 0.092523
+Recall| @5 0.093342 | @10 0.097461
+Hit   | @5 0.093342 | @10 0.097461
+================================
+2026-10-03 13:06:31,144 | INFO | PERIODIC VALIDATION SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0502283105022831, "hit@5": 0.0365296803652968, "ndcg@10": 0.037430378227416496, "ndcg@5": 0.03315917583170281, "recall@10": 0.0502283105022831, "recall@5": 0.0365296803652968, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.10581583198707593, "hit@5": 0.10339256865912763, "ndcg@10": 0.10226833536325149, "ndcg@5": 0.10144210446359503, "recall@10": 0.10581583198707593, "recall@5": 0.10339256865912763, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:06:38,275 | INFO | 
+========== PERIODIC TEST ==========
+stage=all_dl | epoch=6 | step=324 | users=1457/1457
+NDCG  | @5 0.107256 | @10 0.108821
+Recall| @5 0.114619 | @10 0.119423
+Hit   | @5 0.114619 | @10 0.119423
+================================
+2026-10-03 13:06:38,275 | INFO | PERIODIC TEST SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.045662100456621, "hit@5": 0.045662100456621, "ndcg@10": 0.03324037473949276, "ndcg@5": 0.03324037473949276, "recall@10": 0.045662100456621, "recall@5": 0.045662100456621, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.13247172859450726, "hit@5": 0.12681744749596122, "ndcg@10": 0.12219058508613638, "ndcg@5": 0.1203491995106734, "recall@10": 0.13247172859450726, "recall@5": 0.12681744749596122, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:06:38,276 | INFO | VALID_STEP step=324 stage=all_dl epoch=6 ndcg@10=0.092523 recall@10=0.097461 improved=False
+2026-10-03 13:06:38,276 | INFO | LEARNING_RATE step=324 stage=all_dl lr=0.0001
+2026-10-03 13:06:38,277 | INFO | stage=all_dl epoch=6 loss=4.422230 steps=54 transitions/s=219.83
+2026-10-03 13:06:45,469 | INFO | 
+========== FINAL CURRENT VALIDATION ==========
+stage=final | epoch=0 | step=324 | users=1457/1457
+NDCG  | @5 0.091179 | @10 0.092523
+Recall| @5 0.093342 | @10 0.097461
+Hit   | @5 0.093342 | @10 0.097461
+================================
+2026-10-03 13:06:45,469 | INFO | FINAL CURRENT VALIDATION SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0502283105022831, "hit@5": 0.0365296803652968, "ndcg@10": 0.037430378227416496, "ndcg@5": 0.03315917583170281, "recall@10": 0.0502283105022831, "recall@5": 0.0365296803652968, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.10581583198707593, "hit@5": 0.10339256865912763, "ndcg@10": 0.10226833536325149, "ndcg@5": 0.10144210446359503, "recall@10": 0.10581583198707593, "recall@5": 0.10339256865912763, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:06:45,469 | INFO | VALID_STEP step=324 stage=final epoch=0 ndcg@10=0.092523 recall@10=0.097461 improved=False
+2026-10-03 13:06:45,488 | INFO | RESTORE_BEST step=216 stage=all_dl ndcg@10=0.093003
+2026-10-03 13:07:00,870 | INFO | 
+========== BEST CHECKPOINT VALIDATION ==========
+stage=all_dl | epoch=0 | step=216 | users=1457/1457
+NDCG  | @5 0.090848 | @10 0.093003
+Recall| @5 0.094029 | @10 0.100892
+Hit   | @5 0.094029 | @10 0.100892
+================================
+2026-10-03 13:07:00,870 | INFO | BEST CHECKPOINT VALIDATION SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0502283105022831, "hit@5": 0.0365296803652968, "ndcg@10": 0.035745125960619496, "ndcg@5": 0.03147392356490581, "recall@10": 0.0502283105022831, "recall@5": 0.0365296803652968, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.1098546042003231, "hit@5": 0.10420032310177706, "ndcg@10": 0.103132291854891, "ndcg@5": 0.10135070931596542, "recall@10": 0.1098546042003231, "recall@5": 0.10420032310177706, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:07:00,870 | INFO | 
+========== FINAL FULL TEST ==========
+stage=all_dl | epoch=0 | step=216 | users=1457/1457
+NDCG  | @5 0.106026 | @10 0.107869
+Recall| @5 0.111874 | @10 0.117364
+Hit   | @5 0.111874 | @10 0.117364
+================================
+2026-10-03 13:07:00,870 | INFO | FINAL FULL TEST SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.045662100456621, "hit@5": 0.0410958904109589, "ndcg@10": 0.0325837865527714, "ndcg@5": 0.03095726971666171, "recall@10": 0.045662100456621, "recall@5": 0.0410958904109589, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.13004846526655897, "hit@5": 0.12439418416801293, "ndcg@10": 0.12118674359180875, "ndcg@5": 0.11930555680128713, "recall@10": 0.13004846526655897, "recall@5": 0.12439418416801293, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-03 13:07:00,870 | INFO | VALID_BEST {"evaluated_users": 1457, "hit@10": 0.10089224433768017, "hit@5": 0.09402882635552505, "ndcg@10": 0.09300340441047286, "ndcg@5": 0.09084760987275908, "preference_agent_weight": 0.2000000030109141, "preference_change_probability": 0.35517232943333904, "preference_current_entropy": 3.248096170209415, "preference_next_entropy": 3.4420060031448396, "preference_ranking_weight": 0.2000000030109141, "recall@10": 0.10089224433768017, "recall@5": 0.09402882635552505, "scores_per_second": 780511.8907810355, "sequence_length": {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.0502283105022831, "hit@5": 0.0365296803652968, "ndcg@10": 0.035745125960619496, "ndcg@5": 0.03147392356490581, "recall@10": 0.0502283105022831, "recall@5": 0.0365296803652968, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.1098546042003231, "hit@5": 0.10420032310177706, "ndcg@10": 0.103132291854891, "ndcg@5": 0.10135070931596542, "recall@10": 0.1098546042003231, "recall@5": 0.10420032310177706, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}, "short_agent_weight": 0.8000000120436564, "short_preference_state_cosine": 0.054377674974639204, "total_users": 1457, "users_per_second": 190.83420312494758}
+2026-10-03 13:07:00,871 | INFO | TEST_FINAL {"evaluated_users": 1457, "hit@10": 0.11736444749485243, "hit@5": 0.11187371310912834, "ndcg@10": 0.10786893323585442, "ndcg@5": 0.1060260263467866, "preference_agent_weight": 0.2000000030109141, "preference_change_probability": 0.354570774976407, "preference_current_entropy": 3.249252382172406, "preference_next_entropy": 3.4418941751766794, "preference_ranking_weight": 0.2000000030109141, "recall@10": 0.11736444749485243, "recall@5": 0.11187371310912834, "scores_per_second": 770132.5228821451, "sequence_length": {"basis": "filtered_full_sequence", "long": {"evaluated_users": 219, "history_length_max": 119, "history_length_mean": 20.98173515981735, "history_length_min": 11, "hit@10": 0.045662100456621, "hit@5": 0.0410958904109589, "ndcg@10": 0.0325837865527714, "ndcg@5": 0.03095726971666171, "recall@10": 0.045662100456621, "recall@5": 0.0410958904109589, "total_users": 219}, "long_rule": "length > threshold", "short": {"evaluated_users": 1238, "history_length_max": 10, "history_length_mean": 5.27221324717286, "history_length_min": 3, "hit@10": 0.13004846526655897, "hit@5": 0.12439418416801293, "ndcg@10": 0.12118674359180875, "ndcg@5": 0.11930555680128713, "recall@10": 0.13004846526655897, "recall@5": 0.12439418416801293, "total_users": 1238}, "short_rule": "length <= threshold", "threshold": 10}, "short_agent_weight": 0.8000000120436564, "short_preference_state_cosine": -0.022572725009001846, "total_users": 1457, "users_per_second": 188.29646036238267}
+2026-10-03 13:07:00,871 | INFO | TARGET_RESULT metric=recall@10 target=>0.150000 actual=0.117364 achieved=False
+2026-10-03 13:07:01,361 | INFO | FINAL_LENGTH_SCORES dataset=amazon-all-beauty group=short split=valid threshold=10 users=1238/1238 scores={"hit@10": 0.1098546042003231, "hit@5": 0.10420032310177706, "ndcg@10": 0.103132291854891, "ndcg@5": 0.10135070931596542, "recall@10": 0.1098546042003231, "recall@5": 0.10420032310177706}
+2026-10-03 13:07:01,361 | INFO | FINAL_LENGTH_SCORES dataset=amazon-all-beauty group=short split=test threshold=10 users=1238/1238 scores={"hit@10": 0.13004846526655897, "hit@5": 0.12439418416801293, "ndcg@10": 0.12118674359180875, "ndcg@5": 0.11930555680128713, "recall@10": 0.13004846526655897, "recall@5": 0.12439418416801293}
+2026-10-03 13:07:01,361 | INFO | short_scores=/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S1_P1_G1_C0_SW4/Full_Beauty/rl_20261003_130330_r1_927992/short_scores.json
+2026-10-03 13:07:01,361 | INFO | FINAL_LENGTH_SCORES dataset=amazon-all-beauty group=long split=valid threshold=10 users=219/219 scores={"hit@10": 0.0502283105022831, "hit@5": 0.0365296803652968, "ndcg@10": 0.035745125960619496, "ndcg@5": 0.03147392356490581, "recall@10": 0.0502283105022831, "recall@5": 0.0365296803652968}
+2026-10-03 13:07:01,361 | INFO | FINAL_LENGTH_SCORES dataset=amazon-all-beauty group=long split=test threshold=10 users=219/219 scores={"hit@10": 0.045662100456621, "hit@5": 0.0410958904109589, "ndcg@10": 0.0325837865527714, "ndcg@5": 0.03095726971666171, "recall@10": 0.045662100456621, "recall@5": 0.0410958904109589}
+2026-10-03 13:07:01,362 | INFO | long_scores=/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S1_P1_G1_C0_SW4/Full_Beauty/rl_20261003_130330_r1_927992/long_scores.json
+2026-10-03 13:07:01,362 | INFO | scores=/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S1_P1_G1_C0_SW4/Full_Beauty/rl_20261003_130330_r1_927992/Full_Beauty_scores.json
+2026-10-03 13:07:01,362 | INFO | outputs=/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S1_P1_G1_C0_SW4/Full_Beauty/rl_20261003_130330_r1_927992

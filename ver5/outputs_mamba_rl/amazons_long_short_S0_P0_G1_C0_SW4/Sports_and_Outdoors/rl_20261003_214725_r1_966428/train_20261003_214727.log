@@ -1,0 +1,42 @@
+2026-10-03 21:47:27,289 | INFO | run_id=20261003_214727 dataset=amazon-sports-and-outdoors device=cuda:0
+2026-10-03 21:47:27,290 | INFO | MODEL recommender=LightGCN semantic_encoder=none semantic_model_id=none graph_backbone=LightGCN adaptation=multi_lora
+2026-10-03 21:47:27,290 | INFO | ABLATION USE_SHORT=0 USE_PREFERENCE=0 USE_GCN=1 USE_COORDINATOR=0
+2026-10-03 21:47:27,290 | INFO | AGENT_HISTORY mode=none effective_max_history=0 short=0 preference=0
+2026-10-03 21:47:27,290 | INFO | EXPERIMENT_NOTE amazons_long_short subset=Sports_and_Outdoors; short filtered-full-sequence <= 10; long > 10; same model and full catalog
+2026-10-03 21:47:27,290 | INFO | EXPERIMENT_CONFIG {"agent_diversity_coef": 0.02, "batch_size": 128, "cache_dir": "/workspace/P78123011/cache", "candidates": 256, "data_path": null, "dataset": "amazon-sports-and-outdoors", "device": "cuda:0", "dim": 128, "early_stopping_patience": 6, "enable_lora": 1, "eval_batch_size": 64, "eval_length_basis": "filtered_full_sequence", "eval_length_threshold": 10, "experiment_note": "amazons_long_short subset=Sports_and_Outdoors; short filtered-full-sequence <= 10; long > 10; same model and full catalog", "full_catalog_supervised": false, "future_decay": 0.5, "future_horizon": 3, "generate_reasons": false, "graph_device": "cuda:0", "hard_negative_fraction": 0.75, "hard_negative_pool_multiplier": 12, "hard_negative_warmup_epochs": 2, "history_influence_negatives": 64, "history_influence_output": null, "history_influence_user_limit": 0, "item_prompt_prefix": "Preference-aware product representation: ", "item_vector_artifact": null, "joint_epochs": 0, "joint_lr": 5e-05, "lora_alpha": 32.0, "lora_dropout": 0.05, "lora_rank": 16, "lr_patience": 2, "mamba_encode_batch_size": 32, "mamba_max_tokens": 32, "mamba_model_id": "state-spaces/mamba-130m-hf", "max_events": null, "max_history": 100, "max_transitions": 1000000, "min_rating": 4.0, "monitor_metric": "ndcg@10", "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_lora", "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S0_P0_G1_C0_SW4/Sports_and_Outdoors/rl_20261003_214725_r1_966428", "periodic_test_user_limit": 0, "popularity_alpha": 0.0, "preference_balance_coef": 0.01, "preference_coef": 0.2, "preference_contrastive_coef": 0.05, "preference_count": 32, "preference_score_weight": 0.2, "preference_separation_coef": 0.01, "preference_sharpness_coef": 0.05, "preference_temperature": 0.2, "preference_transition_coef": 0.1, "reason_count": 20, "reason_max_new_tokens": 40, "refresh_data_cache": false, "resume_checkpoint": null, "reverse_history_input": false, "rl_coef": 0.1, "rl_topk": 10, "save_model_weights": false, "score_file": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S0_P0_G1_C0_SW4/Sports_and_Outdoors/rl_20261003_214725_r1_966428/Sports_and_Outdoors_scores.json", "seed": 25252, "short_window": 4, "skip_mamba": false, "specialist_epochs": 4, "specialist_lr": 0.0001, "target_recall_at_10": 0.15, "transition_beta": 0.0, "use_coordinator": false, "use_graph_embeddings": true, "use_in_batch_negatives": true, "use_preference": 0, "use_short": 0, "validate_every_steps": 8000, "validation_user_limit": 0}
+2026-10-03 21:47:28,824 | INFO | INTERACTION_CACHE hit path=/workspace/P78123011/cache/mamba_multi_agent_data/amazon-sports-and-outdoors_fcc157f72b81.pkl
+2026-10-03 21:47:28,825 | INFO | HISTORY_INPUT_ORDER chronological
+2026-10-03 21:47:28,826 | INFO | LENGTH_SPLIT preprocessing=original_one_pass_user_item_min_5 basis=filtered_full_sequence short<=10 long>10
+2026-10-03 21:47:28,839 | INFO | users=631803 items=401572 train_interactions=3678023
+2026-10-03 21:47:28,839 | INFO | CATALOG_PRIORS popularity_alpha=0.000000 transition_beta=0.000000 source=train_histories_only enabled=False
+2026-10-03 21:47:31,556 | INFO | LIGHTGCN_ONLY: semantic encoder disabled; user/item graph dot-product scoring
+2026-10-03 21:47:31,556 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/amazon-sports-and-outdoors_401572_909fc18038f4_prompt_tok32.pt fingerprint=909fc18038f4
+2026-10-03 21:47:31,556 | INFO | SEMANTIC_BACKBONE model_id=none hidden_size=1 frozen=True usage=shared_cached_item_vectors
+2026-10-03 21:47:33,582 | INFO | GRAPH_EMBEDDINGS enabled=True source=train_histories_only main_device=cuda:0 graph_device=cuda:0
+2026-10-03 21:47:35,444 | INFO | ADAPTATION_MODE mode=graph_only enable_lora=1
+2026-10-03 21:47:35,445 | INFO | ADAPTER_ROUTES {}
+2026-10-03 21:47:35,445 | INFO | agent_parameters={'short': 16513, 'preference': 28994, 'coordinator': 0, 'shared_projection': 128, 'graph': 132272000}
+2026-10-03 21:47:35,445 | INFO | PREDICTION_PATH graph_only=True active_agents=0 coordinator=False
+2026-10-03 21:47:41,613 | INFO | training_transitions=1000000
+2026-10-03 21:47:41,613 | INFO | schedule mode=single_stage_dl specialist_dl_epochs=4 joint_dl_rl_epochs=0 effective_rl_coef=0.0000 effective_rl_topk=0 validate_every_steps=8000 validation_users=0 periodic_test_users=0 monitor=ndcg@10 early_stopping_patience=6
+2026-10-03 21:47:43,008 | INFO | TRAINING_BRANCHES stage=all_dl short=False preference=False gcn=True preference_auxiliary=False preference_contrastive=False diversity_pairs=0 policy_gradient=False trainable_parameters=132272000
+2026-10-03 23:54:14,623 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=all_dl | epoch=1 | step=7813 | users=625563/625563
+NDCG  | @5 0.006523 | @10 0.008142
+Recall| @5 0.009630 | @10 0.014668
+Hit   | @5 0.009630 | @10 0.014668
+================================
+2026-10-03 23:54:14,624 | INFO | PERIODIC VALIDATION SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 97306, "history_length_max": 767, "history_length_mean": 18.187100487123097, "history_length_min": 11, "hit@10": 0.011499804739687173, "hit@5": 0.007358230736028611, "ndcg@10": 0.006377468038175969, "ndcg@5": 0.005053202093937355, "recall@10": 0.011499804739687173, "recall@5": 0.007358230736028611, "total_users": 97306}, "long_rule": "length > threshold", "short": {"evaluated_users": 528257, "history_length_max": 10, "history_length_mean": 5.959404229380775, "history_length_min": 3, "hit@10": 0.015252045879183806, "hit@5": 0.01004813944727661, "ndcg@10": 0.00846692110130597, "ndcg@5": 0.0067940059461711775, "recall@10": 0.015252045879183806, "recall@5": 0.01004813944727661, "total_users": 528257}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-04 00:48:21,299 | INFO | 
+========== PERIODIC TEST ==========
+stage=all_dl | epoch=1 | step=7813 | users=625563/625563
+NDCG  | @5 0.004926 | @10 0.006207
+Recall| @5 0.007248 | @10 0.011244
+Hit   | @5 0.007248 | @10 0.011244
+================================
+2026-10-04 00:48:21,300 | INFO | PERIODIC TEST SEQUENCE_LENGTH {"basis": "filtered_full_sequence", "long": {"evaluated_users": 97306, "history_length_max": 767, "history_length_mean": 18.187100487123097, "history_length_min": 11, "hit@10": 0.009721908207099254, "hit@5": 0.006032515980515076, "ndcg@10": 0.005316788977636161, "ndcg@5": 0.004141432300357004, "recall@10": 0.009721908207099254, "recall@5": 0.006032515980515076, "total_users": 97306}, "long_rule": "length > threshold", "short": {"evaluated_users": 528257, "history_length_max": 10, "history_length_mean": 5.959404229380775, "history_length_min": 3, "hit@10": 0.011524693473063301, "hit@5": 0.007471741974077011, "ndcg@10": 0.00637097061488831, "ndcg@5": 0.005070112297568511, "recall@10": 0.011524693473063301, "recall@5": 0.007471741974077011, "total_users": 528257}, "short_rule": "length <= threshold", "threshold": 10}
+2026-10-04 00:48:21,300 | INFO | VALID_STEP step=7813 stage=all_dl epoch=1 ndcg@10=0.008142 recall@10=0.014668 improved=True
+2026-10-04 00:48:21,620 | INFO | BEST_MODEL_IN_MEMORY step=7813 stage=all_dl ndcg@10=0.008142
+2026-10-04 00:48:21,621 | INFO | LEARNING_RATE step=7813 stage=all_dl lr=0.0001
+2026-10-04 00:48:21,621 | INFO | stage=all_dl epoch=1 loss=5.470170 steps=7813 transitions/s=188.90

@@ -18,7 +18,7 @@
 \maketitle
 
 \begin{abstract}
-  Sequential recommendation must distinguish immediate intent from preferences that persist across a user's history. We propose RIBS (\emph{R}ecommendation via \emph{I}ntegrated \emph{B}ehavioral \emph{S}ignals), a multi-agent recommender implemented through distinct LoRA banks. Its short-term recommender agent encodes a recent item window with a Mamba-style selective state update; its long-term preference agent encodes the available history through learned preference prototypes and a separate selective-state LoRA bank. A coordinator with its own LoRA modules combines the two states and ranking scores using predicted preference change and uncertainty. All three components use a shared item space built from cached, frozen Mamba text features and optional LightGCN embeddings; the pretrained text encoder is not fine-tuned. Training first supervises the two specialist agents and then jointly optimizes ranking and a policy-gradient objective whose sampled Top-$K$ reward is computed from subsequent \emph{training} interactions. The result is an explicit division of recent item evidence, full-history preference evidence, and their adaptive coordination.
+  Selective state-space models (SSMs) offer efficient sequence processing for recommendation, yet item-level modeling can become \emph{nearsighted}. In our preliminary analysis, ranking influence concentrates on recent interactions, which are also more textually aligned with the next item; older items often have negligible or negative influence when modeled individually. However, earlier interactions can still reveal recurring preferences at a coarser level. We propose RIBS (\emph{R}ecommendation via \emph{I}ntegrated \emph{B}ehavioral \emph{S}ignals), which coordinates a Short-Term Recommender Agent and a Long-Term Preference Agent. Both agents share a common backbone while specializing through distinct LoRA adapters in a multi-LoRA architecture. The former encodes a recent item window, whereas the latter maps the available history to learned preference prototypes and models their transitions. Both use separate Mamba-style selective-state updates and LoRA banks. A Coordinator Agent fuses their states and scores using predicted preference changes and entropy-based certainty. Shared item representations combine cached features from a frozen Mamba text encoder with optional LightGCN embeddings. All enabled agents and shared components are trained together in a single supervised stage using multi-step next-item ranking and preference auxiliary losses. We evaluate the resulting model with full-catalog ranking on four Amazon Reviews 2023 categories.
 \end{abstract}
 
 \section{Introduction}
@@ -28,9 +28,9 @@ We study a tendency for item-level recommendation signals to concentrate near th
 
 We propose RIBS (\emph{R}ecommendation via \emph{I}ntegrated \emph{B}ehavioral \emph{S}ignals), a multi-agent architecture implemented by multiple, disjoint LoRA banks. The \emph{short-term recommender agent} reads the latest $W$ items through a Mamba-style selective state update. The \emph{long-term preference agent} reads the available history up to the configured maximum, maps its items to learned soft prototypes, and runs a separate LoRA-adapted selective state update over that prototype trajectory. It predicts the next preference distribution and the likelihood of a preference change. The \emph{coordinator} uses its own LoRA modules to mix both agent states and scores according to this context. The preference agent therefore has a full-history input even when no direct long-horizon item agent is present.
 
-The agents share a projected item space built from cached Mamba text features and, when enabled, LightGCN \citep{LightGCN} item embeddings. Their selective-state recurrences and LoRA parameters are separate; the LoRA banks adapt the online recommendation modules rather than the frozen pretrained Mamba text model. This separation gives the two agents distinct inputs and adaptation paths while the coordinator learns how much each contributes to a candidate ranking. We train the specialists with supervised next-item objectives, then update the active agents and coordinator jointly with supervised ranking and an offline policy-gradient term. Its reward uses only later items from the training sequence and is a proxy for ranking quality, not observed feedback on items that were never shown.
+The agents share a projected item space built from cached Mamba text features and, when enabled, LightGCN \citep{LightGCN} item embeddings. Their selective-state recurrences and LoRA parameters are separate; the LoRA banks adapt the online recommendation modules rather than the frozen pretrained Mamba text model. This separation gives the two agents distinct inputs and adaptation paths while the coordinator learns how much each contributes to a candidate ranking. From the first training epoch, the enabled agents, coordinator, shared item projection, and optional LightGCN embeddings are updated together using multi-step next-item ranking, preference supervision, contrastive alignment, and state-diversity regularization.
 
-We study the contribution of recent item behavior, full-history preference transitions, and their coordination using full-catalog ranking and module ablations. Our methodological contributions are a multi-LoRA realization of these three agent roles, separate selective-state encoders for recent items and long-term preferences, and a two-stage objective that combines specialist supervision with joint policy optimization.
+We study the contribution of recent item behavior, full-history preference transitions, and their coordination using full-catalog ranking and module ablations. Our methodological contributions are a multi-LoRA realization of these three agent roles, separate selective-state encoders for recent items and long-term preferences, and a single-stage supervised objective that trains the enabled components together.
 
 \section{Related Work}
 \paragraph{Sequential representation learning.}
@@ -83,40 +83,36 @@ Figure~\ref{fig:preliminary}d shows that this excess proxy-cluster match does no
 \label{sec:ribs}
 
 \subsubsection{Task and Shared Item Space}
-The two specialist agents and the coordinator use a common item representation $e_i\in\mathbb R^d$. The short-term recommender agent processes item vectors in the recent suffix; the long-term preference agent processes prototype-weighted vectors formed from every item in $\overline{\mathcal H}_{u,t}$. The coordinator sees the resulting states. Training targets are later logged interactions from the training portion of each sequence; validation and test targets are held out.
+The two specialist agents and the coordinator use a common item representation $e_i\in\mathbb R^d$. The short-term recommender agent processes item vectors in the recent suffix; the long-term preference agent processes prototype-weighted vectors formed from every item in $\overline{\mathcal H}_{u,t}$. The coordinator combines their resulting states and candidate scores.
 
-For each item, we encode its text once with a frozen Mamba model. The input begins with ``Preference-aware product representation: ''. We mean-pool content-token hidden states, excluding padding and prefix tokens; if truncation leaves no content tokens, the implementation falls back to pooling non-padding tokens. Only backbone hidden states are computed; vocabulary prediction logits are unnecessary. The resulting vector $f_i$ is cached and reused during ranker training and evaluation. A trainable projection maps it to the recommendation dimension $d$.
-When enabled, LightGCN \citep{LightGCN} adds a collaborative item embedding from the training interaction graph. The projected text feature and graph embedding are normalized before combination, and their sum is normalized to form $e_i$. Without LightGCN, $e_i$ is the normalized projected text feature. Graph construction is specified in Appendix~\ref{app:implementation}.
+For each item, a frozen Mamba text encoder produces a cached feature $f_i$. A trainable projection maps it to dimension $d$; when enabled, LightGCN \citep{LightGCN} adds a collaborative embedding from the training interaction graph. Their normalized combination forms the shared item vector $e_i$. Text pooling and graph construction are specified in Appendix~\ref{app:implementation}.
 
 RIBS is a multi-agent model implemented through three disjoint LoRA banks: one for each specialist and one for the coordinator. For adaptation module $j$, the LoRA residual is
 \begin{equation}
  y_j=\mathcal R_j(x)=\frac{\alpha_{\mathrm{LoRA}}}{r}B_j A_j\operatorname{Dropout}(x),
 \end{equation}
-Here $A_j\in\mathbb R^{r\times d_{\mathrm{in},j}}$ projects to rank $r$, and $B_j\in\mathbb R^{d_{\mathrm{out},j}\times r}$ projects back to the output dimension. Each $B_j$ is zero-initialized; dropout is inactive at inference. LoRA residuals are attached to the online recommendation agents, not to the frozen pretrained text encoder. The shared item projection, optional graph embeddings, preference prototypes and prediction heads, and state-update biases are also trainable; thus, the recommendation system is not limited to LoRA parameters alone.
+Here $A_j$ and $B_j$ are the rank-$r$ input and output projections. The three LoRA banks adapt the online recommendation components while the pretrained text encoder remains frozen. Parameter dimensions, initialization, and other trainable components are detailed in Appendix~\ref{app:implementation}.
 
 \subsubsection{Short-Term Recommender Agent}
-The short-term recommender agent $S$ processes the $T_S$ recent item vectors $y_k^{(S)}=e_{i_{t-T_S+k}}$. Both specialist agents use the same \emph{form} of Mamba-style diagonal selective-state update, but have separate parameters and LoRA banks. For agent $m\in\{S,P\}$ with input $y_k^{(m)}$, the update is
+The short-term recommender agent $S$ processes the $T_S$ recent item vectors $y_k^{(S)}=e_{i_{t-T_S+k}}$. Both specialist agents use the same \emph{form} of Mamba-style diagonal selective-state update, but have separate parameters and LoRA banks. For agent $m\in\{S,P\}$ with input $y_k^{(m)}$, the core update is
 \begin{align}
- a_k^{(m)}&=\exp\!\left[-\min\!\left\{\operatorname{softplus}\!\left(b_{\delta,m}
-    +\mathcal R_{\delta,m}(y_k^{(m)})\right),12\right\}\right],\notag\\
- h_k^{(m)}&=a_k^{(m)}\odot h_{k-1}^{(m)}
- +(1-a_k^{(m)})\odot\tanh\!\left(y_k^{(m)}+\mathcal R_{\mathrm{cand},m}(y_k^{(m)})\right),\notag\\
- g_k^{(m)}&=\sigma\!\left(\mathcal R_{\mathrm{gate},m}(y_k^{(m)})\right),\notag\\
- o_k^{(m)}&=g_k^{(m)}\odot h_k^{(m)}+(1-g_k^{(m)})\odot y_k^{(m)}.
+ h_k^{(m)}&=a_k^{(m)}\odot h_{k-1}^{(m)} +(1-a_k^{(m)})\odot\widetilde h_k^{(m)},\notag\\
+ o_k^{(m)}&=g_k^{(m)}\odot h_k^{(m)} +(1-g_k^{(m)})\odot y_k^{(m)}.
+ \label{eq:state_update}
 \end{align}
-The state starts at zero; padding leaves it and the output unchanged. The final short-term state is $s_S=\norm{o_{T_S}^{(S)}+\mathcal R_{\mathrm{out},S}(o_{T_S}^{(S)})}$. Its four LoRA residuals govern the input-dependent decay, candidate state, output gate, and final state correction. The initial decay is $\exp(-0.5)$ before these residuals learn. The same recurrence form will process prototype-weighted inputs for agent $P$, with its own parameters and an initial decay of $\exp(-0.2)$. This is an online Mamba-style state update, distinct from the frozen pretrained Mamba used for item-text encoding.
+Here $a_k^{(m)}$ is the input-dependent retention factor, $\widetilde h_k^{(m)}$ is the candidate state, and $g_k^{(m)}$ is the output gate. The final short-term state is $s_S=\norm{o_{T_S}^{(S)}+\mathcal R_{\mathrm{out},S}(o_{T_S}^{(S)})}$. Agent $P$ uses the same recurrence form on prototype-weighted inputs, with separate parameters. This online state update is distinct from the frozen Mamba text encoder; the gate computations and state initialization are given in Appendix~\ref{app:implementation}.
 
 \subsubsection{Long-Term Preference Agent}
-The long-term preference agent $P$ reads all $T_P$ available interactions through learned preference prototypes. Let $C\in\mathbb R^{M\times d}$ have row-normalized learned prototype vectors. For the $k$th item in $\overline{\mathcal H}_{u,t}$, it forms a soft assignment and a prototype-weighted input,
-\begin{equation}
- q_k=\softmax\!\left(C\norm{e_{i_k}}/\tau_p\right),\qquad
- y_k^{(P)}=C^\top q_k.
-\end{equation}
+The long-term preference agent $P$ reads all $T_P$ interactions through learned preference prototypes. Let $C\in\mathbb R^{M\times d}$ have row-normalized learned prototype vectors. For the $k$th item in $\overline{\mathcal H}_{u,t}$, it forms a soft assignment and a prototype-weighted input,
+\begin{align}
+ q_k&=\softmax\!\left(C\norm{e_{i_k}}/\tau_p\right),\notag\\
+ y_k^{(P)}&=C^\top q_k.
+\end{align}
 Agent $P$ applies its own selective-state recurrence above to $(y_1^{(P)},\ldots,y_{T_P}^{(P)})$ and obtains
 \begin{equation}
  v_P=\norm{o_{T_P}^{(P)}+\mathcal R_{\mathrm{out},P}(o_{T_P}^{(P)})}.
 \end{equation}
-Four preference-owned LoRA residuals adapt this recurrence, while a fifth adapts its reconstructed preference state. With $q_{T_P}$ as the current preference assignment, two trainable heads predict the next distribution and change probability:
+With $q_{T_P}$ as the current preference assignment, two trainable heads predict the next distribution and change probability:
 \begin{align}
  \widehat q_{t+1}&=\softmax(W_n v_P+b_n),\notag\\
  \rho_t&=\sigma\!\left(w_c^\top[v_P;q_{T_P}]+b_c\right).
@@ -125,11 +121,11 @@ The resulting ranking state is
 \begin{equation}
  s_P=\norm{C^\top\widehat q_{t+1}+\mathcal R_{\mathrm{state},P}(C^\top\widehat q_{t+1})}.
 \end{equation}
-The prototypes and prediction heads are trained with the recommendation model. Prototype indices have no predetermined semantics or cross-run alignment. Each specialist scores candidate $i$ by
-\begin{equation}
- z_m(u,i)=\kappa_m s_m^\top e_i,\qquad
- \kappa_m=\min\{\exp(\theta_m),20\},\quad m\in\{S,P\}.
-\end{equation}
+The prototypes and prediction heads are trained with the recommendation model. Each specialist scores candidate $i$ by
+\begin{align}
+ z_m(u,i)&=\kappa_m s_m^\top e_i,\notag\\
+ \kappa_m&=\min\{\exp(\theta_m),20\},\quad m\in\{S,P\}.
+\end{align}
 
 \subsubsection{Coordinator Agent}
 The coordinator $C$ fuses both specialist states and their candidate scores. It receives the predicted preference-change probability $\rho_t$ and the concentration $c_t=1-H(\widehat q_{t+1})/\log M$, where $H$ is entropy. Write $r=[s_S;s_P]$. The two mixing weights are
@@ -137,22 +133,18 @@ The coordinator $C$ fuses both specialist states and their candidate scores. It 
  b_P&=\theta_P+w_{\mathrm{ctx}}^\top[\rho_t;c_t]+b_{\mathrm{ctx}},\notag\\
  (w_S,w_P)&=\softmax\!\left(\mathcal R_{\mathrm{mix},C}(r)+[0;b_P]\right).
 \end{align}
-The context weights and intercept start at zero, while $\theta_P$ is initialized from the configured preference mixing weight. The learned LoRA term may subsequently change both mixture logits. The coordinator then forms its own state and score:
+The coordinator then forms its own state and score:
 \begin{align}
  s_C&=\norm{w_Ss_S+w_Ps_P+\mathcal R_{\mathrm{state},C}(r)},\notag\\
  \widetilde s_C&=\norm{s_C+\mathcal R_{\mathrm{score},C}(s_C)},\notag\\
- z_C(u,i)&=\kappa_C\widetilde s_C^\top e_i,\qquad
- \kappa_C=\min\{\exp(\theta_C),20\},\notag\\
+  z_C(u,i)&=\kappa_C\widetilde s_C^\top e_i,\notag\\
+  \kappa_C&=\min\{\exp(\theta_C),20\},\notag\\
  z(u,i)&=z_C(u,i)+w_Sz_S(u,i)+w_Pz_P(u,i).
 \end{align}
-The three coordinator-owned LoRA modules adapt mixing, state construction, and candidate scoring. Together with four LoRA modules in $S$ and five in $P$, the default model has twelve distinct low-rank residual modules organized into three agent-specific banks. Optional ablations can disable either specialist, the graph item embeddings, or the coordinator. If the coordinator is disabled while both specialists remain, their scores use a fixed configured mixture; with only one specialist, its score is used directly. Thus, an inactive module is excluded from training as well as ranking.
+The coordinator uses a separate LoRA bank to adapt mixing, state construction, and candidate scoring. Its initialization and the scoring rules when components are disabled are given in Appendix~\ref{app:implementation}.
 
 \paragraph{Catalog calibration at inference.}
-At evaluation, training-only statistics adjust neural scores:
-\begin{equation}
- \widetilde z(u,i)=z(u,i)+\alpha_p p_i+\beta_t\log(1+n_{i_t,i}),
-\end{equation}
-where $p_i$ is standardized log-one-plus training popularity and $n_{i_t,i}$ counts adjacent training transitions from the last observed item. Missing transitions contribute zero. These coefficients are configured by category. All reported results include these priors; the current experiments do not isolate their contribution from that of the neural model.
+At evaluation, training-item popularity and adjacent-item transition counts provide additive catalog priors to the neural score. The exact calibrated score and treatment of missing transitions are specified in Appendix~\ref{app:implementation}.
 
 \subsubsection{Training Objective}
 \paragraph{Multi-step ranking.}
@@ -161,7 +153,7 @@ For each sampled prefix, we collect up to $F$ future items from the training his
  \mathcal L_{\mathrm{rank}}(z)
  =-\sum_{j=1}^{F'}a_j\log\softmax(z_{\mathcal S})_{p_j}.
 \end{equation}
-Bounded training prefixes are resampled each epoch. Candidate slates contain the available future targets, plus model-mined, random, and in-batch negatives. Known training positives are excluded from negative selection, and the hard-negative fraction increases during warm-up. When fewer than $F$ future items remain, the implementation repeats the final available target to fill the target slots but assigns those repeated positions zero target weight. Ranking softmax is taken over the constructed slate; candidate positions can share an item identity. An optional full-catalog supervised mode instead scores all items.
+Bounded training prefixes are resampled each epoch. Candidate slates contain future targets together with model-mined, random, and in-batch negatives. The handling of repeated targets, negative sampling, and the optional full-catalog objective are described in Appendix~\ref{app:implementation}.
 
 \paragraph{Preference supervision.}
 The immediate next item's prototype assignment supplies a detached target $q^+=\sg(q(i_{t+1}))$. We minimize $\mathcal L_{\mathrm{pred}}=D_{\mathrm{KL}}(q^+\Vert\widehat q_{t+1})$. The transition target is
@@ -170,7 +162,7 @@ The immediate next item's prototype assignment supplies a detached target $q^+=\
 \end{equation}
 and $\mathcal L_{\mathrm{shift}}$ is binary cross-entropy between this soft target and $\rho_t$. This target measures a change in learned item assignments, rather than an annotated change in user intent.
 
-Three additional terms control prototype learning: a KL penalty between the batch mean of non-detached next-item assignments $q(i_{t+1})$ and the uniform distribution, a squared penalty on $CC^\top-I$, and normalized assignment entropy to encourage sharper individual assignments. Together,
+Three additional terms encourage balanced, distinct, and sharp prototype assignments. Together with next-preference prediction and transition supervision, they form
 \begin{align}
  \mathcal L_P={}&\lambda_p\mathcal L_{\mathrm{pred}}
  +\lambda_t\mathcal L_{\mathrm{shift}}
@@ -178,44 +170,22 @@ Three additional terms control prototype learning: a KL penalty between the batc
  &+\lambda_s\mathcal L_{\mathrm{separation}}
  +\lambda_h\mathcal L_{\mathrm{sharpness}}.
 \end{align}
-Unlike the prediction targets, the balance, separation, and sharpness terms propagate gradients through assignments or prototypes.
+The auxiliary terms and their gradient handling are detailed in Appendix~\ref{app:implementation}.
 
-\paragraph{Two-stage optimization.}
-Let $\mathcal L_S=\mathcal L_{\mathrm{rank}}(z_S)$, $\mathcal L_{\mathrm{pref}}=\mathcal L_{\mathrm{rank}}(z_P)$, and $\mathcal L_{\mathrm{fused}}=\mathcal L_{\mathrm{rank}}(z)$. First, specialist pretraining updates $S$, $P$, the shared item projection, and optional LightGCN embeddings while leaving the coordinator frozen:
-\begin{equation}
- \mathcal L_{\mathrm{specialists}}=\mathcal L_S+\mathcal L_{\mathrm{pref}}+\mathcal L_P.
-\end{equation}
-There is no separate coordinator-training stage. Joint optimization updates all enabled modules. Its supervised part is
+\paragraph{Single-stage joint optimization.}
+Let $\mathcal L_S=\mathcal L_{\mathrm{rank}}(z_S)$, $\mathcal L_{\mathrm{pref}}=\mathcal L_{\mathrm{rank}}(z_P)$, and $\mathcal L_{\mathrm{fused}}=\mathcal L_{\mathrm{rank}}(z)$. With both specialists and the coordinator enabled, the loss for every training batch is
 \begin{align}
- \mathcal L_{\mathrm{joint,DL}}={}&\frac{\mathcal L_S+\mathcal L_{\mathrm{pref}}+\mathcal L_{\mathrm{fused}}}{3}
- +\mathcal L_P\nonumber\\
+ \mathcal L_{\mathrm{DL}}={}&\frac{\mathcal L_S+\mathcal L_{\mathrm{pref}}+\mathcal L_{\mathrm{fused}}}{3}
+ +\mathcal L_P\notag\\
  &+\lambda_{\mathrm{con}}\mathcal L_{\mathrm{con}}
  +\lambda_{\mathrm{div}}\mathcal L_{\mathrm{div}}.
+ \label{eq:single_stage_loss}
 \end{align}
-The diversity term averages $(s_S^\top s_P)^2$ over the batch, separating specialist states. Contrastive alignment compares preference states with immediate next-item vectors in the batch:
-\begin{equation}
- \mathcal L_{\mathrm{con}}=-\frac{1}{N}\sum_{u=1}^{N}
- \log\frac{\sum_{v:y_v=y_u}\exp(s_{P,u}^\top e_{y_v}/\tau_c)}
- {\sum_{v=1}^{N}\exp(s_{P,u}^\top e_{y_v}/\tau_c)},
-\end{equation}
-where $y_u$ is the immediate next item, $N$ is batch size, and $\tau_c=0.1$. The numerator includes all batch targets sharing the same item identity.
-
-\paragraph{Joint policy-gradient refinement.}
-The fused score defines a stochastic ranking policy over a training candidate slate. It samples $K$ positions without replacement, producing $A=(a_1,\ldots,a_K)$ with sequential selection probability $\pi_\theta(A\mid\mathcal S,\overline{\mathcal H}_{u,t})$. Let $g_j$ be the sum of future-target weights assigned to slate position $j$. The training-only reward is a normalized discounted gain,
-\begin{equation}
- R(A)=\frac{\displaystyle\sum_{k=1}^{K}g_{a_k}/\log_2(k+1)}
- {\displaystyle\max\!\left(\sum_{k=1}^{K}g_{(k)}/\log_2(k+1),\epsilon\right)},
-\end{equation}
-where $g_{(k)}$ is the $k$th largest slate gain. A deterministic greedy ranking supplies a detached, action-independent baseline $b$ computed by the same reward. The REINFORCE term and complete joint objective are
-\begin{align}
- \mathcal L_{\mathrm{RL}}&=-\mathbb E_{A\sim\pi_\theta}\!\left[(R(A)-b)\sum_{k=1}^{K}\log\pi_\theta(a_k\mid a_{<k},\mathcal S,\overline{\mathcal H}_{u,t})\right],\notag\\
- \mathcal L_{\mathrm{joint}}&=\mathcal L_{\mathrm{joint,DL}}+\lambda_{\mathrm{RL}}\mathcal L_{\mathrm{RL}}.
-\end{align}
-The reward is an \emph{offline proxy} derived solely from future items in the training sequence; it is not observed feedback for sampled recommendations. Validation and test targets are never used to construct it. The supervised term stabilizes joint training, and $\lambda_{\mathrm{RL}}=0$ recovers supervised-only joint optimization. Disabled agents contribute neither their branch losses nor trainable parameters. The pretrained Mamba text encoder remains frozen throughout.
+For module ablations, the first term is the mean ranking loss over the enabled score heads; preference auxiliary and contrastive terms apply only when $P$ is enabled, and diversity applies only when both specialists are enabled. The diversity term discourages alignment between specialist states, while the contrastive term aligns preference states with immediate next-item vectors. Their formulas are given in Appendix~\ref{app:implementation}. All enabled online modules, the shared item projection, and optional LightGCN embeddings receive gradients from the first batch. Training uses this loss for the configured number of epochs, without a specialist warm-up, a separate coordinator stage, or policy-gradient updates. The pretrained Mamba text encoder remains frozen throughout.
 
 \section{Experiments}
 \label{sec:experiments}
-We evaluate RIBS on four Amazon Reviews 2023 categories using full-catalog Recall and NDCG. Our central ablations ask whether the short-term sequence encoder and preference transition encoder complement each other, and whether adding direct item-level long-term memory helps the combined model. We then examine history-length cohorts and sensitivity to the recent window, preference granularity, and auxiliary objectives. Dataset construction, evaluation details, configurations, and run provenance are given in Appendices~\ref{app:dataset_protocol}, \ref{app:implementation}, and \ref{app:runs}. All results are single-seed point estimates.
+We evaluate RIBS on four Amazon Reviews 2023 categories using full-catalog Recall and NDCG. Our central ablations ask whether the short-term sequence encoder and preference transition encoder complement each other, and whether adding direct item-level long-term memory helps the combined model. We then examine history-length cohorts and sensitivity to the recent window, preference granularity, and auxiliary objectives. The numerical tables below preserve previously recorded configurations and have not been updated with results from the single-stage supervised schedule described in Section~\ref{sec:method}; they therefore do not measure that schedule. Dataset construction, evaluation details, configurations, and run provenance are given in Appendices~\ref{app:dataset_protocol}, \ref{app:implementation}, and \ref{app:runs}. All tabulated results are single-seed point estimates.
 
 \subsection{Overall Results}
 Table~\ref{tab:overall_main} preserves the recorded main comparison. Published baseline rows use different preprocessing and should be read as context rather than a controlled head-to-head evaluation. The behavioral ablations below use our recorded configurations under a common protocol.
@@ -246,7 +216,7 @@ Table~\ref{tab:overall_main} preserves the recorded main comparison. Published b
         Mamba4Rec & .1057 & .1048 & .1057 & .1048 & .0251 & .0208 & .0310 & .0227 & .0375 & .0301 & .0489 & .0337 & .0297 & .0251 & .0352 & .0268 \\
         ReSID & .0398 & .0515 & .0289 & .0327 & .0093 & .0063 & .0144 & .0079 & .0156 & .0101 & .0255 & .0133 & .0132 & .0090 & .0194 & .0110 \\
         SIGMA & .0899 & .0824 & .1042 & .0870 & 0112 & 0074 & .0177 & .0095 & .0270 & .0187 & .0402 & .0229 & .0195 & .0136 & .0280 & .0164 \\
-        LLaRA \\
+        % LLaRA \\
         LLM-SRec &.0268 & .0175 & .0453 & .0234 & .0098 & .0065 & .0160 & .0084 & .0118 & .0072 & .0205 & .0100\\
         LLMRec & .0851 & .0836 & .0892 & .0849 & .0178 & .0143 & .0228 & .0159 & .0170 & .0132 & .0228 & .0151 & .0299 & .0226 & .0395 & .0257 \\
         \midrule
@@ -384,7 +354,8 @@ The following symbols are used in the method; subscripts $S$, $P$, and $C$ denot
 \item[$\mathcal R_j$] Low-rank residual map for online recommendation module $j$.
 \item[$A_j,B_j$] Input and output projection matrices of residual map $j$.
 \item[$r,\alpha_{\mathrm{LoRA}}$] Residual-map rank and scale.
-\item[$a_k^{(m)},h_k^{(m)},o_k^{(m)}$] Selective-state retention factor, recurrent state, and output for specialist $m\in\{S,P\}$.
+\item[$a_k^{(m)},\widetilde h_k^{(m)}$] Input-dependent retention factor and candidate state for specialist $m\in\{S,P\}$.
+\item[$g_k^{(m)},h_k^{(m)},o_k^{(m)}$] Output gate, recurrent state, and output for specialist $m$.
 \item[$C,M,\tau_p$] Prototype matrix, number of preference prototypes, and assignment temperature.
 \item[$q_t,\widehat q_{t+1}$] Last observed item's prototype distribution and predicted next-item distribution after the full history.
 \item[$\rho_t,c_t,w_S,w_P$] Predicted transition probability, entropy-based certainty, and coordinator mixture weights.
@@ -399,8 +370,8 @@ The following symbols are used in the method; subscripts $S$, $P$, and $C$ denot
 \item[$a_j,\mathcal S,p_j$] Weight of future target $j$, candidate slate, and that target's valid slate position; $a_j$ is distinct from the retention factor $a_k$.
 \item[$q^+,y_{\mathrm{shift}}$] Detached next-item assignment and soft prototype-transition target.
 \item[$\mathcal L_{\mathrm{rank}},\mathcal L_P$] Multi-step ranking loss and combined preference-supervision loss.
-\item[$K,g_j,R(A),b$] Sampled ranking length, training target gain at slate position $j$, offline ranking reward, and detached greedy baseline.
-\item[$\mathcal L_{\mathrm{specialists}},\mathcal L_{\mathrm{joint,DL}},\mathcal L_{\mathrm{RL}}$] Specialist supervision, supervised joint loss, and policy-gradient loss.
+\item[$\mathcal L_S,\mathcal L_{\mathrm{pref}},\mathcal L_{\mathrm{fused}}$] Ranking losses for the short-term, preference, and fused score heads.
+\item[$\mathcal L_{\mathrm{DL}},\mathcal L_{\mathrm{con}},\mathcal L_{\mathrm{div}}$] Single-stage objective, preference contrastive loss, and specialist state-diversity loss.
 \end{description}
 
 \section{Methods for the Preliminary Diagnostics}
@@ -495,17 +466,57 @@ Evaluation ranks against the complete processed catalog for every eligible user.
 
 For cohort analysis, short histories contain at most 10 events and long histories contain more than 10, measured on each complete filtered sequence before validation/test holdout. Membership is fixed across evaluation splits and independent of the model's context window. Each model is trained on both groups together. Short-history users account for approximately 82--85\% of evaluated users in every category.
 
-\section{Implementation and Compared Configurations}
+\section{Implementation Details}
 \label{app:implementation}
+\paragraph{Item features and adaptation.}
+The frozen Mamba text encoder receives each item's text prefixed with ``Preference-aware product representation: ''. We mean-pool content-token hidden states, excluding padding and prefix tokens. If truncation leaves no content tokens, we pool non-padding tokens instead. Only hidden states are computed, without vocabulary prediction logits; the resulting $f_i$ is cached for ranker training and evaluation. The item projection $W_f$ is trainable. Each online LoRA residual $\mathcal R_j$ uses $A_j\in\mathbb R^{r\times d_{\mathrm{in},j}}$ and $B_j\in\mathbb R^{d_{\mathrm{out},j}\times r}$. Each $B_j$ starts at zero, and dropout is inactive at inference. The item projection, optional graph embeddings, preference prototypes and prediction heads, and state-update biases remain trainable alongside these residuals.
+
 The shared collaborative item vector $g_i$ comes from a two-layer LightGCN on training interactions, averaging the initial item embedding and both propagated layers. It is combined with the cached text feature as
 \begin{equation}
  e_i=\norm{\norm{W_f f_i}+\norm{g_i}},
 \end{equation}
-where $\norm{x}=x/\max(\lVert x\rVert_2,\epsilon)$. Validation and test interactions are excluded from graph construction and the count-based priors.
+where $\norm{x}=x/\max(\lVert x\rVert_2,\epsilon)$. Without LightGCN, $e_i=\norm{W_f f_i}$. Validation and test interactions are excluded from graph construction and the count-based priors.
 
-The reported runs use \texttt{state-spaces/}\allowbreak\texttt{mamba-130m-hf}, frozen 768-dimensional text features, a maximum text length of 32 tokens including the prompt, a 128-dimensional ranker, two graph layers, 32 preference prototypes, a 128-dimensional GRU, and prototype temperature 0.2. Low-rank modules use rank 16, scale 32, and dropout 0.05. Training and evaluation batch sizes are 128 and 64. The configured schedule allows 3 encoder warm-up epochs, 3 coordinator epochs, and 7 joint epochs, with learning rates $10^{-4}$, $10^{-4}$, and $5\times10^{-5}$. Single-encoder variants skip coordinator training.
+\paragraph{Selective-state computations.}
+For each agent $m\in\{S,P\}$, the retention factor, candidate state, and output gate in Eq.~\eqref{eq:state_update} are computed elementwise from the current input as
+\begin{align}
+ a_k^{(m)}&=\exp\!\Bigl[-\min\!\Bigl\{
+    \operatorname{softplus}\!\bigl(b_{\delta,m}\notag\\
+ &\qquad+\mathcal R_{\delta,m}(y_k^{(m)})\bigr),12\Bigr\}\Bigr],\notag\\
+ \widetilde h_k^{(m)}&=\tanh\!\bigl(y_k^{(m)}\notag\\
+ &\qquad+\mathcal R_{\mathrm{cand},m}(y_k^{(m)})\bigr),\notag\\
+ g_k^{(m)}&=\sigma\!\left(\mathcal R_{\mathrm{gate},m}(y_k^{(m)})\right).
+\end{align}
+The minimum caps the positive softplus output at 12 before exponentiation. Each agent has its own state-update bias and LoRA residuals; the output gate and recurrence are as shown in Eq.~\eqref{eq:state_update}. The recurrent state starts at zero, while padding leaves the state and output unchanged. Four residuals per specialist control decay, candidate state, output gate, and final state correction; the preference specialist uses a fifth residual for reconstructed preference state. The decay biases initialize $a_k^{(S)}=\exp(-0.5)$ and $a_k^{(P)}=\exp(-0.2)$ before the residuals learn. Prototype indices have no predetermined semantics or cross-run alignment.
 
-Future targets use $F=3$ and $\eta=0.5$. The negative pool multiplier is 12, the target hard-negative fraction is 0.75, and its warm-up lasts two epochs per stage. Preference loss coefficients $(\lambda_p,\lambda_t,\lambda_b,\lambda_s,\lambda_h)$ are $(0.2,0.1,0.01,0.01,0.05)$; contrastive and diversity coefficients are 0.05 and 0.02. Validation NDCG@10 selects the restored best state. Joint-stage early stopping allows six unsuccessful validation checks. All included runs use seed 25252.
+\paragraph{Coordinator and inference.}
+The coordinator owns three residual modules for mixing, state construction, and candidate scoring, giving twelve distinct low-rank residual modules in the default model. Its context weights and intercept start at zero, while $\theta_P$ starts from the configured preference mixing weight; the mixing residual can subsequently change both logits. Optional configurations can disable either specialist, the graph embeddings, or the coordinator. Without the coordinator, two enabled specialists use a fixed configured score mixture; a sole specialist scores directly. Disabled modules have no trainable parameters in that configuration. At inference, training-only popularity and transition priors give
+\begin{equation}
+ \widetilde z(u,i)=z(u,i)+\alpha_p p_i+\beta_t\log(1+n_{i_t,i}),
+\end{equation}
+where $p_i$ is standardized log-one-plus training popularity and $n_{i_t,i}$ counts adjacent training transitions from the last observed item. Missing transitions contribute zero, and the coefficients are configured by category. All reported scores include these priors; their contribution is not isolated from that of the neural model.
+
+\paragraph{Ranking and auxiliary losses.}
+Training targets are later logged interactions from the training portion of each sequence; validation and test targets are held out. Known training positives are excluded from negative selection, and the hard-negative fraction increases during warm-up. If fewer than $F$ future items remain, the final available target fills unused target slots with zero target weight. Ranking softmax uses the constructed slate, where positions may share an item identity. An optional full-catalog supervised mode scores all items. For prototype learning, $\mathcal L_{\mathrm{balance}}$ is a KL penalty between the batch mean of non-detached next-item assignments $q(i_{t+1})$ and the uniform distribution; $\mathcal L_{\mathrm{separation}}$ penalizes $CC^\top-I$; and $\mathcal L_{\mathrm{sharpness}}$ uses normalized assignment entropy. Unlike detached prediction targets, these three terms pass gradients through assignments or prototypes. The diversity loss averages $(s_S^\top s_P)^2$ over a batch. With $y_u$ the immediate next item and $N$ the batch size, contrastive alignment is
+\begin{equation}
+ \mathcal L_{\mathrm{con}}=-\frac{1}{N}\sum_{u=1}^{N}
+ \log\frac{\sum_{v:y_v=y_u}\exp(s_{P,u}^\top e_{y_v}/\tau_c)}
+ {\sum_{v=1}^{N}\exp(s_{P,u}^\top e_{y_v}/\tau_c)}.
+\end{equation}
+The numerator includes all batch targets with the same item identity; $\tau_c=0.1$.
+
+\paragraph{Single-stage supervised optimization.}
+With both specialists and the coordinator enabled, each batch contributes the three ranking losses in Eq.~\eqref{eq:single_stage_loss}, the preference auxiliary loss, contrastive alignment, and state diversity. More generally, let $\mathcal A$ contain the active ranking heads: short-term and preference when enabled, plus the coordinator when enabled or when it supplies the graph-only score. The implementation computes
+\begin{equation}
+ \mathcal L_{\mathrm{DL}}=\frac{1}{|\mathcal A|}\sum_{m\in\mathcal A}\mathcal L_{\mathrm{rank}}(z_m)
+ +\mathbf 1_P\bigl(\mathcal L_P+\lambda_{\mathrm{con}}\mathcal L_{\mathrm{con}}\bigr)
+ +\mathbf 1_S\mathbf 1_P\lambda_{\mathrm{div}}\mathcal L_{\mathrm{div}}.
+\end{equation}
+Here $\mathbf 1_S$ and $\mathbf 1_P$ indicate enabled specialists. Disabled agents contribute neither branch losses nor trainable parameters. The short-term agent, preference agent, coordinator, item projection, and optional graph embeddings are optimized together from the first batch; the frozen Mamba text encoder only supplies cached item features. The training configuration uses the complete supervised objective for every epoch and selects the best validation checkpoint. It does not sample rankings for a policy objective.
+
+The single-stage configuration uses \texttt{state-spaces/}\allowbreak\texttt{mamba-130m-hf}, frozen 768-dimensional text features, a maximum text length of 32 tokens including the prompt, a 128-dimensional ranker, two graph layers, 32 preference prototypes, and prototype temperature 0.2. Low-rank modules use rank 16, scale 32, and dropout 0.05. Training and evaluation batch sizes are 128 and 64. The current launch configuration trains all enabled modules for four supervised epochs at learning rate $10^{-4}$; its recent-item window is two and its maximum available history is 100 items.
+
+Future targets use $F=3$ and $\eta=0.5$. The negative pool multiplier is 12, the target hard-negative fraction is 0.75, and its warm-up lasts two epochs within the single stage. Preference loss coefficients $(\lambda_p,\lambda_t,\lambda_b,\lambda_s,\lambda_h)$ are $(0.2,0.1,0.01,0.01,0.05)$; contrastive and diversity coefficients are 0.05 and 0.02. Validation NDCG@10 selects the restored best state. The full four-epoch schedule runs without early stopping. The launch configuration uses seed 25252.
 
 Table~\ref{tab:config} summarizes category-specific settings and cohort sizes. The evaluation contains 1,457 users in All Beauty, 184,584 in Baby Products, 625,563 in Sports and Outdoors, and 564,666 in Toys and Games. These are evaluated user counts rather than catalog or training-interaction counts.
 
@@ -595,7 +606,7 @@ Toys and Games & 460,753 & 103,913 & 1,500,000 & 192 & 0.30 & 0.5\\
 
 \section{Result Provenance}
 \label{app:runs}
-Table~\ref{tab:main_length_groups} reports final test results from validation-selected models. History-length cohorts use the complete filtered interaction sequence, and scores are rounded to four decimal places. We exclude an earlier analysis that grouped users by untruncated training-history length because it used a different cohort definition. The displayed component comparisons therefore use a consistent split and grouping protocol.
+Table~\ref{tab:main_length_groups} reports final test results from validation-selected models. These archived tables predate the single-stage supervised training configuration and should not be interpreted as its measured results. History-length cohorts use the complete filtered interaction sequence, and scores are rounded to four decimal places. We exclude an earlier analysis that grouped users by untruncated training-history length because it used a different cohort definition. The displayed component comparisons therefore use a consistent split and grouping protocol.
 
 \section{Short-Term Sequence Encoder Window Size}
 \label{app:short_window}
@@ -780,7 +791,7 @@ $|P|=128$ & .1201 & .1112 & .1283 & .1138 & .0339 & .0272 & .0429 & .0300 & .044
 
 \section{Per-coefficient Preference Loss}
 
-Table~\ref{tab:coefzero} reports the auxiliary-coefficient controls. The six terms correspond to $\mathcal L_{\mathrm{pred}}$, $\mathcal L_{\mathrm{shift}}$, $\mathcal L_{\mathrm{balance}}$, $\mathcal L_{\mathrm{separation}}$, $\mathcal L_{\mathrm{sharpness}}$, and joint-stage contrastive alignment. Balance encourages aggregate prototype usage rather than demographic fairness, while sharpness encourages concentrated item assignments. Zeroing these coefficients leaves preference scoring and ranking supervision active. The supplied table does not explicitly identify the component mask; its default scores match the $S+P$, 32-prototype row in Table~\ref{tab:prefsweep} at the displayed precision.
+Table~\ref{tab:coefzero} reports the auxiliary-coefficient controls. The six terms correspond to $\mathcal L_{\mathrm{pred}}$, $\mathcal L_{\mathrm{shift}}$, $\mathcal L_{\mathrm{balance}}$, $\mathcal L_{\mathrm{separation}}$, $\mathcal L_{\mathrm{sharpness}}$, and preference contrastive alignment. Balance encourages aggregate prototype usage rather than demographic fairness, while sharpness encourages concentrated item assignments. Zeroing these coefficients leaves preference scoring and ranking supervision active. The supplied table does not explicitly identify the component mask; its default scores match the $S+P$, 32-prototype row in Table~\ref{tab:prefsweep} at the displayed precision.
 
 \begin{table*}[!t]
     \centering

@@ -19,9 +19,19 @@ fi
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 # 手動設定要使用的實體 GPU："0"、"1"、"0,1" 或 "1,0"
 # 使用兩張卡時，第一張供主模型使用，第二張供 graph/preference 模型使用。
-GPU_IDS="${GPU_IDS:-0}"
+GPU_IDS="${GPU_IDS:-1}"
 EVAL_LENGTH_THRESHOLD="${EVAL_LENGTH_THRESHOLD:-10}"
 TRAINING_OPTIONS=("$@")
+if ! bash -n "$PROJECT_ROOT/run_mamba_rl.sh"; then
+  echo "run_mamba_rl.sh has a shell syntax error; stopping before the dataset suite." >&2
+  exit 2
+fi
+# Resume an interrupted suite without repeating completed subsets.
+START_FROM="${START_FROM:-}"
+case "$START_FROM" in
+  ""|Full_Beauty|Baby_Products|Sports_and_Outdoors|Toys_and_Games) ;;
+  *) echo "Unsupported START_FROM: $START_FROM" >&2; exit 2 ;;
+esac
 if [[ ! "$EVAL_LENGTH_THRESHOLD" =~ ^[1-9][0-9]*$ ]]; then
   echo "EVAL_LENGTH_THRESHOLD must be a positive integer" >&2
   exit 2
@@ -42,7 +52,7 @@ ENABLE_LORA=1
 # 指定要存到 outputs_mamba_rl/ 底下的資料夾名稱。
 # 例如：OUTPUT_FOLDER_NAME="my_experiment"
 
-SPECIALISTS_EPOCH="${SPECIALISTS_EPOCH:-6}"
+SPECIALISTS_EPOCH="${SPECIALISTS_EPOCH:-4}"
 # 設為 0：short、preference、coordinator、GCN 同時 DL 訓練 SPECIALISTS_EPOCH 次。
 # 大於 0：先 specialists DL，再 joint DL+RL。
 JOINT_EPOCH="${JOINT_EPOCH:-0}"
@@ -53,7 +63,7 @@ RL_TOPK="${RL_TOPK:-10}"
 
 # Agent ablations: 1 = enabled, 0 = disabled (also overridable via environment).
 # Preference uses MAX_HISTORY whenever enabled; only short uses SHORT_WINDOW.
-USE_SHORT="${USE_SHORT:-1}"
+USE_SHORT="${USE_SHORT:-0}"
 USE_PREFERENCE="${USE_PREFERENCE:-1}"
 USE_GCN="${USE_GCN:-1}"
 USE_COORDINATOR="${USE_COORDINATOR:-0}"
@@ -149,6 +159,20 @@ for SHORT_WINDOW in "${SHORT_WINDOWs[@]}"; do
     local transition_beta="$7"
     local timestamp run_dir
 
+    if [[ "$SKIP_UNTIL_START" == 1 ]]; then
+      if [[ "$subset_name" != "$START_FROM" ]]; then
+        echo "Skipping completed subset: $subset_name"
+        return 0
+      fi
+      SKIP_UNTIL_START=0
+    fi
+
+    # Check again before every subset in case the launcher was edited mid-run.
+    if ! bash -n "$PROJECT_ROOT/run_mamba_rl.sh"; then
+      echo "run_mamba_rl.sh has a shell syntax error; stopping before $subset_name." >&2
+      return 2
+    fi
+
     timestamp="$(date '+%Y%m%d_%H%M%S')"
     run_dir="$OUTPUT_ROOT/$subset_name/rl_${timestamp}_r${run_number}_$$"
 
@@ -179,9 +203,11 @@ for SHORT_WINDOW in "${SHORT_WINDOWs[@]}"; do
   # One command per requested subset. Set REPEATS=5 to repeat the whole suite five times.
   REPEATS="${REPEATS:-1}"
   for ((run_number = 1; run_number <= REPEATS; run_number++)); do
+    SKIP_UNTIL_START=0
+    if [[ -n "$START_FROM" ]]; then SKIP_UNTIL_START=1; fi
     # name dataset validation_steps max_samples candidates popularity transition
-    run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
-    run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
+    # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
+    # run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
     run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
     # run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5
     run_subset "Toys_and_Games" "amazon-toys-and-games" 6000 1500000 192 0.30 0.5

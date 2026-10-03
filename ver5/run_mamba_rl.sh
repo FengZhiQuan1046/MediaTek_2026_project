@@ -229,6 +229,8 @@ fi
 
 # Explicit options supplied by a suite launcher come last and therefore
 # override the environment-backed defaults above.
-ARGS+=("${TRAINING_OPTIONS[@]}")
+if (( ${#TRAINING_OPTIONS[@]} > 0 )); then
+  ARGS+=("${TRAINING_OPTIONS[@]}")
+fi
 
-"$PYTHON_BIN" -m src.train_mamba_rl "${ARGS[@]}"
+exec "$PYTHON_BIN" -m src.train_mamba_rl "${ARGS[@]}"

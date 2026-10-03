@@ -3,8 +3,101 @@
   "run_id": "20261003_130249",
   "group": "short",
   "length_basis": "filtered_full_sequence",
-  "length_threshold": 10,
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "all_dl",
+      "epoch": 1,
+      "global_step": 54,
+      "scores": {
+        "recall@5": 0.1260096930533118,
+        "recall@10": 0.13004846526655897,
+        "ndcg@5": 0.12020470639156618,
+        "ndcg@10": 0.12149030737905875,
+        "hit@5": 0.1260096930533118,
+        "hit@10": 0.13004846526655897
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 2,
+      "global_step": 108,
+      "scores": {
+        "recall@5": 0.12681744749596122,
+        "recall@10": 0.1332794830371567,
+        "ndcg@5": 0.12055258729469491,
+        "ndcg@10": 0.1226925605575473,
+        "hit@5": 0.12681744749596122,
+        "hit@10": 0.1332794830371567
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 3,
+      "global_step": 162,
+      "scores": {
+        "recall@5": 0.1284329563812601,
+        "recall@10": 0.13651050080775445,
+        "ndcg@5": 0.12124834910095242,
+        "ndcg@10": 0.12380392291997507,
+        "hit@5": 0.1284329563812601,
+        "hit@10": 0.13651050080775445
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 4,
+      "global_step": 216,
+      "scores": {
+        "recall@5": 0.12924071082390953,
+        "recall@10": 0.13489499192245558,
+        "ndcg@5": 0.12184938056002909,
+        "ndcg@10": 0.12370362080565017,
+        "hit@5": 0.12924071082390953,
+        "hit@10": 0.13489499192245558
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 5,
+      "global_step": 270,
+      "scores": {
+        "recall@5": 0.1308562197092084,
+        "recall@10": 0.13651050080775445,
+        "ndcg@5": 0.12291362075817769,
+        "ndcg@10": 0.12475620116444355,
+        "hit@5": 0.1308562197092084,
+        "hit@10": 0.13651050080775445
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 6,
+      "global_step": 324,
+      "scores": {
+        "recall@5": 0.1332794830371567,
+        "recall@10": 0.13893376413570274,
+        "ndcg@5": 0.12397786095632622,
+        "ndcg@10": 0.12579719649912183,
+        "hit@5": 0.1332794830371567,
+        "hit@10": 0.13893376413570274
+      },
+      "evaluated_users": 1238,
+      "total_users": 1238
+    }
+  ],
   "length_rule": "length <= threshold",
+  "length_threshold": 10,
   "config": {
     "dataset": "amazon-all-beauty",
     "data_path": null,
@@ -84,79 +177,28 @@
     "use_short": 1,
     "use_preference": 1
   },
-  "status": "training",
+  "valid": {
+    "ndcg@5": 0.1041362174895352,
+    "ndcg@10": 0.10520283321975557,
+    "recall@5": 0.10823909531502424,
+    "recall@10": 0.11147011308562198,
+    "hit@5": 0.10823909531502424,
+    "hit@10": 0.11147011308562198
+  },
+  "valid_users": {
+    "total_users": 1238,
+    "evaluated_users": 1238
+  },
   "test": {
-    "recall@5": 0.12924071082390953,
-    "recall@10": 0.13489499192245558,
-    "ndcg@5": 0.12184938056002909,
-    "ndcg@10": 0.12370362080565017,
-    "hit@5": 0.12924071082390953,
-    "hit@10": 0.13489499192245558
+    "ndcg@5": 0.12397786095632622,
+    "ndcg@10": 0.12579719649912183,
+    "recall@5": 0.1332794830371567,
+    "recall@10": 0.13893376413570274,
+    "hit@5": 0.1332794830371567,
+    "hit@10": 0.13893376413570274
   },
   "test_users": {
-    "evaluated_users": 1238,
-    "total_users": 1238
-  },
-  "periodic_test_history": [
-    {
-      "stage": "all_dl",
-      "epoch": 1,
-      "global_step": 54,
-      "scores": {
-        "recall@5": 0.1260096930533118,
-        "recall@10": 0.13004846526655897,
-        "ndcg@5": 0.12020470639156618,
-        "ndcg@10": 0.12149030737905875,
-        "hit@5": 0.1260096930533118,
-        "hit@10": 0.13004846526655897
-      },
-      "evaluated_users": 1238,
-      "total_users": 1238
-    },
-    {
-      "stage": "all_dl",
-      "epoch": 2,
-      "global_step": 108,
-      "scores": {
-        "recall@5": 0.12681744749596122,
-        "recall@10": 0.1332794830371567,
-        "ndcg@5": 0.12055258729469491,
-        "ndcg@10": 0.1226925605575473,
-        "hit@5": 0.12681744749596122,
-        "hit@10": 0.1332794830371567
-      },
-      "evaluated_users": 1238,
-      "total_users": 1238
-    },
-    {
-      "stage": "all_dl",
-      "epoch": 3,
-      "global_step": 162,
-      "scores": {
-        "recall@5": 0.1284329563812601,
-        "recall@10": 0.13651050080775445,
-        "ndcg@5": 0.12124834910095242,
-        "ndcg@10": 0.12380392291997507,
-        "hit@5": 0.1284329563812601,
-        "hit@10": 0.13651050080775445
-      },
-      "evaluated_users": 1238,
-      "total_users": 1238
-    },
-    {
-      "stage": "all_dl",
-      "epoch": 4,
-      "global_step": 216,
-      "scores": {
-        "recall@5": 0.12924071082390953,
-        "recall@10": 0.13489499192245558,
-        "ndcg@5": 0.12184938056002909,
-        "ndcg@10": 0.12370362080565017,
-        "hit@5": 0.12924071082390953,
-        "hit@10": 0.13489499192245558
-      },
-      "evaluated_users": 1238,
-      "total_users": 1238
-    }
-  ]
+    "total_users": 1238,
+    "evaluated_users": 1238
+  }
 }

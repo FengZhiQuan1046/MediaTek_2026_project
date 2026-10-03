@@ -22,6 +22,8 @@ EVAL_LENGTH_THRESHOLD=20 GPU_IDS=0 PYTHON_BIN=/dataspace/P78123011/miniconda3/en
 
 設定 `JOINT_EPOCH=0` 時，只跑 `SPECIALISTS_EPOCH` 次**單階段 DL**：所有啟用的 agent、coordinator、共用投影與 LightGCN 從第一步一起更新，不計算 RL loss。`JOINT_EPOCH>0` 時，維持 specialists DL 預訓練後接 joint DL＋RL；其中 RL 只用訓練序列後續商品計算離線代理 reward。`RL_COEF=0` 可讓兩階段模式的 joint 也只用 DL。可用 `JOINT_EPOCH=0 USE_SHORT=1 USE_PREFERENCE=1 USE_GCN=1 USE_COORDINATOR=1 bash run_long_short.sh` 啟用單階段全模組 DL。
 
+若套件在 Baby Products 後中斷，可設 `START_FROM=Sports_and_Outdoors`，從 Sports and Outdoors 繼續，之後仍會跑 Toys and Games；已完成的 Full Beauty 與 Baby Products 不會重跑。每個資料集啟動前都會檢查子腳本的 shell 語法。
+
 分組結果保存在 `metrics.json` 的 `valid.sequence_length` 與 `test.sequence_length`，包含兩組人數、歷史長度及 Recall、NDCG、Hit 指標。空組的指標為 JSON `null`。定期評估另寫入兩組分數檔；它們的「short／long」仍僅指使用者歷史長度，不指 agent。
 
 從 ver4 複製的舊輸出與表格反映舊架構，不能作為 ver5 的新結果；需要重新訓練與評估。
