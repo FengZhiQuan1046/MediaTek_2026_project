@@ -1,6 +1,6 @@
 {
   "dataset": "amazon-sports-and-outdoors",
-  "run_id": "20261003_214727",
+  "run_id": "20261004_001027",
   "group": "long",
   "length_basis": "filtered_full_sequence",
   "status": "final_best_model",
@@ -10,12 +10,12 @@
       "epoch": 1,
       "global_step": 7813,
       "scores": {
-        "recall@5": 0.006032515980515076,
-        "recall@10": 0.009721908207099254,
-        "ndcg@5": 0.004141432300357004,
-        "ndcg@10": 0.005316788977636161,
-        "hit@5": 0.006032515980515076,
-        "hit@10": 0.009721908207099254
+        "recall@5": 0.031138881466713255,
+        "recall@10": 0.0402339013010503,
+        "ndcg@5": 0.02482867921928057,
+        "ndcg@10": 0.02775311399356147,
+        "hit@5": 0.031138881466713255,
+        "hit@10": 0.0402339013010503
       },
       "evaluated_users": 97306,
       "total_users": 97306
@@ -25,12 +25,12 @@
       "epoch": 2,
       "global_step": 15626,
       "scores": {
-        "recall@5": 0.006340821737611247,
-        "recall@10": 0.010235751135592872,
-        "ndcg@5": 0.004299678859871092,
-        "ndcg@10": 0.0055512674230386826,
-        "hit@5": 0.006340821737611247,
-        "hit@10": 0.010235751135592872
+        "recall@5": 0.03929870717119191,
+        "recall@10": 0.04737631800711158,
+        "ndcg@5": 0.03288317256338304,
+        "ndcg@10": 0.03548428101850594,
+        "hit@5": 0.03929870717119191,
+        "hit@10": 0.04737631800711158
       },
       "evaluated_users": 97306,
       "total_users": 97306
@@ -40,12 +40,12 @@
       "epoch": 3,
       "global_step": 23439,
       "scores": {
-        "recall@5": 0.006710788646126652,
-        "recall@10": 0.01053378003411917,
-        "ndcg@5": 0.004551287135227887,
-        "ndcg@10": 0.005777766877115345,
-        "hit@5": 0.006710788646126652,
-        "hit@10": 0.01053378003411917
+        "recall@5": 0.036719215670153946,
+        "recall@10": 0.044118553840462045,
+        "ndcg@5": 0.031064851340654318,
+        "ndcg@10": 0.03344831175792454,
+        "hit@5": 0.036719215670153946,
+        "hit@10": 0.044118553840462045
       },
       "evaluated_users": 97306,
       "total_users": 97306
@@ -55,12 +55,12 @@
       "epoch": 4,
       "global_step": 31252,
       "scores": {
-        "recall@5": 0.006957433251803589,
-        "recall@10": 0.01083180893264547,
-        "ndcg@5": 0.004797772856714141,
-        "ndcg@10": 0.006041253246440113,
-        "hit@5": 0.006957433251803589,
-        "hit@10": 0.01083180893264547
+        "recall@5": 0.035311286046081435,
+        "recall@10": 0.04183709123795038,
+        "ndcg@5": 0.030322076789846365,
+        "ndcg@10": 0.032429231713998787,
+        "hit@5": 0.035311286046081435,
+        "hit@10": 0.04183709123795038
       },
       "evaluated_users": 97306,
       "total_users": 97306
@@ -95,7 +95,7 @@
     "preference_temperature": 0.2,
     "preference_score_weight": 0.2,
     "use_graph_embeddings": true,
-    "use_coordinator": false,
+    "use_coordinator": true,
     "max_history": 100,
     "reverse_history_input": false,
     "specialist_lr": 0.0001,
@@ -116,8 +116,8 @@
     "preference_contrastive_coef": 0.05,
     "agent_diversity_coef": 0.02,
     "full_catalog_supervised": false,
-    "popularity_alpha": 0.0,
-    "transition_beta": 0.0,
+    "popularity_alpha": 0.35,
+    "transition_beta": 0.5,
     "seed": 25252,
     "device": "cuda:0",
     "skip_mamba": false,
@@ -139,33 +139,33 @@
     "experiment_note": "amazons_long_short subset=Sports_and_Outdoors; short filtered-full-sequence <= 10; long > 10; same model and full catalog",
     "target_recall_at_10": 0.15,
     "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_lora",
-    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S0_P0_G1_C0_SW4/Sports_and_Outdoors/rl_20261003_214725_r1_966428",
-    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S0_P0_G1_C0_SW4/Sports_and_Outdoors/rl_20261003_214725_r1_966428/Sports_and_Outdoors_scores.json",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW4/Sports_and_Outdoors/rl_20261004_001025_r1_965136",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW4/Sports_and_Outdoors/rl_20261004_001025_r1_965136/Sports_and_Outdoors_scores.json",
     "history_influence_output": null,
     "history_influence_user_limit": 0,
     "history_influence_negatives": 64,
-    "use_short": 0,
-    "use_preference": 0
+    "use_short": 1,
+    "use_preference": 1
   },
   "valid": {
-    "ndcg@5": 0.006130241082105519,
-    "ndcg@10": 0.007763998302817095,
-    "recall@5": 0.008817544652950485,
-    "recall@10": 0.01392514336217705,
-    "hit@5": 0.008817544652950485,
-    "hit@10": 0.01392514336217705
+    "ndcg@5": 0.02309200438862512,
+    "ndcg@10": 0.025966667932525042,
+    "recall@5": 0.029309600641275975,
+    "recall@10": 0.03825046759706493,
+    "hit@5": 0.029309600641275975,
+    "hit@10": 0.03825046759706493
   },
   "valid_users": {
     "total_users": 97306,
     "evaluated_users": 97306
   },
   "test": {
-    "ndcg@5": 0.004797772856714141,
-    "ndcg@10": 0.006041253246440113,
-    "recall@5": 0.006957433251803589,
-    "recall@10": 0.01083180893264547,
-    "hit@5": 0.006957433251803589,
-    "hit@10": 0.01083180893264547
+    "ndcg@5": 0.03288317256338304,
+    "ndcg@10": 0.03548428101850594,
+    "recall@5": 0.03929870717119191,
+    "recall@10": 0.04737631800711158,
+    "hit@5": 0.03929870717119191,
+    "hit@10": 0.04737631800711158
   },
   "test_users": {
     "total_users": 97306,

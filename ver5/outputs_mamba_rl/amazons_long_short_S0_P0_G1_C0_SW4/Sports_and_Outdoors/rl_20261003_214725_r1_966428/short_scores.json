@@ -3,8 +3,71 @@
   "run_id": "20261003_214727",
   "group": "short",
   "length_basis": "filtered_full_sequence",
-  "length_threshold": 10,
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "all_dl",
+      "epoch": 1,
+      "global_step": 7813,
+      "scores": {
+        "recall@5": 0.007471741974077011,
+        "recall@10": 0.011524693473063301,
+        "ndcg@5": 0.005070112297568511,
+        "ndcg@10": 0.00637097061488831,
+        "hit@5": 0.007471741974077011,
+        "hit@10": 0.011524693473063301
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 2,
+      "global_step": 15626,
+      "scores": {
+        "recall@5": 0.008255451418533025,
+        "recall@10": 0.012624536920476208,
+        "ndcg@5": 0.005577164068286078,
+        "ndcg@10": 0.0069820513983874675,
+        "hit@5": 0.008255451418533025,
+        "hit@10": 0.012624536920476208
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 3,
+      "global_step": 23439,
+      "scores": {
+        "recall@5": 0.008554548259653919,
+        "recall@10": 0.013167833081246439,
+        "ndcg@5": 0.005862185291831662,
+        "ndcg@10": 0.007343374910502004,
+        "hit@5": 0.008554548259653919,
+        "hit@10": 0.013167833081246439
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 4,
+      "global_step": 31252,
+      "scores": {
+        "recall@5": 0.009095951402442373,
+        "recall@10": 0.01362405041485489,
+        "ndcg@5": 0.0063212536477462505,
+        "ndcg@10": 0.00777447520017511,
+        "hit@5": 0.009095951402442373,
+        "hit@10": 0.01362405041485489
+      },
+      "evaluated_users": 528257,
+      "total_users": 528257
+    }
+  ],
   "length_rule": "length <= threshold",
+  "length_threshold": 10,
   "config": {
     "dataset": "amazon-sports-and-outdoors",
     "data_path": null,
@@ -84,34 +147,28 @@
     "use_short": 0,
     "use_preference": 0
   },
-  "status": "training",
+  "valid": {
+    "ndcg@5": 0.009621156865663439,
+    "ndcg@10": 0.011640836960177507,
+    "recall@5": 0.01372816640385267,
+    "recall@10": 0.020020558175282106,
+    "hit@5": 0.01372816640385267,
+    "hit@10": 0.020020558175282106
+  },
+  "valid_users": {
+    "total_users": 528257,
+    "evaluated_users": 528257
+  },
   "test": {
-    "recall@5": 0.007471741974077011,
-    "recall@10": 0.011524693473063301,
-    "ndcg@5": 0.005070112297568511,
-    "ndcg@10": 0.00637097061488831,
-    "hit@5": 0.007471741974077011,
-    "hit@10": 0.011524693473063301
+    "ndcg@5": 0.0063212536477462505,
+    "ndcg@10": 0.00777447520017511,
+    "recall@5": 0.009095951402442373,
+    "recall@10": 0.01362405041485489,
+    "hit@5": 0.009095951402442373,
+    "hit@10": 0.01362405041485489
   },
   "test_users": {
-    "evaluated_users": 528257,
-    "total_users": 528257
-  },
-  "periodic_test_history": [
-    {
-      "stage": "all_dl",
-      "epoch": 1,
-      "global_step": 7813,
-      "scores": {
-        "recall@5": 0.007471741974077011,
-        "recall@10": 0.011524693473063301,
-        "ndcg@5": 0.005070112297568511,
-        "ndcg@10": 0.00637097061488831,
-        "hit@5": 0.007471741974077011,
-        "hit@10": 0.011524693473063301
-      },
-      "evaluated_users": 528257,
-      "total_users": 528257
-    }
-  ]
+    "total_users": 528257,
+    "evaluated_users": 528257
+  }
 }
