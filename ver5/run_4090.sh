@@ -19,7 +19,7 @@ fi
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
 # 手動設定要使用的實體 GPU："0"、"1"、"0,1" 或 "1,0"
 # 使用兩張卡時，第一張供主模型使用，第二張供 graph/preference 模型使用。
-GPU_IDS="${GPU_IDS:-1}"
+GPU_IDS="${GPU_IDS:-0}"
 EVAL_LENGTH_THRESHOLD="${EVAL_LENGTH_THRESHOLD:-10}"
 TRAINING_OPTIONS=("$@")
 if ! bash -n "$PROJECT_ROOT/run_mamba_rl.sh"; then
@@ -63,11 +63,11 @@ RL_TOPK="${RL_TOPK:-10}"
 
 # Agent ablations: 1 = enabled, 0 = disabled (also overridable via environment).
 # Preference uses MAX_HISTORY whenever enabled; only short uses SHORT_WINDOW.
-USE_SHORT="${USE_SHORT:-0}"
+USE_SHORT="${USE_SHORT:-1}"
 USE_PREFERENCE="${USE_PREFERENCE:-1}"
 USE_GCN="${USE_GCN:-1}"
-USE_COORDINATOR="${USE_COORDINATOR:-0}"
-PREFERENCE_COUNT="${PREFERENCE_COUNT:-32}"
+USE_COORDINATOR="${USE_COORDINATOR:-1}"
+PREFERENCE_COUNT="${PREFERENCE_COUNT:-128}"
 for ((option_index = 0; option_index < ${#TRAINING_OPTIONS[@]}; option_index++)); do
   case "${TRAINING_OPTIONS[option_index]}" in
     --preference-count)
@@ -225,8 +225,8 @@ for SHORT_WINDOW in "${SHORT_WINDOWs[@]}"; do
     SKIP_UNTIL_START=0
     if [[ -n "$START_FROM" ]]; then SKIP_UNTIL_START=1; fi
     # name dataset validation_steps max_samples candidates popularity transition
-    # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
-    # run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
+    run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
+    run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
     run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
     # run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5
     run_subset "Toys_and_Games" "amazon-toys-and-games" 6000 1500000 192 0.30 0.5
