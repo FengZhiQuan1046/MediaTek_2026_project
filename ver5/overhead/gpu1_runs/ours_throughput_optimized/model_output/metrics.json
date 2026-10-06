@@ -1,0 +1,165 @@
+{
+  "model": {
+    "recommender": "MultiAgentMambaRecommender",
+    "agents": [
+      "short",
+      "preference_transition"
+    ],
+    "coordinator_enabled": true,
+    "ablation": {
+      "USE_SHORT": 1,
+      "USE_PREFERENCE": 1,
+      "USE_GCN": 1,
+      "USE_COORDINATOR": 1
+    },
+    "semantic_encoder": "MambaTextEncoder",
+    "huggingface_model_id": "state-spaces/mamba-130m-hf",
+    "semantic_hidden_size": 768,
+    "semantic_encoder_frozen": true,
+    "semantic_usage": "shared_cached_item_vectors",
+    "graph_backbone": "LightGCN",
+    "graph_layers": 2,
+    "recommendation_dim": 128,
+    "agent_history_mode": "full_history",
+    "effective_agent_max_history": 100,
+    "short_history_limit": 4,
+    "preference_history_limit": 100,
+    "adaptation_mode": "multi_lora"
+  },
+  "valid": {
+    "recall@5": 0.08647906657515443,
+    "recall@10": 0.08922443376801648,
+    "ndcg@5": 0.08391625814104048,
+    "ndcg@10": 0.08482834387905563,
+    "hit@5": 0.08647906657515443,
+    "hit@10": 0.08922443376801648,
+    "preference_change_probability": 0.5058964066253432,
+    "preference_current_entropy": 3.359024676216246,
+    "preference_next_entropy": 3.4627880654109204,
+    "preference_ranking_weight": 0.19846911355086033,
+    "short_agent_weight": 0.8015308785945812,
+    "preference_agent_weight": 0.19846911355086033,
+    "short_preference_state_cosine": -0.03379207624502189,
+    "users_per_second": 2654.5974562703204,
+    "scores_per_second": 10857303.596145611,
+    "evaluated_users": 1457,
+    "total_users": 1457
+  },
+  "test": {
+    "recall@5": 0.10501029512697323,
+    "recall@10": 0.10638297872340426,
+    "ndcg@5": 0.10397548583900593,
+    "ndcg@10": 0.10439040027584372,
+    "hit@5": 0.10501029512697323,
+    "hit@10": 0.10638297872340426,
+    "preference_change_probability": 0.5055711650652025,
+    "preference_current_entropy": 3.358395630804414,
+    "preference_next_entropy": 3.462788788030306,
+    "preference_ranking_weight": 0.19846047615464943,
+    "short_agent_weight": 0.8015395238453505,
+    "preference_agent_weight": 0.19846047615464943,
+    "short_preference_state_cosine": -0.03682585505483571,
+    "users_per_second": 2828.913281631017,
+    "scores_per_second": 11570255.32187086,
+    "evaluated_users": 1457,
+    "total_users": 1457
+  },
+  "training": {
+    "adaptation_mode": "multi_lora",
+    "enable_lora": true,
+    "adapter_routes": {
+      "short": [
+        "candidate_lora",
+        "delta_lora",
+        "gate_lora",
+        "output_lora"
+      ],
+      "preference": [
+        "transition_encoder.candidate_lora",
+        "transition_encoder.delta_lora",
+        "transition_encoder.gate_lora",
+        "transition_encoder.output_lora",
+        "state_lora"
+      ],
+      "coordinator": [
+        "state_lora",
+        "mix_lora",
+        "score_lora"
+      ]
+    },
+    "monitor_metric": "ndcg@10",
+    "best_score": 0.08482834387905563,
+    "best_step": 8,
+    "best_stage": "final",
+    "global_steps": 8,
+    "stopped_early": false,
+    "target_recall_at_10": 0.15,
+    "target_achieved": false,
+    "experiment_note": "No experiment note supplied.",
+    "training_objective": {
+      "type": "single_stage_supervised_ranking",
+      "reward": null,
+      "reward_is_observed_user_feedback": false,
+      "rl_coef": 0.0,
+      "rl_topk": null,
+      "long_short_orthogonality_removed": true,
+      "prefix_sampling": "resampled_each_epoch",
+      "future_horizon": 3,
+      "future_decay": 0.5,
+      "negative_mining": "curriculum_mixed_model_hard_random_and_in_batch",
+      "hard_negative_pool_multiplier": 12,
+      "hard_negative_fraction": 0.75,
+      "hard_negative_warmup_epochs": 2,
+      "use_in_batch_negatives": true,
+      "preference_contrastive_coef": 0.05,
+      "agent_diversity_coef": 0.02
+    },
+    "catalog_prior": {
+      "popularity_alpha": 0.0,
+      "transition_beta": 0.0,
+      "source": "train_histories_only"
+    },
+    "preference_agent": {
+      "preference_count": 32,
+      "sequence_encoder": "selective_mamba_lora",
+      "state_dim": 128,
+      "assignment_temperature": 0.2,
+      "adapter": "lora",
+      "adapter_rank": 16,
+      "adapter_alpha": 32.0,
+      "learned_ranking_weight": 0.19974416494369507,
+      "fixed_ranking_weight": null,
+      "objectives": {
+        "next_preference": 0.2,
+        "transition_detection": 0.1,
+        "prototype_balance": 0.01,
+        "prototype_separation": 0.01,
+        "assignment_sharpness": 0.05
+      }
+    },
+    "validation_history": [
+      {
+        "global_step": 8,
+        "stage": "final",
+        "epoch": 0,
+        "recall@5": 0.08647906657515443,
+        "recall@10": 0.08922443376801648,
+        "ndcg@5": 0.08391625814104048,
+        "ndcg@10": 0.08482834387905563,
+        "hit@5": 0.08647906657515443,
+        "hit@10": 0.08922443376801648,
+        "preference_change_probability": 0.5058964066253432,
+        "preference_current_entropy": 3.3590246238525223,
+        "preference_next_entropy": 3.4627880654109204,
+        "preference_ranking_weight": 0.1984691128963138,
+        "short_agent_weight": 0.8015308785945812,
+        "preference_agent_weight": 0.1984691128963138,
+        "short_preference_state_cosine": -0.03379208205412247,
+        "users_per_second": 2632.3563497222626,
+        "scores_per_second": 10766337.470364055,
+        "evaluated_users": 1457.0,
+        "total_users": 1457.0
+      }
+    ]
+  }
+}

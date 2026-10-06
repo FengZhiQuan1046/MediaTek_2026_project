@@ -1,0 +1,50 @@
+{
+  "dataset": "amazon-all-beauty",
+  "best_epoch": 1,
+  "monitor_metric": "ndcg@10",
+  "best_score": 0.0018126843887072519,
+  "validation": {
+    "recall@5": 0.002059025394646534,
+    "recall@10": 0.004804392587508579,
+    "hit@5": 0.002059025394646534,
+    "hit@10": 0.004804392587508579,
+    "ndcg@5": 0.0009343535751206628,
+    "ndcg@10": 0.0018126843887072519,
+    "evaluated_users": 1457,
+    "users_per_second": 3822.295495507903,
+    "scores_per_second": 15633188.576627323
+  },
+  "test": {
+    "recall@5": 0.0,
+    "recall@10": 0.002745367192862045,
+    "hit@5": 0.0,
+    "hit@10": 0.002745367192862045,
+    "ndcg@5": 0.0,
+    "ndcg@10": 0.0008625679623205202,
+    "evaluated_users": 1457,
+    "users_per_second": 4382.407283336429,
+    "scores_per_second": 17924045.788845994
+  },
+  "num_users": 1603,
+  "evaluation_users": 1457,
+  "num_items": 4090,
+  "train_interactions": 8445,
+  "visible_gpus": 1,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 10.193220043182373,
+      "valid": {
+        "recall@5": 0.002059025394646534,
+        "recall@10": 0.004804392587508579,
+        "hit@5": 0.002059025394646534,
+        "hit@10": 0.004804392587508579,
+        "ndcg@5": 0.0009343535751206628,
+        "ndcg@10": 0.0018126843887072519,
+        "evaluated_users": 1457,
+        "users_per_second": 3822.295495507903,
+        "scores_per_second": 15633188.576627323
+      }
+    }
+  ]
+}

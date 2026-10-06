@@ -1,0 +1,27 @@
+{
+  "model": "LLM-SRec",
+  "dataset": "Full Beauty",
+  "physical_gpu_index": 1,
+  "llm": "meta-llama/Llama-3.2-3B-Instruct",
+  "llm_dtype": "fp16",
+  "llm_quantization": "8-bit",
+  "users": 1603,
+  "items": 4090,
+  "training_batch_size": 2,
+  "teacher_training_steps": 3,
+  "data_preparation_seconds": 0.012710976996459067,
+  "teacher_training_seconds": 0.4120459870900959,
+  "llm_load_seconds": 6.347278285073116,
+  "llm_training_step_seconds": 1.1102905379375443,
+  "llm_training_users_per_second": 1.8013303109969432,
+  "full_catalog_precompute_seconds": 17.12813882296905,
+  "test_seconds": 4.290103448089212,
+  "test": {
+    "evaluated_users": 128,
+    "users_per_second": 29.836110375615878,
+    "catalog_size": 4090
+  },
+  "trainable_parameters": 22822144,
+  "torch_peak_reserved_mib": 17796.0,
+  "caveat": "Short training pilot; teacher trained for 3 batches from cached data, not official pretrained teacher; full-catalog item embeddings are cached before timed user evaluation; upstream user encoder with all 4090 items scored."
+}

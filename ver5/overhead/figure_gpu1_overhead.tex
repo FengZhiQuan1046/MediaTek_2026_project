@@ -1,0 +1,16 @@
+% Copy figure_gpu1_overhead.pdf into the manuscript's Figures directory.
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.98\textwidth]{Figures/figure_gpu1_overhead.pdf}
+  \caption{Full Beauty pilot overhead on one A100 80GB GPU. (a) Full-catalog
+  test users per second, measured after reusable item representations are ready.
+  (b) Peak process GPU memory sampled every 50\,ms over each complete pilot.
+  Both axes are logarithmic. SIGMA uses a pure-PyTorch Mamba backend;
+  LLM-SRec uses a short SASRec teacher warm-up. Training configurations
+  differ across methods, so these values describe pilot implementations
+  rather than matched full-training cost. LLMRec is excluded because its
+  available local run used proxy augmentation and excluded the model forward pass from throughput timing.
+  Ours uses an evaluation-only cached-history implementation for throughput;
+  its memory peak is from the earlier unoptimized run.}
+  \label{fig:gpu1-overhead}
+\end{figure*}

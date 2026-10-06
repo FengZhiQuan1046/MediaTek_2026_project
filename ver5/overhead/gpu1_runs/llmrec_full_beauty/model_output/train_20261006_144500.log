@@ -1,0 +1,4 @@
+2026-10-06 14:45:00,110 | INFO | EXPERIMENT_CONFIG {"aug_sample_rate": 0.1, "batch_size": 1024, "cache_dir": "/workspace/P78123011/cache", "dataset": "amazon-all-beauty", "device": "cuda", "early_stopping_patience": 7, "embed_size": 64, "epochs": 1, "feature_dim": 64, "learning_rate": 0.0001, "max_events": null, "min_rating": 4.0, "output_dir": "gpu1_runs/llmrec_full_beauty/model_output", "seed": 2022}
+2026-10-06 14:45:00,116 | INFO | INTERACTION_CACHE hit path=/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl
+2026-10-06 14:45:00,514 | INFO | dataset=amazon-all-beauty users=1603 items=4090 train_interactions=8445 cache=/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl
+2026-10-06 14:45:00,514 | INFO | AMAZON_MODALITY_ADAPTER text=hashed_ver4_metadata image=zeros llm_edges=train_proxy

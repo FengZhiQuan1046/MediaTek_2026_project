@@ -1,0 +1,49 @@
+2026-10-06 14:48:12,279 | INFO | run_id=20261006_144812 dataset=amazon-all-beauty device=cuda
+2026-10-06 14:48:12,279 | INFO | MODEL recommender=MultiAgentMambaRecommender semantic_encoder=MambaTextEncoder semantic_model_id=state-spaces/mamba-130m-hf graph_backbone=LightGCN adaptation=multi_lora
+2026-10-06 14:48:12,279 | INFO | ABLATION USE_SHORT=1 USE_PREFERENCE=1 USE_GCN=1 USE_COORDINATOR=1
+2026-10-06 14:48:12,279 | INFO | AGENT_HISTORY mode=full_history effective_max_history=100 short=4 preference=100
+2026-10-06 14:48:12,279 | INFO | EXPERIMENT_NOTE No experiment note supplied.
+2026-10-06 14:48:12,279 | INFO | EXPERIMENT_CONFIG {"agent_diversity_coef": 0.02, "batch_size": 128, "cache_dir": "/workspace/P78123011/cache", "candidates": 64, "data_path": null, "dataset": "amazon-all-beauty", "device": "cuda", "dim": 128, "early_stopping_patience": 12, "enable_lora": 1, "eval_batch_size": 64, "eval_length_basis": "untruncated_train_history", "eval_length_threshold": null, "experiment_note": "No experiment note supplied.", "full_catalog_supervised": false, "future_decay": 0.5, "future_horizon": 3, "generate_reasons": false, "graph_device": "cuda", "hard_negative_fraction": 0.75, "hard_negative_pool_multiplier": 12, "hard_negative_warmup_epochs": 2, "history_influence_negatives": 64, "history_influence_output": null, "history_influence_user_limit": 0, "item_prompt_prefix": "Preference-aware product representation: ", "item_vector_artifact": null, "joint_epochs": 0, "joint_lr": 5e-05, "lora_alpha": 32.0, "lora_dropout": 0.05, "lora_rank": 16, "lr_patience": 3, "mamba_encode_batch_size": 32, "mamba_max_tokens": 32, "mamba_model_id": "state-spaces/mamba-130m-hf", "max_events": null, "max_history": 100, "max_transitions": 1024, "min_rating": 4.0, "monitor_metric": "ndcg@10", "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl", "output_run_dir": "overhead/gpu1_runs/ours_full_beauty/model_output", "periodic_test_user_limit": -1, "popularity_alpha": 0.0, "preference_balance_coef": 0.01, "preference_coef": 0.2, "preference_contrastive_coef": 0.05, "preference_count": 32, "preference_score_weight": 0.2, "preference_separation_coef": 0.01, "preference_sharpness_coef": 0.05, "preference_temperature": 0.2, "preference_transition_coef": 0.1, "reason_count": 20, "reason_max_new_tokens": 40, "refresh_data_cache": false, "resume_checkpoint": null, "reverse_history_input": false, "rl_coef": 0.1, "rl_topk": 10, "save_model_weights": false, "score_file": null, "seed": 25252, "short_window": 4, "skip_mamba": false, "specialist_epochs": 1, "specialist_lr": 0.0002, "target_recall_at_10": 0.15, "transition_beta": 0.0, "use_coordinator": true, "use_graph_embeddings": true, "use_in_batch_negatives": true, "use_preference": 1, "use_short": 1, "validate_every_steps": 0, "validation_user_limit": 0}
+2026-10-06 14:48:12,282 | INFO | INTERACTION_CACHE hit path=/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl
+2026-10-06 14:48:12,283 | INFO | HISTORY_INPUT_ORDER chronological
+2026-10-06 14:48:12,283 | INFO | users=1603 items=4090 train_interactions=8445
+2026-10-06 14:48:12,283 | INFO | CATALOG_PRIORS popularity_alpha=0.000000 transition_beta=0.000000 source=train_histories_only enabled=False
+2026-10-06 14:48:12,305 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/amazon-all-beauty_4090_47e41e57cc9e_prompt_tok32.pt fingerprint=47e41e57cc9e
+2026-10-06 14:48:12,305 | INFO | SEMANTIC_BACKBONE model_id=state-spaces/mamba-130m-hf hidden_size=768 frozen=True usage=shared_cached_item_vectors
+2026-10-06 14:48:12,315 | INFO | GRAPH_EMBEDDINGS enabled=True source=train_histories_only main_device=cuda graph_device=cuda
+2026-10-06 14:48:12,508 | INFO | ADAPTATION_MODE mode=multi_lora enable_lora=1
+2026-10-06 14:48:12,508 | INFO | ADAPTER_ROUTES {'short': ('candidate_lora', 'delta_lora', 'gate_lora', 'output_lora'), 'preference': ('transition_encoder.candidate_lora', 'transition_encoder.delta_lora', 'transition_encoder.gate_lora', 'transition_encoder.output_lora', 'state_lora'), 'coordinator': ('state_lora', 'mix_lora', 'score_lora')}
+2026-10-06 14:48:12,508 | INFO | agent_parameters={'short': 16513, 'preference': 28994, 'coordinator': 14373, 'shared_projection': 98304, 'graph': 728704}
+2026-10-06 14:48:12,508 | INFO | PREDICTION_PATH graph_only=False active_agents=2 coordinator=True
+2026-10-06 14:48:12,511 | INFO | training_transitions=1024
+2026-10-06 14:48:12,511 | INFO | schedule mode=single_stage_dl specialist_dl_epochs=1 joint_dl_rl_epochs=0 effective_rl_coef=0.0000 effective_rl_topk=0 validate_every_steps=0 validation_users=0 periodic_test_users=-1 monitor=ndcg@10 early_stopping_patience=12
+2026-10-06 14:48:13,338 | INFO | TRAINING_BRANCHES stage=all_dl short=True preference=True gcn=True preference_auxiliary=True preference_contrastive=True diversity_pairs=1 policy_gradient=False trainable_parameters=886888
+2026-10-06 14:48:14,527 | INFO | stage=all_dl epoch=1 loss=4.444565 steps=8 transitions/s=863.77
+2026-10-06 14:48:15,100 | INFO | 
+========== FINAL CURRENT VALIDATION ==========
+stage=final | epoch=0 | step=8 | users=1457/1457
+NDCG  | @5 0.083916 | @10 0.084828
+Recall| @5 0.086479 | @10 0.089224
+Hit   | @5 0.086479 | @10 0.089224
+================================
+2026-10-06 14:48:15,100 | INFO | VALID_STEP step=8 stage=final epoch=0 ndcg@10=0.084828 recall@10=0.089224 improved=True
+2026-10-06 14:48:15,103 | INFO | BEST_MODEL_IN_MEMORY step=8 stage=final ndcg@10=0.084828
+2026-10-06 14:48:15,104 | INFO | RESTORE_BEST step=8 stage=final ndcg@10=0.084828
+2026-10-06 14:48:16,246 | INFO | 
+========== BEST CHECKPOINT VALIDATION ==========
+stage=final | epoch=0 | step=8 | users=1457/1457
+NDCG  | @5 0.083916 | @10 0.084828
+Recall| @5 0.086479 | @10 0.089224
+Hit   | @5 0.086479 | @10 0.089224
+================================
+2026-10-06 14:48:16,247 | INFO | 
+========== FINAL FULL TEST ==========
+stage=final | epoch=0 | step=8 | users=1457/1457
+NDCG  | @5 0.103975 | @10 0.104390
+Recall| @5 0.105010 | @10 0.106383
+Hit   | @5 0.105010 | @10 0.106383
+================================
+2026-10-06 14:48:16,247 | INFO | VALID_BEST {"evaluated_users": 1457, "hit@10": 0.08922443376801648, "hit@5": 0.08647906657515443, "ndcg@10": 0.08482834387905563, "ndcg@5": 0.08391625814104048, "preference_agent_weight": 0.1984690160234251, "preference_change_probability": 0.5058977471366678, "preference_current_entropy": 3.3590257234907184, "preference_next_entropy": 3.4627882434475805, "preference_ranking_weight": 0.1984690160234251, "recall@10": 0.08922443376801648, "recall@5": 0.08647906657515443, "scores_per_second": 10560118.474115467, "short_agent_weight": 0.8015309885584008, "short_preference_state_cosine": -0.033803506754977945, "total_users": 1457, "users_per_second": 2581.9360572409455}
+2026-10-06 14:48:16,247 | INFO | TEST_FINAL {"evaluated_users": 1457, "hit@10": 0.10638297872340426, "hit@5": 0.10501029512697323, "ndcg@10": 0.10439040027584372, "ndcg@5": 0.10397548583900593, "preference_agent_weight": 0.1984604774637425, "preference_change_probability": 0.505571332629118, "preference_current_entropy": 3.358396384842034, "preference_next_entropy": 3.4627888927577537, "preference_ranking_weight": 0.1984604774637425, "recall@10": 0.10638297872340426, "recall@5": 0.10501029512697323, "scores_per_second": 10367855.34902627, "short_agent_weight": 0.8015395395544677, "short_preference_state_cosine": -0.036837978320491585, "total_users": 1457, "users_per_second": 2534.9279581971323}
+2026-10-06 14:48:16,247 | INFO | TARGET_RESULT metric=recall@10 target=>0.150000 actual=0.106383 achieved=False
+2026-10-06 14:48:16,629 | INFO | outputs=overhead/gpu1_runs/ours_full_beauty/model_output

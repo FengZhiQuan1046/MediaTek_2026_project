@@ -1,0 +1,37 @@
+{
+  "model": "Ours (ver5)",
+  "physical_gpu_index": 1,
+  "gpu_uuid": "GPU-e9c44344-a6b8-2d6a-0b1a-6cbf88331918",
+  "baseline_batch_size": 64,
+  "baseline_users_per_second_same_weights": 2604.3422621660193,
+  "selected_batch_size": 64,
+  "selected_mode": "cached_projected_items_and_packed_history",
+  "optimized_users_per_second": 2842.257094811025,
+  "speedup_vs_paired_baseline": 1.0913531359150672,
+  "evaluated_users": 1457,
+  "hit_and_recall_exact_ndcg_within_1e-7": true,
+  "all_diagnostics_within_1e-4": true,
+  "sampled_recommendations_equal_with_1e-4_float_tolerance": true,
+  "candidates": [
+    {
+      "mode": "cached_projected_items",
+      "batch_size": 64,
+      "users_per_second_trials": [
+        2648.320791832564,
+        2653.6760269477504
+      ],
+      "median_users_per_second": 2650.998409390157
+    },
+    {
+      "mode": "cached_projected_items_and_packed_history",
+      "batch_size": 64,
+      "users_per_second_trials": [
+        2826.454023787498,
+        2858.0601658345518
+      ],
+      "median_users_per_second": 2842.257094811025
+    }
+  ],
+  "change": "Evaluation-only reuse of preprojected catalog item vectors for history positions; optional single-transfer CPU packing of each history batch; batch size unchanged",
+  "memory_source": "gpu1_runs/ours_full_beauty/profile.json (prior measurement; not rerun)"
+}

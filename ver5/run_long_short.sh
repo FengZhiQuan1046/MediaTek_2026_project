@@ -63,13 +63,13 @@ RL_TOPK="${RL_TOPK:-10}"
 
 # Agent ablations: 1 = enabled, 0 = disabled (also overridable via environment).
 # Preference uses MAX_HISTORY whenever enabled; only short uses SHORT_WINDOW.
-USE_SHORT="${USE_SHORT:-0}"
+USE_SHORT="${USE_SHORT:-1}"
 USE_PREFERENCE="${USE_PREFERENCE:-1}"
 USE_GCN="${USE_GCN:-1}"
-USE_COORDINATOR="${USE_COORDINATOR:-0}"
+USE_COORDINATOR="${USE_COORDINATOR:-1}"
 
 
-SHORT_WINDOWs=(4)
+SHORT_WINDOWs=(1)
 
 for SHORT_WINDOW in "${SHORT_WINDOWs[@]}"; do
   OUTPUT_FOLDER_NAME="amazons_long_short"
@@ -206,8 +206,8 @@ for SHORT_WINDOW in "${SHORT_WINDOWs[@]}"; do
     SKIP_UNTIL_START=0
     if [[ -n "$START_FROM" ]]; then SKIP_UNTIL_START=1; fi
     # name dataset validation_steps max_samples candidates popularity transition
-    # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
-    # run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
+    run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
+    run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
     run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
     # run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5
     run_subset "Toys_and_Games" "amazon-toys-and-games" 6000 1500000 192 0.30 0.5

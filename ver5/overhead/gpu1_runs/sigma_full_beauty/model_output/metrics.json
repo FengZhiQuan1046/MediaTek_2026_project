@@ -1,0 +1,28 @@
+{
+  "model": "SIGMA",
+  "dataset": "FullBeauty",
+  "backend": "mambapy-1.2.0-pure-pytorch",
+  "physical_gpu_index": 1,
+  "visible_cuda_devices": 1,
+  "num_users": 1604,
+  "num_items": 4091,
+  "trainable_parameters": 391875,
+  "dataset_seconds": 0.20054561097640544,
+  "training_seconds": 1.415983744082041,
+  "evaluation_seconds": 0.08756645291578025,
+  "test": {
+    "evaluated_users": 1457,
+    "users_per_second": 16638.792042899295
+  },
+  "best_valid_score": 0.0065,
+  "best_valid_result": {
+    "hit@10": 0.0124,
+    "ndcg@10": 0.0065,
+    "mrr@10": 0.0048
+  },
+  "test_result": {
+    "hit@10": 0.0089,
+    "ndcg@10": 0.0052,
+    "mrr@10": 0.004
+  }
+}

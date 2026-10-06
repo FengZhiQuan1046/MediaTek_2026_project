@@ -1,0 +1,8 @@
+model,throughput_users_per_second,peak_process_memory_mib,wall_seconds,evaluated_users,catalog_items,throughput_source,profile,metrics
+Ours (ver5),2842.257094811025,1578.0,,1457,4090,gpu1_runs/ours_throughput_optimized/throughput_optimized.json,gpu1_runs/ours_full_beauty/profile.json,gpu1_runs/ours_full_beauty/model_output/metrics.json
+SIGMA,16638.792042899295,29638.0,5.71193550596945,1457,4091,gpu1_runs/sigma_full_beauty/model_output/metrics.json,gpu1_runs/sigma_full_beauty/profile.json,gpu1_runs/sigma_full_beauty/model_output/metrics.json
+Mamba4Rec,7889.316562623203,2932.0,4.371860558982007,1457,4090,gpu1_runs/mamba4rec_full_beauty/model_output/metrics.json,gpu1_runs/mamba4rec_full_beauty/profile.json,gpu1_runs/mamba4rec_full_beauty/model_output/metrics.json
+EAGER,79.27790092327541,2436.0,59.633769694017246,1457,4090,gpu1_runs/eager_full_beauty/model_output/metrics.json,gpu1_runs/eager_full_beauty/profile.json,gpu1_runs/eager_full_beauty/model_output/metrics.json
+BERT4Rec,9668.148914461464,792.0,5.333148762932979,1457,4090,gpu1_runs/bert4rec_full_beauty/model_output/metrics.json,gpu1_runs/bert4rec_full_beauty/profile.json,gpu1_runs/bert4rec_full_beauty/model_output/metrics.json
+ReSID,4382.407283336429,1420.0,12.221519142971374,1457,4090,gpu1_runs/resid_full_beauty/model_output/metrics.json,gpu1_runs/resid_full_beauty/profile.json,gpu1_runs/resid_full_beauty/model_output/metrics.json
+LLM-SRec,29.836110375615878,18366.0,35.47252332698554,128,4090,gpu1_runs/llm_srec_full_beauty/model_output/metrics.json,gpu1_runs/llm_srec_full_beauty/profile.json,gpu1_runs/llm_srec_full_beauty/model_output/metrics.json

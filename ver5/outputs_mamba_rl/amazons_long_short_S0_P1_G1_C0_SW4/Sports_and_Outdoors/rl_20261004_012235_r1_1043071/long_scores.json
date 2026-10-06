@@ -3,8 +3,71 @@
   "run_id": "20261004_012236",
   "group": "long",
   "length_basis": "filtered_full_sequence",
-  "length_threshold": 10,
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "all_dl",
+      "epoch": 1,
+      "global_step": 7813,
+      "scores": {
+        "recall@5": 0.009023081824347934,
+        "recall@10": 0.012743304626641729,
+        "ndcg@5": 0.006685135210137241,
+        "ndcg@10": 0.00787512327102149,
+        "hit@5": 0.009023081824347934,
+        "hit@10": 0.012743304626641729
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 2,
+      "global_step": 15626,
+      "scores": {
+        "recall@5": 0.009084742975767168,
+        "recall@10": 0.012506936879534664,
+        "ndcg@5": 0.006658749190869101,
+        "ndcg@10": 0.00775915894945347,
+        "hit@5": 0.009084742975767168,
+        "hit@10": 0.012506936879534664
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 3,
+      "global_step": 23439,
+      "scores": {
+        "recall@5": 0.009362218157153721,
+        "recall@10": 0.013144102110866751,
+        "ndcg@5": 0.006872542672843557,
+        "ndcg@10": 0.00809644278689169,
+        "hit@5": 0.009362218157153721,
+        "hit@10": 0.013144102110866751
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 4,
+      "global_step": 31252,
+      "scores": {
+        "recall@5": 0.009331387581444105,
+        "recall@10": 0.013123548393727006,
+        "ndcg@5": 0.00694946740481272,
+        "ndcg@10": 0.008172872111373734,
+        "hit@5": 0.009331387581444105,
+        "hit@10": 0.013123548393727006
+      },
+      "evaluated_users": 97306,
+      "total_users": 97306
+    }
+  ],
   "length_rule": "length > threshold",
+  "length_threshold": 10,
   "config": {
     "dataset": "amazon-sports-and-outdoors",
     "data_path": null,
@@ -84,79 +147,28 @@
     "use_short": 0,
     "use_preference": 1
   },
-  "status": "training",
+  "valid": {
+    "ndcg@5": 0.006507138052965434,
+    "ndcg@10": 0.00771091276472418,
+    "recall@5": 0.009023081824347934,
+    "recall@10": 0.012763858343781473,
+    "hit@5": 0.009023081824347934,
+    "hit@10": 0.012763858343781473
+  },
+  "valid_users": {
+    "total_users": 97306,
+    "evaluated_users": 97306
+  },
   "test": {
-    "recall@5": 0.009331387581444105,
-    "recall@10": 0.013123548393727006,
     "ndcg@5": 0.00694946740481272,
     "ndcg@10": 0.008172872111373734,
+    "recall@5": 0.009331387581444105,
+    "recall@10": 0.013123548393727006,
     "hit@5": 0.009331387581444105,
     "hit@10": 0.013123548393727006
   },
   "test_users": {
-    "evaluated_users": 97306,
-    "total_users": 97306
-  },
-  "periodic_test_history": [
-    {
-      "stage": "all_dl",
-      "epoch": 1,
-      "global_step": 7813,
-      "scores": {
-        "recall@5": 0.009023081824347934,
-        "recall@10": 0.012743304626641729,
-        "ndcg@5": 0.006685135210137241,
-        "ndcg@10": 0.00787512327102149,
-        "hit@5": 0.009023081824347934,
-        "hit@10": 0.012743304626641729
-      },
-      "evaluated_users": 97306,
-      "total_users": 97306
-    },
-    {
-      "stage": "all_dl",
-      "epoch": 2,
-      "global_step": 15626,
-      "scores": {
-        "recall@5": 0.009084742975767168,
-        "recall@10": 0.012506936879534664,
-        "ndcg@5": 0.006658749190869101,
-        "ndcg@10": 0.00775915894945347,
-        "hit@5": 0.009084742975767168,
-        "hit@10": 0.012506936879534664
-      },
-      "evaluated_users": 97306,
-      "total_users": 97306
-    },
-    {
-      "stage": "all_dl",
-      "epoch": 3,
-      "global_step": 23439,
-      "scores": {
-        "recall@5": 0.009362218157153721,
-        "recall@10": 0.013144102110866751,
-        "ndcg@5": 0.006872542672843557,
-        "ndcg@10": 0.00809644278689169,
-        "hit@5": 0.009362218157153721,
-        "hit@10": 0.013144102110866751
-      },
-      "evaluated_users": 97306,
-      "total_users": 97306
-    },
-    {
-      "stage": "all_dl",
-      "epoch": 4,
-      "global_step": 31252,
-      "scores": {
-        "recall@5": 0.009331387581444105,
-        "recall@10": 0.013123548393727006,
-        "ndcg@5": 0.00694946740481272,
-        "ndcg@10": 0.008172872111373734,
-        "hit@5": 0.009331387581444105,
-        "hit@10": 0.013123548393727006
-      },
-      "evaluated_users": 97306,
-      "total_users": 97306
-    }
-  ]
+    "total_users": 97306,
+    "evaluated_users": 97306
+  }
 }

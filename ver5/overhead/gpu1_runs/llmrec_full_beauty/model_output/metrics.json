@@ -1,0 +1,40 @@
+{
+  "dataset": "amazon-all-beauty",
+  "best_epoch": 1,
+  "monitor_metric": "recall@10",
+  "best_score": 0.09540150995195608,
+  "test": {
+    "recall@5": 0.0851063829787234,
+    "recall@10": 0.08922443376801648,
+    "hit@5": 0.0851063829787234,
+    "hit@10": 0.08922443376801648,
+    "ndcg@5": 0.08358246247573675,
+    "ndcg@10": 0.08486337341015357,
+    "evaluated_users": 1457,
+    "users_per_second": 17714.618262094908,
+    "scores_per_second": 72452788.69196817
+  },
+  "num_users": 1603,
+  "evaluation_users": 1457,
+  "num_items": 4090,
+  "train_interactions": 8445,
+  "visible_gpus": 1,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.4016951322555542,
+      "valid": {
+        "recall@5": 0.08922443376801648,
+        "recall@10": 0.09540150995195608,
+        "hit@5": 0.08922443376801648,
+        "hit@10": 0.09540150995195608,
+        "ndcg@5": 0.08422282892461501,
+        "ndcg@10": 0.08618597634131563,
+        "evaluated_users": 1457,
+        "users_per_second": 11201.111486324708,
+        "scores_per_second": 45812545.979068056
+      }
+    }
+  ],
+  "augmentation_source": "hashed_ver4_metadata_proxy"
+}

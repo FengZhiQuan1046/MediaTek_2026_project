@@ -1,0 +1,8 @@
+model,status,run_dir,trainable_parameters,model_id,batch_size,eval_batch_size,logged_wall_seconds,test_users_per_second,test_scores_per_second,gpu1_peak_mib,note
+Ours (ver5),archived_log_only,MediaTek_2026_project/ver5/outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW4/Full_Beauty/rl_20261003_131200_r1_938427,886888,state-spaces/mamba-130m-hf,128,64,319.0,175.3092192221785,717014.7066187101,,Frozen text encoder excluded from logged trainable count; cache encoding is a separate phase.
+SIGMA,no_archived_run,,,,,,,,,,"Upstream code exists, but no matching project run or GPU memory trace."
+Mamba4Rec,archived_log_only,MediaTek_2026_project/Reproduce/Mamba4Rec/outputs/Full_Beauty/mamba4rec_20260906_234300_r1,334144,,128,64,4.0,13886.511732685727,56795832.98668462,,Official small backbone variant; archived log does not contain GPU peak.
+EAGER,archived_log_only,MediaTek_2026_project/Reproduce/EAGER/outputs/Full_Beauty/eager_20260908_180859_r1,,,256,50,988.0,615.156198592858,,,"Multiphase method: full peak must include semantic encoding, DIN and recommender training."
+BERT4Rec,archived_log_only,MediaTek_2026_project/Reproduce/BERT4Rec/outputs/Full_Beauty/bert4rec_20260930_175827_r1,954362,,128,64,11.0,20796.418623449896,85057352.16991007,,Archived log does not contain GPU peak.
+ReSID,archived_log_only,MediaTek_2026_project/Reproduce/ReSID/outputs/Full_Beauty/resid_20260903_031227,3031680,,128,64,89.0,657.5649591185262,2689440.682794772,,Multiphase method: full peak must include FAMAE and recommender training.
+LLM-SRec,no_archived_run,,,,,,,,,,Upstream code exists but no project-compatible run or GPU memory trace.

@@ -1,0 +1,28 @@
+{
+  "name": "LLMRec",
+  "timestamp_utc": "2026-10-06T06:53:04.494580+00:00",
+  "physical_gpu_index": 1,
+  "gpu_uuid": "GPU-e9c44344-a6b8-2d6a-0b1a-6cbf88331918",
+  "command": [
+    "/dataspace/P78123011/miniconda3/envs/py31014/bin/python",
+    "../../Reproduce/LLMRec/train.py",
+    "--dataset",
+    "amazon-all-beauty",
+    "--cache-dir",
+    "/workspace/P78123011/cache",
+    "--output-dir",
+    "gpu1_runs/llmrec_full_beauty/model_output",
+    "--epochs",
+    "1",
+    "--device",
+    "cuda"
+  ],
+  "working_directory": "/workspace/P78123011/MediaTek_2026_project/ver5/overhead",
+  "exit_code": 0,
+  "wall_seconds": 4.576035281992517,
+  "sampled_process_peak_mib": 656,
+  "samples": 35,
+  "sampling_interval_seconds": 0.05,
+  "sampling_error": null,
+  "caveat": "NVML process memory is sampled, not CUDA allocator peak; brief spikes may be missed."
+}
