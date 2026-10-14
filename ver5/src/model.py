@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import tempfile
 
 import torch
 from torch import nn
@@ -115,6 +116,12 @@ def load_or_encode_text(
         device, cache_dir, max_tokens=max_tokens, model_id=model_id
     ).encode(texts, batch_size=batch_size, prompt_prefix=prompt_prefix)
     with tqdm(total=1, desc="Saving Mamba item-vector cache", unit="artifact") as progress:
-        torch.save(vectors, path)
+        with tempfile.NamedTemporaryFile(dir=path.parent, suffix=".tmp", delete=False) as stream:
+            temporary = Path(stream.name)
+        try:
+            torch.save(vectors, temporary)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
         progress.update(1)
     return vectors

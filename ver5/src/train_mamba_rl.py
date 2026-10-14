@@ -15,6 +15,7 @@ from pathlib import Path
 import pickle
 import random
 import time
+import tempfile
 
 import numpy as np
 import torch
@@ -106,10 +107,17 @@ def load_recommendation_data_cached(args, logger):
         args.min_rating,
     )
     artifact.parent.mkdir(parents=True, exist_ok=True)
-    temporary = artifact.with_suffix(".tmp")
-    with temporary.open("wb") as stream:
-        pickle.dump(data, stream, protocol=pickle.HIGHEST_PROTOCOL)
-    temporary.replace(artifact)
+    with tempfile.NamedTemporaryFile(dir=artifact.parent, suffix=".tmp", delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            pickle.dump(data, stream, protocol=pickle.HIGHEST_PROTOCOL)
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
+    try:
+        temporary.replace(artifact)
+    finally:
+        temporary.unlink(missing_ok=True)
     logger.info("INTERACTION_CACHE miss_saved path=%s", artifact)
     return data, artifact
 
