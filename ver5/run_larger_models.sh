@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Usage: bash run_larger_models.sh [TRAINING_OPTIONS...]
-# Default: parallel workers, CUDA 0 / SW2 and CUDA 1 / SW4; P32.
-# Each worker sweeps 370m, 790m, 1.4b, 2.8b and all four subsets.
+# Default: one GPU (CUDA 1), SW4, P32.
+# Sequentially sweep 370m, 790m, 1.4b, 2.8b and all four subsets.
+# Select GPU: GPU_IDS=0 bash run_larger_models.sh
 # Preview: DRY_RUN=1 bash run_larger_models.sh
 # Single model: MAMBA_MODEL_SIZE=790m bash run_larger_models.sh
 # Custom sweep: MAMBA_MODEL_SIZES="370m 1.4b" bash run_larger_models.sh
@@ -23,20 +24,12 @@ if [[ -z "${PYTHON_BIN:-}" ]]; then
   fi
 fi
 CACHE_DIR="${CACHE_DIR:-$WORKSPACE_ROOT/cache}"
-# One complete training process per physical GPU.
-GPU_SW2="${GPU_SW2:-0}"
-GPU_SW4="${GPU_SW4:-1}"
-if [[ ! "$GPU_SW2" =~ ^[0-9]+$ || ! "$GPU_SW4" =~ ^[0-9]+$ || "$GPU_SW2" == "$GPU_SW4" ]]; then
-  echo "GPU_SW2 and GPU_SW4 must be distinct physical GPU indices" >&2; exit 2
+# Run the entire SW4 suite sequentially on one physical GPU.
+GPU_IDS="${GPU_IDS:-${GPU_SW4:-1}}"
+if [[ ! "$GPU_IDS" =~ ^[0-9]+$ ]]; then
+  echo "GPU_IDS must be a single physical GPU index" >&2; exit 2
 fi
 EVAL_LENGTH_THRESHOLD="${EVAL_LENGTH_THRESHOLD:-10}"
-WORKER_GPU=""
-WORKER_WINDOW=""
-if [[ "${1:-}" == --internal-worker ]]; then
-  WORKER_GPU="$2"
-  WORKER_WINDOW="$3"
-  shift 3
-fi
 TRAINING_OPTIONS=("$@")
 if ! bash -n "$PROJECT_ROOT/run_mamba_rl.sh"; then
   echo "run_mamba_rl.sh has a shell syntax error; stopping before the dataset suite." >&2
@@ -106,10 +99,7 @@ USE_COORDINATOR="${USE_COORDINATOR:-1}"
 
 PREFERENCE_COUNTs=("${PREFERENCE_COUNT:-32}")
 
-run_worker() (
-  set -euo pipefail
-  GPU_IDS="$1"
-  SHORT_WINDOWs=("$2")
+SHORT_WINDOWs=(4)
 for MAMBA_MODEL_SIZE in "${MODEL_SIZES[@]}"; do
   MAMBA_MODEL_ID="${MODEL_ID_OVERRIDE:-state-spaces/mamba-${MAMBA_MODEL_SIZE}-hf}"
   MODEL_TAG="${MAMBA_MODEL_ID//[^a-zA-Z0-9._-]/_}"
@@ -283,40 +273,3 @@ for PREFERENCE_COUNT in "${PREFERENCE_COUNTs[@]}"; do
 done
 done  # MODEL_SIZES
 
-)
-
-if [[ -n "$WORKER_GPU" ]]; then
-  run_worker "$WORKER_GPU" "$WORKER_WINDOW"
-  exit
-fi
-
-# Preserve the caller's output root/model selection in the child launchers.
-export PYTHON_BIN CACHE_DIR GPU_SW2 GPU_SW4
-# Sequential preview keeps printed commands intact; real execution is concurrent.
-if [[ "$DRY_RUN" == 1 ]]; then
-  run_worker "$GPU_SW2" 2
-  run_worker "$GPU_SW4" 4
-else
-  worker_pids=()
-  cleanup() {
-    local pid
-    for pid in "${worker_pids[@]}"; do
-      # Each worker has its own session/process group, including the Python child.
-      kill -- "-$pid" 2>/dev/null || true
-    done
-  }
-  trap 'cleanup; exit 130' INT
-  trap 'cleanup; exit 143' TERM
-  trap cleanup EXIT
-  # Internal worker mode gives each GPU process its own process group for cleanup.
-  setsid bash "$PROJECT_ROOT/run_larger_models.sh" --internal-worker "$GPU_SW2" 2 "${TRAINING_OPTIONS[@]}" &
-  worker_pids+=("$!")
-  setsid bash "$PROJECT_ROOT/run_larger_models.sh" --internal-worker "$GPU_SW4" 4 "${TRAINING_OPTIONS[@]}" &
-  worker_pids+=("$!")
-  status=0
-  for pid in "${worker_pids[@]}"; do
-    if wait "$pid"; then :; else status=1; fi
-  done
-  trap - EXIT INT TERM
-  exit "$status"
-fi
