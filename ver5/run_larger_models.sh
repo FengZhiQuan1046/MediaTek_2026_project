@@ -53,7 +53,8 @@ if [[ -n "$MODEL_ID_OVERRIDE" ]]; then
 elif [[ -n "${MAMBA_MODEL_SIZE:-}" ]]; then
   MODEL_SIZES=("$MAMBA_MODEL_SIZE")
 else
-  read -r -a MODEL_SIZES <<< "${MAMBA_MODEL_SIZES:-370m 790m 1.4b 2.8b}"
+  # read -r -a MODEL_SIZES <<< "${MAMBA_MODEL_SIZES:-370m 790m 1.4b 2.8b}"
+  read -r -a MODEL_SIZES <<< "${MAMBA_MODEL_SIZES:-2.8b}"
 fi
 if (( ${#MODEL_SIZES[@]} == 0 )); then
   echo "No model sizes selected" >&2; exit 2
@@ -260,8 +261,8 @@ for PREFERENCE_COUNT in "${PREFERENCE_COUNTs[@]}"; do
       SKIP_UNTIL_START=0
       if [[ -n "$START_FROM" ]]; then SKIP_UNTIL_START=1; fi
       # name dataset validation_steps max_samples candidates popularity transition
-      run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
-      run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
+      # run_subset "Full_Beauty" "amazon-all-beauty" 250 500000 64 -0.25 4.0
+      # run_subset "Baby_Products" "amazon:Baby_Products" 6000 1500000 192 0.30 0.5
       run_subset "Sports_and_Outdoors" "amazon-sports-and-outdoors" 8000 1000000 256 0.35 0.5
       # run_subset "Books" "amazon-books" 12000 2000000 256 0.35 0.5
       run_subset "Toys_and_Games" "amazon-toys-and-games" 6000 1500000 192 0.30 0.5
