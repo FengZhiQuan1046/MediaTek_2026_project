@@ -1,8 +1,7 @@
 # ver5: Short and Preference Multi-LoRA Mamba Recommender
 
 ver5 has two sequence agents. The short agent reads the latest `SHORT_WINDOW`
-interactions. The preference agent reads the complete supplied history up to
-`MAX_HISTORY`, maps each item to soft preference prototypes, and encodes the
+interactions. The preference agent reads the complete observed history by default (`MAX_HISTORY=0`), maps each item to soft preference prototypes, and encodes the
 prototype trajectory with its own Mamba-style selective-state recurrence and
 LoRA bank. It does not use a GRU. The two agents share cached features from a
 frozen pretrained Mamba text encoder and optional LightGCN item features, but
@@ -18,9 +17,12 @@ reward is an offline NDCG proxy from future items in the training sequence,
 not feedback for unshown recommendations. `RL_COEF=0` disables the policy
 gradient in the two-stage mode.
 
-The default limits in `run_mamba_rl.sh` are `SHORT_WINDOW=10` and
-`MAX_HISTORY=100`. With both agents enabled, preference still reads up to 100
-interactions when short reads only 10. `USE_SHORT` and `USE_PREFERENCE` can be
+The default limits in `run_mamba_rl.sh` are `SHORT_WINDOW=4` and
+`MAX_HISTORY=0` (unlimited). Preference reads the complete observed history,
+while short reads only its `SHORT_WINDOW` suffix. Training reads only the prefix
+before the target; validation reads training history, and test adds the validation
+item. Set `MAX_HISTORY` to a positive value only to explicitly cap history. Longer
+histories increase training time and memory usage; lower batch sizes if needed. `USE_SHORT` and `USE_PREFERENCE` can be
 set independently; there is no long agent or `USE_LONG` option in ver5.
 `USE_GCN` and `USE_COORDINATOR` are additional ablation switches in the suite
 launchers. A disabled module is excluded from forward computation and training.

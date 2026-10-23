@@ -1,0 +1,48 @@
+{
+  "sources": {
+    "yelp19_yelp23": {
+      "repo": "IKMLab/maple_nete_format_data",
+      "revision": "4a3905d934b40615844c6c8cd4066eb9d7a54c09"
+    },
+    "steam": {
+      "repo": "recommender-system/steam-review-and-bundle-dataset",
+      "revision": "8e9c6b569122fb20668f5da3b0f3970a853fc5d8"
+    }
+  },
+  "schedule": {
+    "gpu0": [
+      "steam"
+    ],
+    "gpu1": [
+      "yelp23",
+      "yelp19"
+    ]
+  },
+  "raw_rows": {
+    "steam": 7793069,
+    "yelp23": 3079123,
+    "yelp19": 1293247
+  },
+  "unique_yelp_interactions": {
+    "yelp23": 1339433,
+    "yelp19": 1293247
+  },
+  "save_model_weights": false,
+  "data_location": "/workspace/P78123011/cache",
+  "ordering": {
+    "steam": "review date",
+    "yelp": "first source-row order; original timestamps absent"
+  },
+  "yelp23_duplicates": "aspect rows collapsed to unique user-item pairs; raw files retained",
+  "stage_epochs": {
+    "specialist": 3,
+    "joint": 7
+  },
+  "max_training_transitions": 500000,
+  "run_id": "yelp_steam_20261021_205324_restart",
+  "restart_from_scratch": true,
+  "evaluation_output": "direct full-precision JSONL, flushed/fsynced per evaluation",
+  "output_root": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl",
+  "console_progress_location": "/workspace/P78123011/cache/training_runs/yelp_steam_20261021_205324_restart",
+  "previous_run": "yelp_steam_20261021_2012"
+}

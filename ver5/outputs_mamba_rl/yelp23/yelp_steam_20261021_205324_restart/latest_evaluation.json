@@ -1,0 +1,29 @@
+{
+  "dataset": "yelp23",
+  "timestamp": "2026-10-21T13:49:59.146502+00:00",
+  "evaluation": "FINAL FULL TEST",
+  "stage": "specialists",
+  "epoch": 0,
+  "step": 9814,
+  "evaluated_users": 34496,
+  "total_users": 34496,
+  "metrics": {
+    "recall@5": 0.026698747680890537,
+    "recall@10": 0.0477156771799629,
+    "ndcg@5": 0.016553204025423537,
+    "ndcg@10": 0.02328257889492033,
+    "hit@5": 0.026698747680890537,
+    "hit@10": 0.0477156771799629,
+    "preference_change_probability": 0.0656601011421331,
+    "preference_current_entropy": 1.2193715045978497,
+    "preference_next_entropy": 1.3590541675493315,
+    "preference_ranking_weight": 0.19993211328983307,
+    "short_agent_weight": 0.8000679016113281,
+    "preference_agent_weight": 0.19993211328983307,
+    "short_preference_state_cosine": 0.4799474317421497,
+    "users_per_second": 3042.0107783106614,
+    "scores_per_second": 72828780.04353555,
+    "evaluated_users": 34496,
+    "total_users": 34496
+  }
+}

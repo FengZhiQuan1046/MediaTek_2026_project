@@ -14,7 +14,7 @@ EVAL_LENGTH_THRESHOLD=20 GPU_IDS=0 PYTHON_BIN=/dataspace/P78123011/miniconda3/en
 - Coordinator：只有 short 與 preference 同時啟用、且 `USE_COORDINATOR=1` 時才建立。若關閉但兩個 agent 都啟用，使用固定的 `PREFERENCE_SCORE_WEIGHT` 混合兩個分數。
 - LightGCN：可獨立啟用，使用訓練互動圖建立商品向量。
 
-`run_mamba_rl.sh` 的預設 `MAX_HISTORY=100`、`SHORT_WINDOW=10`；此分組腳本可覆寫 `SHORT_WINDOW`。訓練、hard-negative 打分、validation/test 與直接呼叫模型都使用相同的 agent 輸入規則。停用 preference 後，short-only 模型不需處理較早的輸入。若兩個序列 agent 都停用，必須啟用 LightGCN，模型改用純圖分數。
+`run_mamba_rl.sh` 的預設 `MAX_HISTORY=0`（不限長度，preference 讀取完整已觀測歷史）、`SHORT_WINDOW=10`；此分組腳本可覆寫 `SHORT_WINDOW`。訓練、hard-negative 打分、validation/test 與直接呼叫模型都使用相同的 agent 輸入規則。停用 preference 後，short-only 模型不需處理較早的輸入。若兩個序列 agent 都停用，必須啟用 LightGCN，模型改用純圖分數。
 
 ## Ablation 與輸出
 

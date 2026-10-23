@@ -1,0 +1,20 @@
+# Large experiment data retained locally
+/ver5/outputs_mamba_rl/rq5/
+/ver5/outputs_mamba_rl/rq5_sim/
+
+# Rebuildable caches and document build products
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mplconfig/
+*.aux
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.toc
+
+# Keep trained weights and local model/data caches outside Git
+*.pt
+*.pth
+*.ckpt
+*.pkl

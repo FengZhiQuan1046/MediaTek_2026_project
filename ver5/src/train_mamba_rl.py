@@ -169,13 +169,19 @@ def build_transitions(data, maximum: int | None, seed: int) -> list[Transition]:
 
 
 def sequence_input_limit(model: MultiAgentMambaRecommender, max_history: int) -> int:
-    """Preference sees the full configured history; short-only sees its window."""
-    return (max_history if model.use_preference
-            else min(max_history, model.short_window))
+    """Zero means full history; short-only still reads its own finite window."""
+    if model.use_preference:
+        return max_history
+    return min(max_history, model.short_window) if max_history > 0 else model.short_window
 
 
 def history_batch(data, transitions: list[Transition], max_history: int, device: str):
-    histories = [data.train_by_user[row.user][max(0, row.end - max_history):row.end] for row in transitions]
+    histories = [
+        data.train_by_user[row.user][
+            max(0, row.end - max_history) if max_history > 0 else 0:row.end
+        ]
+        for row in transitions
+    ]
     if getattr(data, "reverse_history_input", False):
         histories = [history[::-1] for history in histories]
     lengths = torch.tensor([len(history) for history in histories], device=device)
@@ -191,7 +197,7 @@ def evaluation_history_batch(data, users: list[int], split: str, max_history: in
         history = list(data.train_by_user[user])
         if split == "test":
             history.append(data.valid_target[user])
-        histories.append(history[-max_history:])
+        histories.append(history[-max_history:] if max_history > 0 else history)
     lengths = torch.tensor([len(history) for history in histories], device=device)
     padded = torch.zeros((len(users), max(int(lengths.max()), 1)), dtype=torch.long, device=device)
     for row, history in enumerate(histories):
@@ -845,7 +851,7 @@ def measure_history_item_influence(
         history = list(data.train_by_user[user])
         if split == "test":
             history.append(data.valid_target[user])
-        history = history[-max_history:]
+        history = history[-max_history:] if max_history > 0 else history
         if len(history) < 2:
             continue
         candidates = _sample_influence_candidates(
@@ -1052,7 +1058,8 @@ def parse_args():
         "--use-coordinator", action=argparse.BooleanOptionalAction, default=True,
         help="Learn to fuse short and preference; when disabled, use a fixed score mixture.",
     )
-    parser.add_argument("--max-history", type=int, default=100)
+    parser.add_argument("--max-history", type=int, default=0,
+                        help="History cap; 0 (default) gives preference the complete observed history")
     parser.add_argument(
         "--reverse-history-input", action="store_true",
         help="Reverse each observed history prefix after truncation; keep targets and training graph unchanged.",
@@ -1153,7 +1160,7 @@ def parse_args():
     if min(args.validate_every_steps, args.early_stopping_patience, args.lr_patience) < 0:
         parser.error("validation interval and patience values cannot be negative")
     if (
-        args.candidates < 2 or args.batch_size < 1 or args.max_history < 1 or args.short_window < 1
+        args.candidates < 2 or args.batch_size < 1 or args.max_history < 0 or args.short_window < 1
         or args.mamba_encode_batch_size < 1 or args.mamba_max_tokens < 1
         or args.validation_user_limit < 0 or args.periodic_test_user_limit < -1
         or args.history_influence_user_limit < 0 or args.history_influence_negatives < 1
@@ -1208,9 +1215,10 @@ def main():
     )
     effective_agent_max_history = (
         0 if graph_only else args.max_history if args.use_preference
-        else min(args.max_history, args.short_window)
+        else min(args.max_history, args.short_window) if args.max_history > 0 else args.short_window
     )
-    short_history_limit = min(args.max_history, args.short_window) if args.use_short else 0
+    short_history_limit = ((min(args.max_history, args.short_window) if args.max_history > 0
+                            else args.short_window) if args.use_short else 0)
     preference_history_limit = args.max_history if args.use_preference else 0
     if graph_only:
         # Pure user-item graph dot products, without semantic features or catalog priors.
@@ -1239,7 +1247,7 @@ def main():
     logger.info("ABLATION USE_SHORT=%d USE_PREFERENCE=%d USE_GCN=%d USE_COORDINATOR=%d",
                 args.use_short, args.use_preference, int(args.use_graph_embeddings), int(args.use_coordinator))
     logger.info(
-        "AGENT_HISTORY mode=%s effective_max_history=%d short=%d preference=%d",
+        "AGENT_HISTORY mode=%s effective_max_history=%d short=%d preference=%d (0=unlimited when preference enabled)",
         agent_history_mode, effective_agent_max_history,
         short_history_limit, preference_history_limit,
     )

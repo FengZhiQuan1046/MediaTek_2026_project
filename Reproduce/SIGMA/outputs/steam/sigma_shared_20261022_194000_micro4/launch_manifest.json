@@ -1,0 +1,43 @@
+{
+  "model": "SIGMA",
+  "tmux": "ver5_gpu1",
+  "physical_gpu": 1,
+  "dataset_order": [
+    "steam",
+    "yelp19",
+    "yelp23"
+  ],
+  "maxlen": 0,
+  "preprocessing": "exact existing ver5 cache; no re-filtering, reindexing, resplitting",
+  "epochs": 200,
+  "early_stopping_patience": 10,
+  "save_model_weights": false,
+  "upstream": {
+    "source": "/workspace/P78123011/SIGMA",
+    "remote": "https://github.com/ziwliu8/SIGMA.git",
+    "revision": "a3f63751503eca869338fc9c8b24a05fa128c6ef",
+    "gated_mamba_sha256": "97a03f3af0a678c7384355f3ccc4689af69236fe83688b2e8f4e4339af4e0ca1",
+    "note": "Upstream source preserved verbatim; RecBole dataset pipeline not used"
+  },
+  "cache_files": {
+    "steam": {
+      "path": "/workspace/P78123011/cache/mamba_multi_agent_data/steam_e4cf210a33ca.pkl",
+      "sha256": "dc5e8a86ea96ce42f811ba18e1cb958311cc5034bd462f5f3444c42e76d892d4"
+    },
+    "yelp19": {
+      "path": "/workspace/P78123011/cache/mamba_multi_agent_data/yelp19_85e6b4b9b764.pkl",
+      "sha256": "8438c2c4c3cc8979f0c450a67f79179043be2578016d6392e3d4aca9c1bf4756"
+    },
+    "yelp23": {
+      "path": "/workspace/P78123011/cache/mamba_multi_agent_data/yelp23_3ea375a2c8f8.pkl",
+      "sha256": "d1dcb0f5c2857a969574d031df34ae1d8996c146bf96dac5cf02e9f88318426c"
+    }
+  },
+  "run_id": "sigma_shared_20261022_194000_micro4",
+  "effective_batch_size": 128,
+  "microbatch_size": 4,
+  "eval_batch_size": 4,
+  "previous_attempt": "sigma_shared_20261022_193813",
+  "previous_attempt_reason": "CUDA OOM with batch128 full history; original results retained",
+  "full_history_preserved": true
+}
