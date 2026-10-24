@@ -1,0 +1,61 @@
+{
+  "dataset": "yelp19",
+  "timestamp": "2026-10-23T20:32:54.429999+00:00",
+  "evaluation": "FINAL FULL TEST",
+  "stage": "final",
+  "epoch": 0,
+  "step": 15628,
+  "evaluated_users": 27032,
+  "total_users": 27032,
+  "metrics": {
+    "recall@5": 0.09211305119857946,
+    "recall@10": 0.1409440662918023,
+    "ndcg@5": 0.06021621584182274,
+    "ndcg@10": 0.07589237653678181,
+    "hit@5": 0.09211305119857946,
+    "hit@10": 0.1409440662918023,
+    "preference_change_probability": 0.06908590605217312,
+    "preference_current_entropy": 2.9395056699429367,
+    "preference_next_entropy": 3.1940119667990245,
+    "preference_ranking_weight": 0.006356085533484018,
+    "short_agent_weight": 0.9936439118183517,
+    "preference_agent_weight": 0.006356085533484018,
+    "short_preference_state_cosine": 0.5776047078629647,
+    "users_per_second": 1764.4235960192755,
+    "scores_per_second": 35431390.23166307,
+    "evaluated_users": 27032,
+    "total_users": 27032,
+    "sequence_length": {
+      "basis": "filtered_full_sequence",
+      "threshold": 10,
+      "short_rule": "length <= threshold",
+      "long_rule": "length > threshold",
+      "short": {
+        "total_users": 1365,
+        "evaluated_users": 1365,
+        "history_length_min": 4,
+        "history_length_max": 10,
+        "history_length_mean": 8.446153846153846,
+        "recall@5": 0.07032967032967033,
+        "recall@10": 0.10915750915750916,
+        "ndcg@5": 0.045085783624827715,
+        "ndcg@10": 0.0576403652234331,
+        "hit@5": 0.07032967032967033,
+        "hit@10": 0.10915750915750916
+      },
+      "long": {
+        "total_users": 25667,
+        "evaluated_users": 25667,
+        "history_length_min": 11,
+        "history_length_max": 923,
+        "history_length_mean": 33.38290411812834,
+        "recall@5": 0.09327151595433826,
+        "recall@10": 0.14263451124011375,
+        "ndcg@5": 0.06102086902951996,
+        "ndcg@10": 0.07686303815145103,
+        "hit@5": 0.09327151595433826,
+        "hit@10": 0.14263451124011375
+      }
+    }
+  }
+}

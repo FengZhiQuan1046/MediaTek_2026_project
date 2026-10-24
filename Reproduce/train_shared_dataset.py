@@ -73,6 +73,17 @@ def main():
         metrics['total_users']=len(data.valid_target if split=='valid' else data.test_target)
         writer.write('VALIDATION' if split=='valid' else 'FINAL TEST',metrics,
                      'recommender' if split=='valid' else 'best_validation_model',epoch,step)
+        if split == 'valid' and options.reproduction in {'BERT4Rec', 'SIGMA', 'ReSID', 'Mamba4Rec'}:
+            test_metrics = original_eval(model, data, 'test', *eval_args, **eval_kwargs)
+            test_metrics['total_users'] = len(data.test_target)
+            writer.write('TEST', test_metrics, 'recommender', epoch, step)
+            record = {'epoch': epoch, 'step': step, 'validation': metrics, 'test': test_metrics}
+            # Durable per-epoch paired results, in addition to evaluations.jsonl.
+            path = writer.output / f'epoch_{epoch:03d}_metrics.json'
+            path.write_text(json.dumps(record, indent=2))
+            logger = context.get('logger')
+            if logger is not None:
+                logger.info('EPOCH_VALIDATION_TEST %s', json.dumps(record, sort_keys=True))
         return metrics
 
     trainer.parse_args=parse_args
@@ -80,6 +91,12 @@ def main():
     trainer.evaluate=evaluate
     sys.argv=[sys.argv[0],*remaining]
     trainer.main()
+    if options.reproduction in {'BERT4Rec', 'SIGMA', 'ReSID', 'Mamba4Rec'}:
+        metrics_path = writer.output / 'metrics.json'
+        report = json.loads(metrics_path.read_text())
+        report['epoch_evaluations'] = [json.loads(p.read_text()) for p in sorted(writer.output.glob('epoch_*_metrics.json'))]
+        report['selection_protocol'] = 'Best validation NDCG@10; test evaluated each epoch for reporting only'
+        metrics_path.write_text(json.dumps(report, indent=2))
     # Preserve augmented config after the trainer's final standard config write.
     path=writer.output/'config.json'
     config=json.loads(path.read_text())

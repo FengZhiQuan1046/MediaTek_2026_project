@@ -1,0 +1,33 @@
+{
+  "sources": [
+    {
+      "dataset": "Steam",
+      "job": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Steam/intermediate/job.json",
+      "signals": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Steam/intermediate/signals",
+      "influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Steam/intermediate/training/steam/history_item_influence.csv"
+    },
+    {
+      "dataset": "MovieLens1M",
+      "job": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/MovieLens1M/intermediate/job.json",
+      "signals": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/MovieLens1M/intermediate/signals",
+      "influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/MovieLens1M/intermediate/training/movielens-1m/history_item_influence.csv"
+    },
+    {
+      "dataset": "Yelp19",
+      "job": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp19/intermediate/job.json",
+      "signals": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp19/intermediate/signals",
+      "influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp19/intermediate/training/yelp19-dated-matched/history_item_influence.csv"
+    },
+    {
+      "dataset": "Yelp23",
+      "job": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp23/intermediate/job.json",
+      "signals": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp23/intermediate/signals",
+      "influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp23/intermediate/training/yelp23-dated-matched/history_item_influence.csv"
+    }
+  ],
+  "bootstrap": 2000,
+  "seed": 25252,
+  "min_users": 100,
+  "preference_metric": "history_normalized_cluster_match",
+  "aggregation": "Original item lag bins for alignment/preference; individual item lag for influence; recent item count for coverage"
+}

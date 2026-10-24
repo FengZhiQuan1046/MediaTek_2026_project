@@ -12,8 +12,8 @@ WORKSPACE_ROOT="$(cd "$PROJECT_ROOT/../.." && pwd)"
 CACHE_DIR="$WORKSPACE_ROOT/cache"
 PYTHON_BIN="${PYTHON_BIN:-$WORKSPACE_ROOT/miniconda3/envs/py31014/bin/python}"
 [[ "$GPU_ID" =~ ^[0-9]+$ ]] || exit 2
-[[ "$DATASET" =~ ^(yelp23|yelp19|steam)$ ]] || exit 2
-[[ -f "$DATA_PATH" ]] || { echo "Missing input: $DATA_PATH" >&2; exit 2; }
+[[ "$DATASET" =~ ^(yelp23|yelp19|steam|movielens-1m)$ ]] || exit 2
+[[ -e "$DATA_PATH" ]] || { echo "Missing input: $DATA_PATH" >&2; exit 2; }
 RUN_DIR="$PROJECT_ROOT/outputs_mamba_rl/$DATASET/$(basename "$RUN_ROOT")"
 CONSOLE_DIR="$RUN_ROOT/$DATASET"
 [[ ! -e "$RUN_DIR/config.json" ]] || { echo "Run already started: $RUN_DIR" >&2; exit 2; }
@@ -37,16 +37,21 @@ set +e
 "$PYTHON_BIN" -u -m src.train_yelp_steam_scores \
   --dataset "$DATASET" --data-path "$DATA_PATH" --cache-dir "$CACHE_DIR" \
   --device cuda:0 --graph-device cuda:0 \
-  --specialist-epochs "${SPECIALIST_EPOCHS:-3}" --joint-epochs "${JOINT_EPOCHS:-7}" \
-  --rl-coef 0.1 --rl-topk 10 --batch-size "${BATCH_SIZE:-128}" \
-  --eval-batch-size "${EVAL_BATCH_SIZE:-64}" --max-transitions 500000 \
-  --candidates 64 --short-window 4 --max-history "${MAX_HISTORY:-0}" --preference-count 32 \
+  --specialist-epochs "${SPECIALIST_EPOCHS:-4}" --joint-epochs "${JOINT_EPOCHS:-0}" \
+  --rl-coef "${RL_COEF:-0}" --rl-topk 10 --batch-size "${BATCH_SIZE:-128}" \
+  --eval-batch-size "${EVAL_BATCH_SIZE:-64}" --max-transitions "${MAX_TRANSITIONS:-500000}" \
+  --candidates "${CANDIDATES:-64}" --short-window "${SHORT_WINDOW:-auto}" --max-history "${MAX_HISTORY:-0}" --preference-count "${PREFERENCE_COUNT:-32}" \
   --mamba-model-id state-spaces/mamba-130m-hf --mamba-encode-batch-size 32 \
-  --mamba-max-tokens 32 --validate-every-steps 1000 \
+  --mamba-max-tokens 32 --validate-every-steps "${VALIDATE_EVERY_STEPS:-1000}" \
   --validation-user-limit 0 --periodic-test-user-limit 0 \
+  --specialist-lr "${SPECIALIST_LR:-1e-4}" --joint-lr 5e-5 --dim 128 \
+  --enable-lora 1 --lora-rank 16 --lora-alpha 32 --lora-dropout 0.05 \
+  --early-stopping-patience "${EARLY_STOPPING_PATIENCE:-6}" --lr-patience "${LR_PATIENCE:-2}" --monitor-metric ndcg@10 \
+  --eval-length-threshold 10 --eval-length-basis filtered_full_sequence \
+  --popularity-alpha "${POPULARITY_ALPHA:-0}" --transition-beta "${TRANSITION_BETA:-0}" \
   --seed 25252 --no-save-model-weights --no-generate-reasons \
   --output-dir "$PROJECT_ROOT/outputs_mamba_rl/$DATASET" --output-run-dir "$RUN_DIR" --score-file "$RUN_DIR/${DATASET}_scores.json" \
-  --experiment-note 'HF full release; existing ver5 preprocessing; Yelp order=source-row index (timestamps unavailable); Steam order=review date; weights disabled' \
+  --experiment-note 'HF cached inputs; existing ver5 preprocessing/splits; Yelp order=source-row index; Steam/MovieLens chronological; short window=round_half_up(2*plotted mean_interactions_per_group); full preference history; weights disabled' \
   2>&1 | tee "$CONSOLE_DIR/console.log"
 status=${PIPESTATUS[0]}
 printf 'exit_code=%s\nfinished=%s\n' "$status" "$(date -Is)" > "$RUN_DIR/status.txt"

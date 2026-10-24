@@ -1,0 +1,311 @@
+"""Download public raw datasets, or import an officially downloaded Yelp archive."""
+
+from __future__ import annotations
+
+import argparse
+import concurrent.futures
+import gzip
+import hashlib
+import json
+import shutil
+import tarfile
+import threading
+import time
+import zipfile
+from pathlib import Path
+
+import requests
+
+import analyze
+
+
+ROOT = Path(__file__).resolve().parent
+AMAZON = "https://mcauleylab.ucsd.edu/public_datasets/data/amazon_2023/raw/review_categories/"
+SOURCES = {
+    "amazon23_all_beauty": (AMAZON + "All_Beauty.jsonl.gz", "amazon23/All_Beauty.jsonl.gz"),
+    "amazon23_baby_products": (AMAZON + "Baby_Products.jsonl.gz", "amazon23/Baby_Products.jsonl.gz"),
+    "amazon23_sports_and_outdoors": (AMAZON + "Sports_and_Outdoors.jsonl.gz", "amazon23/Sports_and_Outdoors.jsonl.gz"),
+    "amazon23_toys_and_games": (AMAZON + "Toys_and_Games.jsonl.gz", "amazon23/Toys_and_Games.jsonl.gz"),
+    "movielens_1m": ("https://files.grouplens.org/datasets/movielens/ml-1m.zip", "ml-1m.zip"),
+    "steam": ("https://cseweb.ucsd.edu/~wckang/steam_reviews.json.gz", "steam/steam_reviews.json.gz"),
+}
+PRINT_LOCK = threading.Lock()
+MIRROR_SHA256 = {
+    "Baby_Products.jsonl": "5ab12d566ebc1162d5a197721d4da787261e036455d054ad8d858af7380e0a45",
+    "Sports_and_Outdoors.jsonl": "47eaab08457fd7d270613f193506c479492b696a808ae5639a949b27026a4559",
+    "Toys_and_Games.jsonl": "2e6157468ea97963098fe6b14749eda8d16a4443e718dcf6cbd0726c781fd938",
+    "steam_reviews.json.gz": "40c6343deedf488689987749c5f8435233da48c163fbaa2a7766c215d584bc61",
+}
+
+
+def log(message):
+    with PRINT_LOCK:
+        print(message, flush=True)
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(4 * 1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def download_ranges(url, partial, expected, connections, name):
+    """Fetch bounded ranges concurrently, preserving completed chunks for a retry."""
+    offset = partial.stat().st_size if partial.exists() else 0
+    if offset > expected:
+        raise ValueError(f"{partial}: partial file larger than remote file")
+    chunk_size = 32 * 1024 * 1024
+    chunks = partial.with_name(partial.name + ".chunks")
+    chunks.mkdir(exist_ok=True)
+    ranges = [(start, min(expected - 1, start + chunk_size - 1))
+              for start in range(offset, expected, chunk_size)]
+
+    def fetch(bounds):
+        start, end = bounds
+        target = chunks / f"{start}-{end}"
+        if target.exists() and target.stat().st_size == end - start + 1:
+            return target
+        for attempt in range(5):
+            try:
+                with requests.get(url, headers={"Range": f"bytes={start}-{end}",
+                                               "Accept-Encoding": "identity"}, stream=True,
+                                  timeout=(30, 120)) as response:
+                    response.raise_for_status()
+                    if response.status_code != 206 or response.headers.get("Content-Range") != f"bytes {start}-{end}/{expected}":
+                        raise ValueError(f"{name}: server returned an inconsistent byte range")
+                    with target.open("wb") as handle:
+                        for block in response.iter_content(1024 * 1024):
+                            handle.write(block)
+                if target.stat().st_size != end - start + 1:
+                    raise requests.ConnectionError("incomplete chunk")
+                return target
+            except requests.RequestException:
+                if attempt == 4:
+                    raise
+                time.sleep(2)
+        raise AssertionError("unreachable")
+
+    completed = offset
+    previous = time.monotonic()
+    log(f"{name}: {connections} range connections, resuming at {offset / expected:.1%}")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=connections) as pool:
+        pending = {pool.submit(fetch, bounds): bounds for bounds in ranges}
+        for task in concurrent.futures.as_completed(pending):
+            path = task.result()
+            completed += path.stat().st_size
+            if time.monotonic() - previous >= 15:
+                log(f"{name}: {completed / expected:.1%} downloaded")
+                previous = time.monotonic()
+    with partial.open("ab") as handle:
+        for start, end in ranges:
+            path = chunks / f"{start}-{end}"
+            with path.open("rb") as source:
+                shutil.copyfileobj(source, handle, 4 * 1024 * 1024)
+    # Delete only the exact chunk files created for this transfer.
+    for start, end in ranges:
+        (chunks / f"{start}-{end}").unlink()
+    if not any(chunks.iterdir()):
+        chunks.rmdir()
+
+
+def download(name, data_dir, connections=1):
+    url, relative = SOURCES[name]
+    target = data_dir / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    partial = target.with_name(target.name + ".part")
+    with requests.Session() as session:
+        session.headers["Accept-Encoding"] = "identity"
+        head = session.head(url, allow_redirects=True, timeout=60)
+        head.raise_for_status()
+        expected = int(head.headers["Content-Length"])
+        if target.exists():
+            if target.stat().st_size != expected:
+                raise ValueError(f"{target}: existing size differs from server; inspect before replacing")
+            log(f"{name}: already downloaded; verifying")
+        elif connections > 1:
+            download_ranges(head.url, partial, expected, connections, name)
+            if partial.stat().st_size != expected:
+                raise ValueError(f"{name}: incomplete ranged download")
+            partial.replace(target)
+        else:
+            for attempt in range(1, 6):
+                offset = partial.stat().st_size if partial.exists() else 0
+                if offset == expected:
+                    break
+                if offset > expected:
+                    raise ValueError(f"{partial}: partial file larger than remote file")
+                headers = {"Range": f"bytes={offset}-"} if offset else {}
+                # Ask the server to restart if its validator changes during this run.
+                validator = head.headers.get("ETag") or head.headers.get("Last-Modified")
+                if offset and validator:
+                    headers["If-Range"] = validator
+                try:
+                    with session.get(url, headers=headers, stream=True, timeout=(30, 120)) as response:
+                        response.raise_for_status()
+                        if offset and response.status_code == 206:
+                            content_range = response.headers.get("Content-Range", "")
+                            if not content_range.startswith(f"bytes {offset}-") or not content_range.endswith(f"/{expected}"):
+                                raise ValueError(f"{name}: inconsistent server range {content_range!r}")
+                        elif response.status_code == 200:
+                            offset = 0
+                        else:
+                            raise ValueError(f"{name}: unexpected HTTP {response.status_code}")
+                        mode = "ab" if offset else "wb"
+                        downloaded = offset
+                        previous = time.monotonic()
+                        log(f"{name}: downloading {expected / 2**20:,.1f} MiB (starting at {offset / 2**20:,.1f} MiB)")
+                        with partial.open(mode) as handle:
+                            for block in response.iter_content(chunk_size=1024 * 1024):
+                                if not block:
+                                    continue
+                                handle.write(block)
+                                downloaded += len(block)
+                                if time.monotonic() - previous >= 15:
+                                    log(f"{name}: {downloaded / expected:.1%} ({downloaded / 2**20:,.1f} MiB)")
+                                    previous = time.monotonic()
+                        if downloaded != expected:
+                            raise requests.ConnectionError(f"received {downloaded} bytes, expected {expected}")
+                    break
+                except requests.RequestException as exc:
+                    if attempt == 5:
+                        raise
+                    log(f"{name}: retrying after {type(exc).__name__} (attempt {attempt}/5)")
+                    time.sleep(min(2 * attempt, 10))
+            if not partial.exists() or partial.stat().st_size != expected:
+                raise ValueError(f"{name}: incomplete download")
+            partial.replace(target)
+    # Validate the archive type and a real record before marking the download ready.
+    if name == "movielens_1m":
+        with zipfile.ZipFile(target) as archive:
+            bad = archive.testzip()
+            if bad:
+                raise ValueError(f"corrupt ZIP entry: {bad}")
+            for filename in ("ratings.dat", "users.dat", "movies.dat", "README"):
+                member = "ml-1m/" + filename
+                if member in archive.namelist():
+                    destination = data_dir / "ml-1m" / filename
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    if not destination.exists():
+                        with archive.open(member) as source, destination.open("wb") as handle:
+                            shutil.copyfileobj(source, handle)
+        sample_path = data_dir / "ml-1m" / "ratings.dat"
+        spec = {"format": "movielens1m"}
+    else:
+        sample_path = target
+        spec = {"format": "steam_reviews" if name == "steam" else "amazon23"}
+        if target.suffix == ".gz":
+            with gzip.open(target, "rb") as handle:
+                handle.read(1)
+    records = analyze.read_records(sample_path, spec)
+    try:
+        _, record = next(records)
+        analyze.normalize(record, spec)
+    finally:
+        records.close()
+    digest = sha256(target)
+    expected_digest = MIRROR_SHA256.get(target.name) if "huggingface.co/" in url else None
+    if expected_digest and digest != expected_digest:
+        raise ValueError(f"{target}: mirror SHA-256 mismatch")
+    log(f"{name}: ready ({expected:,} bytes), sample schema validated")
+    return name, dict(url=url, path=str(target.relative_to(data_dir)), bytes=expected,
+                      sha256=digest, published_sha256_verified=bool(expected_digest),
+                      validation="remote length and sample record; ZIP CRC for MovieLens")
+
+
+def import_yelp(source, data_dir):
+    filename = "yelp_academic_dataset_review.json"
+    target = data_dir / "yelp" / filename
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if source.resolve() == target.resolve():
+        pass
+    elif target.exists():
+        raise FileExistsError(f"{target} already exists; inspect before replacing")
+    else:
+        partial = target.with_name(filename + ".part")
+        if zipfile.is_zipfile(source):
+            with zipfile.ZipFile(source) as archive:
+                matches = [m for m in archive.namelist() if m.replace('\\', '/').split('/')[-1] == filename]
+                if len(matches) != 1:
+                    raise ValueError("expected exactly one Yelp review JSON in ZIP")
+                with archive.open(matches[0]) as handle, partial.open("wb") as output:
+                    shutil.copyfileobj(handle, output)
+        elif source.name.endswith(".json"):
+            shutil.copyfile(source, partial)
+        else:
+            # Stream large tar archives and copy only the review table to a fixed path.
+            found = False
+            with tarfile.open(source, "r|*") as archive:
+                for member in archive:
+                    if member.isfile() and member.name.replace('\\', '/').split('/')[-1] == filename:
+                        with archive.extractfile(member) as handle, partial.open("wb") as output:
+                            shutil.copyfileobj(handle, output)
+                        found = True
+                        break
+            if not found:
+                raise ValueError("Yelp review JSON not found in archive")
+        partial.replace(target)
+    records = analyze.read_records(target, {"format": "yelp"})
+    try:
+        _, record = next(records)
+        analyze.normalize(record, {"format": "yelp"})
+    finally:
+        records.close()
+    log(f"yelp: ready at {target}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--datasets", nargs="+", choices=sorted(SOURCES), default=list(SOURCES))
+    parser.add_argument("--data-dir", type=Path, default=ROOT / "data")
+    parser.add_argument("--workers", type=int, default=3)
+    parser.add_argument("--connections", type=int, default=1, help="Parallel byte-range connections per file; use 4 for slow transfers")
+    parser.add_argument("--amazon-mirror", action="store_true", help="Use the official Hugging Face mirror (larger uncompressed JSONL files)")
+    parser.add_argument("--steam-mirror", action="store_true", help="Use a community copy of the original Steam gzip archive, with SHA-256 verification")
+    parser.add_argument("--yelp-archive", type=Path, help="Import a Yelp JSON, ZIP, TAR or TAR.GZ downloaded from Yelp")
+    args = parser.parse_args()
+    config_path = ROOT / "datasets.json"
+    uncompressed_amazon = set()
+    if config_path.exists():
+        for spec in json.loads(config_path.read_text(encoding="utf-8-sig")):
+            if spec.get("format") == "amazon23" and any(p.endswith(".jsonl") for p in spec.get("paths", [])):
+                uncompressed_amazon.add(spec["name"])
+    if args.steam_mirror:
+        SOURCES["steam"] = ("https://huggingface.co/datasets/recommender-system/steam-review-and-bundle-dataset/resolve/main/steam_reviews.json.gz?download=true", "steam/steam_reviews.json.gz")
+    for name, (url, relative) in list(SOURCES.items()):
+        if name.startswith("amazon23_") and (args.amazon_mirror or name in uncompressed_amazon):
+            filename = Path(relative).name.removesuffix(".gz")
+            SOURCES[name] = ("https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023/resolve/main/raw/review_categories/" + filename + "?download=true", relative.removesuffix(".gz"))
+    if args.workers < 1 or args.connections < 1:
+        parser.error("--workers and --connections must be positive")
+    args.data_dir.mkdir(parents=True, exist_ok=True)
+    if args.yelp_archive:
+        import_yelp(args.yelp_archive, args.data_dir)
+        return 0
+    manifest_path = args.data_dir / "download_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+    failed = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
+        tasks = {pool.submit(download, name, args.data_dir, args.connections): name for name in args.datasets}
+        for task in concurrent.futures.as_completed(tasks):
+            try:
+                name, metadata = task.result()
+                # Refresh for other downloader invocations using this data directory.
+                if manifest_path.exists():
+                    manifest.update(json.loads(manifest_path.read_text(encoding="utf-8")))
+                manifest[name] = metadata
+                receipt = args.data_dir / f"{name}.download.json"
+                receipt.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+                staging = args.data_dir / f"{name}.manifest.tmp"
+                staging.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+                staging.replace(manifest_path)
+            except Exception as exc:
+                failed.append(tasks[task])
+                log(f"{tasks[task]}: FAILED: {exc}")
+    log("Yelp requires its official archive: https://www.yelp.com/dataset/download")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,301 @@
+{
+  "dataset": "movielens-1m",
+  "subset": "MovieLens1M",
+  "split": "test",
+  "grouping": {
+    "gap_days": 30,
+    "rule": "new group iff consecutive gap >30 days",
+    "history_cap": 100
+  },
+  "mean_groups_per_user": 1.528,
+  "mean_interactions_per_group": 39.475130890052355,
+  "group_length_summary": {
+    "users": 2000,
+    "groups": 3056,
+    "dated_interactions": 120636,
+    "missing_timestamp_interactions": 0,
+    "mean_interactions_per_group": 39.475130890052355,
+    "mean_group_span_days": 7.03424827222101,
+    "group_length_interactions": {
+      "count": 3056,
+      "mean": 39.475130890052355,
+      "median": 27.0,
+      "p25": 8.0,
+      "p75": 68.0,
+      "min": 1.0,
+      "max": 100.0
+    },
+    "group_span_days": {
+      "count": 3056,
+      "mean": 7.03424827222101,
+      "median": 0.021157407407407406,
+      "p25": 0.006724537037037037,
+      "p75": 1.5244704861111111,
+      "min": 0.0,
+      "max": 538.0334606481481
+    },
+    "groups_per_user": {
+      "count": 2000,
+      "mean": 1.528,
+      "median": 1.0,
+      "p25": 1.0,
+      "p75": 1.0,
+      "min": 1.0,
+      "max": 13.0
+    },
+    "user_weighted_mean_interactions_per_group": 49.43481831779332,
+    "by_group_from_most_recent": [
+      {
+        "group": 1,
+        "contributing_users": 2000,
+        "mean_interactions": 46.736,
+        "median_interactions": 36.0,
+        "mean_span_days": 2.8125604976851855
+      },
+      {
+        "group": 2,
+        "contributing_users": 402,
+        "mean_interactions": 30.654228855721392,
+        "median_interactions": 14.0,
+        "mean_span_days": 11.213380320619127
+      },
+      {
+        "group": 3,
+        "contributing_users": 209,
+        "mean_interactions": 25.473684210526315,
+        "median_interactions": 8.0,
+        "mean_span_days": 13.022118775474038
+      },
+      {
+        "group": 4,
+        "contributing_users": 139,
+        "mean_interactions": 19.028776978417266,
+        "median_interactions": 6.0,
+        "mean_span_days": 15.013886807220889
+      },
+      {
+        "group": 5,
+        "contributing_users": 104,
+        "mean_interactions": 20.048076923076923,
+        "median_interactions": 4.5,
+        "mean_span_days": 17.06548332888177
+      },
+      {
+        "group": 6,
+        "contributing_users": 80,
+        "mean_interactions": 24.2625,
+        "median_interactions": 12.0,
+        "mean_span_days": 23.8338515625
+      },
+      {
+        "group": 7,
+        "contributing_users": 48,
+        "mean_interactions": 17.708333333333332,
+        "median_interactions": 7.5,
+        "mean_span_days": 16.231094714506174
+      },
+      {
+        "group": 8,
+        "contributing_users": 37,
+        "mean_interactions": 25.945945945945947,
+        "median_interactions": 11.0,
+        "mean_span_days": 20.978018643643644
+      },
+      {
+        "group": 9,
+        "contributing_users": 19,
+        "mean_interactions": 27.63157894736842,
+        "median_interactions": 30.0,
+        "mean_span_days": 40.360108430799215
+      },
+      {
+        "group": 10,
+        "contributing_users": 9,
+        "mean_interactions": 32.22222222222222,
+        "median_interactions": 32.0,
+        "mean_span_days": 39.395070730452666
+      },
+      {
+        "group": 11,
+        "contributing_users": 4,
+        "mean_interactions": 15.5,
+        "median_interactions": 4.0,
+        "mean_span_days": 17.30185185185185
+      },
+      {
+        "group": 12,
+        "contributing_users": 3,
+        "mean_interactions": 17.0,
+        "median_interactions": 9.0,
+        "mean_span_days": 35.356751543209874
+      },
+      {
+        "group": 13,
+        "contributing_users": 2,
+        "mean_interactions": 54.0,
+        "median_interactions": 54.0,
+        "mean_span_days": 10.86837962962963
+      }
+    ]
+  },
+  "full_observed_history_reference": {
+    "users": 2000,
+    "groups": 3138,
+    "dated_interactions": 192226,
+    "missing_timestamp_interactions": 0,
+    "mean_interactions_per_group": 61.25748884639898,
+    "mean_group_span_days": 8.084758050952482,
+    "group_length_interactions": {
+      "count": 3138,
+      "mean": 61.25748884639898,
+      "median": 28.0,
+      "p25": 9.0,
+      "p75": 78.0,
+      "min": 1.0,
+      "max": 1408.0
+    },
+    "group_span_days": {
+      "count": 3138,
+      "mean": 8.084758050952482,
+      "median": 0.02532986111111111,
+      "p25": 0.007028356481481482,
+      "p75": 2.6427922453703703,
+      "min": 0.0,
+      "max": 772.0802777777777
+    },
+    "groups_per_user": {
+      "count": 2000,
+      "mean": 1.569,
+      "median": 1.0,
+      "p25": 1.0,
+      "p75": 1.0,
+      "min": 1.0,
+      "max": 14.0
+    },
+    "user_weighted_mean_interactions_per_group": 71.87685060772561,
+    "by_group_from_most_recent": [
+      {
+        "group": 1,
+        "contributing_users": 2000,
+        "mean_interactions": 65.5,
+        "median_interactions": 36.0,
+        "mean_span_days": 3.322027199074074
+      },
+      {
+        "group": 2,
+        "contributing_users": 417,
+        "mean_interactions": 51.41726618705036,
+        "median_interactions": 15.0,
+        "mean_span_days": 13.430830446753708
+      },
+      {
+        "group": 3,
+        "contributing_users": 218,
+        "mean_interactions": 48.73394495412844,
+        "median_interactions": 8.0,
+        "mean_span_days": 13.397779051987769
+      },
+      {
+        "group": 4,
+        "contributing_users": 150,
+        "mean_interactions": 37.873333333333335,
+        "median_interactions": 6.5,
+        "mean_span_days": 14.97950061728395
+      },
+      {
+        "group": 5,
+        "contributing_users": 117,
+        "mean_interactions": 51.282051282051285,
+        "median_interactions": 6.0,
+        "mean_span_days": 17.07722360715416
+      },
+      {
+        "group": 6,
+        "contributing_users": 89,
+        "mean_interactions": 65.34831460674157,
+        "median_interactions": 16.0,
+        "mean_span_days": 25.090990948813985
+      },
+      {
+        "group": 7,
+        "contributing_users": 57,
+        "mean_interactions": 52.03508771929825,
+        "median_interactions": 13.0,
+        "mean_span_days": 16.454151031513973
+      },
+      {
+        "group": 8,
+        "contributing_users": 41,
+        "mean_interactions": 80.2439024390244,
+        "median_interactions": 30.0,
+        "mean_span_days": 28.17287375790425
+      },
+      {
+        "group": 9,
+        "contributing_users": 25,
+        "mean_interactions": 85.36,
+        "median_interactions": 39.0,
+        "mean_span_days": 37.02890972222222
+      },
+      {
+        "group": 10,
+        "contributing_users": 13,
+        "mean_interactions": 164.92307692307693,
+        "median_interactions": 124.0,
+        "mean_span_days": 37.34365918803418
+      },
+      {
+        "group": 11,
+        "contributing_users": 5,
+        "mean_interactions": 89.8,
+        "median_interactions": 6.0,
+        "mean_span_days": 15.689659722222222
+      },
+      {
+        "group": 12,
+        "contributing_users": 3,
+        "mean_interactions": 134.33333333333334,
+        "median_interactions": 9.0,
+        "mean_span_days": 35.41822916666667
+      },
+      {
+        "group": 13,
+        "contributing_users": 2,
+        "mean_interactions": 138.0,
+        "median_interactions": 138.0,
+        "mean_span_days": 18.808425925925924
+      },
+      {
+        "group": 14,
+        "contributing_users": 1,
+        "mean_interactions": 2.0,
+        "median_interactions": 2.0,
+        "mean_span_days": 0.0012037037037037038
+      }
+    ]
+  },
+  "provenance": {
+    "label": "MovieLens1M",
+    "original_datasets_unchanged": true,
+    "source": "/workspace/P78123011/cache/raw/dated_analysis/movielens-1m",
+    "rating_minimum": 4,
+    "source_repo": "nasserCha/movielens_rating_1m",
+    "filtered_interactions": 574376,
+    "filtered_users": 6034,
+    "min_timestamp_ms": 956703932000,
+    "max_timestamp_ms": 1046454590000
+  },
+  "cache_sha256": "dd5d48f64b2e494c6b68ef9f38bfff6d6e35a89068373e2d9e07f1c2189eb9c3",
+  "timestamp_verification": {
+    "source": "/workspace/P78123011/cache/grouped_preliminary/MovieLens1M/filtered_timestamps.parquet",
+    "verified_users": 3369,
+    "verified_items": 3123,
+    "true_timestamps": true
+  },
+  "reusable_intermediates": {
+    "training_influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/MovieLens1M/intermediate/training/movielens-1m/history_item_influence.csv",
+    "signals": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/MovieLens1M/intermediate/signals/movielens-1m",
+    "timestamps": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/MovieLens1M/intermediate/timestamps.json.gz",
+    "model_weights_saved": false
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "dataset": "steam",
+  "timestamp": "2026-10-23T20:36:01.885279+00:00",
+  "evaluation": "FINAL FULL TEST",
+  "stage": "all_dl",
+  "epoch": 0,
+  "step": 14721,
+  "evaluated_users": 334728,
+  "total_users": 334728,
+  "metrics": {
+    "recall@5": 0.1536441528644153,
+    "recall@10": 0.16922097942209793,
+    "ndcg@5": 0.14320968228173567,
+    "ndcg@10": 0.14820883684690994,
+    "hit@5": 0.1536441528644153,
+    "hit@10": 0.16922097942209793,
+    "preference_change_probability": 0.192850960944642,
+    "preference_current_entropy": 2.0342785729119957,
+    "preference_next_entropy": 2.440187635004872,
+    "preference_ranking_weight": 9.565860857417397e-06,
+    "short_agent_weight": 0.9999904385608172,
+    "preference_agent_weight": 9.565860857417397e-06,
+    "short_preference_state_cosine": 0.12628759249825086,
+    "users_per_second": 2624.929828664745,
+    "scores_per_second": 34247459.47458893,
+    "evaluated_users": 334728,
+    "total_users": 334728,
+    "sequence_length": {
+      "basis": "filtered_full_sequence",
+      "threshold": 10,
+      "short_rule": "length <= threshold",
+      "long_rule": "length > threshold",
+      "short": {
+        "total_users": 231066,
+        "evaluated_users": 231066,
+        "history_length_min": 3,
+        "history_length_max": 10,
+        "history_length_mean": 6.620844260947089,
+        "recall@5": 0.17249616992547584,
+        "recall@10": 0.18782079578994745,
+        "ndcg@5": 0.1621717020654161,
+        "ndcg@10": 0.1670911266152543,
+        "hit@5": 0.17249616992547584,
+        "hit@10": 0.18782079578994745
+      },
+      "long": {
+        "total_users": 103662,
+        "evaluated_users": 103662,
+        "history_length_min": 11,
+        "history_length_max": 2045,
+        "history_length_mean": 25.884711851980477,
+        "recall@5": 0.11162238814609018,
+        "recall@10": 0.1277613783257124,
+        "ndcg@5": 0.10094271833101827,
+        "ndcg@10": 0.1061195926156997,
+        "hit@5": 0.11162238814609018,
+        "hit@10": 0.1277613783257124
+      }
+    }
+  }
+}

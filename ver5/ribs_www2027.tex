@@ -1,10 +1,11 @@
-\documentclass[sigconf,anonymous,review]{acmart}
+﻿\documentclass[sigconf,anonymous,review]{acmart}
 \settopmatter{printacmref=false,printccs=false}
 \bibliographystyle{ACM-Reference-Format}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{stfloats}
 \usepackage{enumitem}
+\renewcommand{\dblfloatpagefraction}{0.75}
 \newcommand{\norm}[1]{\operatorname{norm}(#1)}
 \newcommand{\softmax}{\operatorname{softmax}}
 \newcommand{\sg}{\operatorname{sg}}
@@ -28,6 +29,13 @@ The agents share a projected item space constructed from cached Mamba text featu
 
 We study the contribution of recent-item behavior, long-history preference transitions, and their coordination using full-catalog ranking and module ablations. Our methodological contributions are a multi-LoRA realization of these three agent roles, separate selective-state encoders for recent items and long-term preferences, and joint supervised training of all enabled components.
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{Figures/preliminary.pdf}
+\caption{Item-level preliminary diagnostics on the test split across four Amazon Reviews 2023 \cite{Amazon_2023} categories. (a) Semantic alignment: text cosine similarity to the next item above popularity-matched controls, normalized by the category-wide cosine standard deviation. (b) Item influence: decrease in the next-item margin over fixed sampled negatives after deleting a historical item from a long-history ranker with Mamba-130M text features and LightGCN representations. (c) Signal coverage: cumulative share of positive excess text similarity contributed by the latest $k$ items. (d) Preference-proxy match: excess next-item cluster agreement over a user-specific chance reference using 32 text-derived MiniBatchKMeans groups. Lag 1 is the last observed item. Shading shows the across-user interquartile range in (c) and 95\% user-bootstrap intervals elsewhere.}
+\label{fig:preliminary}
+\end{figure*}
+
 \section{Related Work}
 \paragraph{Sequential representation learning.}
 Sequential recommenders first model user behavior as ordered item interactions. SASRec~\citep{SASRec} uses self-attention to select relevant past items, BERT4Rec~\citep{BERT4Rec} learns bidirectional sequence representations with masked-item prediction, and TiSASRec~\citep{TiSASRec} incorporates time intervals. These models establish item-level sequence context as a source of next-item evidence. Text-aware work adds semantic information to this setting: Recformer~\citep{Recformer} represents item attributes as natural language, EasyRec~\citep{EasyRec} aligns textual and collaborative representations, and BLaIR~\citep{BLaIR} learns recommendation-oriented item representations from text. This line of work motivates our shared item space, in which cached text features complement collaborative embeddings. 
@@ -48,20 +56,15 @@ LoRA~\citep{LoRA} parameterizes weight updates with two low-rank matrices while 
 A summary of the notation used in this section is provided in Appendix~\ref{app:notations}.
 We refer to agents $S$ and $P$ as the specialists when distinguishing them from coordinator $C$; $L$ denotes the separate item-level long-term branch evaluated as an alternative to $P$.
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{Figures/preliminary.pdf}
-\caption{Test-split diagnostics across four Amazon Reviews 2023 \cite{Amazon_2023} categories. (a) Semantic alignment: text cosine similarity to the next item above popularity-matched controls, normalized by the category-wide cosine standard deviation. (b) Item influence: decrease in the next-item margin over fixed sampled negatives after deleting a historical item from a long-history ranker with Mamba-130M text features and LightGCN representations. (c) Signal coverage: cumulative share of positive excess text similarity contributed by the latest $k$ items. (d) Preference-proxy match: excess next-item cluster agreement over a user-specific chance reference using 32 text-derived MiniBatchKMeans groups. Lag 1 is the last observed item. Shading shows the across-user interquartile range in (c) and 95\% user-bootstrap intervals elsewhere.}
-\label{fig:preliminary}
-\end{figure*}
+
 
 \subsection{Problem Definition}
-Let $\mathcal I$ be the item catalog and $\mathcal H_{u,t}=(i_1,\ldots,i_t)$ the interactions observed before predicting the next item for user $u$. The available model history is $\overline{\mathcal H}_{u,t}$, the last $T_P=\min(t,H_{\max})$ interactions, where $H_{\max}$ is the configured maximum. The short-term recommender agent receives only the last $T_S=\min(T_P,W)$ interactions of $\overline{\mathcal H}_{u,t}$, whereas the long-term preference agent receives all $T_P$ interactions. A coordinator combines their candidate scores into $z(u,i\mid\overline{\mathcal H}_{u,t})$ for $i\in\mathcal I$. ``Full history'' below means the entire available prefix up to $H_{\max}$; no agent ever sees held-out future interactions.
+Let $\mathcal I$ be the item catalog and $\mathcal H_{u,t}=(i_1,\ldots,i_t)$ the interactions observed before predicting the next item for user $u$. The available model history is $\overline{\mathcal H}_{u,t}$, the last $T_P=\min(t,H_{\max})$ interactions, where $H_{\max}$ is the configured maximum. The short-term recommender agent receives only the last $T_S=\min(T_P,W)$ interactions of $\overline{\mathcal H}_{u,t}$, whereas the long-term preference agent receives all $T_P$ interactions. A coordinator combines their candidate scores into $z(u,i\mid\overline{\mathcal H}_{u,t})$ for $i\in\mathcal I$. ``Full history'' below means the entire available prefix up to $H_{\max}$.
 
 \subsection{Preliminary Analysis}
 \label{sec:preliminary}
 
-We use the held-out test split for exploratory, descriptive diagnostics of how next-item evidence changes with interaction recency, and ask whether weak item-level signals at longer lags also imply a loss of preference-level information. These analyses are hypothesis-generating: they use the same held-out split as the main evaluation and do not independently validate the proposed model. Figure~\ref{fig:preliminary} supports this comparison using test histories capped at 100 interactions. Text-based associations are evaluated independently of the trained ranker and do not measure model attribution. Appendix~\ref{app:preliminary_diagnostics} provides the estimators, sampling procedure, and uncertainty calculations.
+We use the held-out test split for exploratory, descriptive diagnostics of how next-item evidence changes with interaction recency, and ask whether weak item-level signals at longer lags also imply a loss of preference-level information. These analyses are hypothesis-generating: they use the same held-out split as the main evaluation and do not independently validate the proposed model. Figure~\ref{fig:preliminary} presents the item-level preliminary diagnostics using test histories capped at 100 interactions. Text-based associations are evaluated independently of the trained ranker and do not measure model attribution. Appendix~\ref{app:preliminary_diagnostics} provides the estimators, sampling procedure, and uncertainty calculations. The corresponding item-level diagnostics for Yelp19, Yelp23, Steam, and MovieLens 1M are provided in Appendix~\ref{app:additional_item_diagnostics} (Figure~\ref{fig:additional_item_preliminary}).
 
 The next item has its strongest text-based semantic association with the most recent interactions, and this association falls quickly as lag grows (Figure~\ref{fig:preliminary}a). The deletion-based change in the sampled-slate margin is similarly concentrated in the four most recent positions, while older positions contribute little or negatively (Figure~\ref{fig:preliminary}b). The cumulative positive text-similarity excess reaches approximately 80\% within the latest four items (Figure~\ref{fig:preliminary}c). These descriptive observations motivate separating direct item-level evidence from coarser preference evidence.
 
@@ -90,7 +93,7 @@ Figure~\ref{fig:ribs} summarizes the RIBS architecture: the short-term recommend
 \end{figure*}
 
 \subsubsection{Task and Shared Item Space}
-All agents share item vectors $e_i\in\mathbb R^d$, combining projected cached features from a frozen Mamba text encoder with optional LightGCN embeddings~\citep{LightGCN}. Each specialist and the coordinator has a separate LoRA bank, with residual maps
+All agents share item vectors $e_i\in\mathbb R^d$, combining projected cached features from a frozen Mamba text encoder with optional LightGCN embeddings~\citep{LightGCN}. Each specialist and the coordinator has a separate LoRA, with residual maps
 \begin{equation}
  \mathcal R_j(x)=\frac{\alpha_{\mathrm{LoRA}}}{r}B_j A_j\operatorname{Dropout}(x).
 \end{equation}
@@ -143,23 +146,22 @@ Here $H$ is entropy, $[\cdot;\cdot]$ is concatenation, and $b_P$ is a learned co
 Here $s_C$ and $\widetilde s_C$ are the coordinator state and scoring representation, with their respective residual maps; $\kappa_C$ follows the specialist scaling rule. Training-only popularity and transition priors calibrate $z$ at inference. Initialization, disabled-component rules, and calibration are specified in Appendix~\ref{app:implementation}.
 
 \subsubsection{Training Objective}
-\paragraph{Multi-step ranking.}
+% \paragraph{Multi-step ranking.}
 For each training prefix, let $F'\leq F$ be the available future-target count and $\mathcal S=(c_1,\ldots,c_K)$ the candidate slate. Target $j$ occupies position $p_j=j$; $z_\ell$ scores position $\ell$. With decay factor $\eta>0$,
 \begin{align}
- a_j&=\frac{\eta^{j-1}}{\sum_{k=1}^{F'}\eta^{k-1}},\notag\\
+ a_j=\frac{\eta^{j-1}}{\sum_{k=1}^{F'}\eta^{k-1}}, \quad
  \mathcal L_{\mathrm{rank}}(z;\mathcal S)
- &=-\sum_{j=1}^{F'}a_j\log
+ =-\sum_{j=1}^{F'}a_j\log
  \frac{\exp(z_{p_j})}{\sum_{\ell=1}^{K}\exp(z_\ell)}.
 \end{align}
 The loss treats repeated items as separate slate positions. Target padding, negative sampling, and the optional full-catalog objective are detailed in Appendix~\ref{app:implementation}.
-
-\paragraph{Preference supervision.}
+% \paragraph{Preference supervision.}
 With $q(i)$ denoting the prototype assignment of item $i$ and $\sg$ denoting stop-gradient, we define
 \begin{align}
- q^+&=\sg(q(i_{t+1})),\notag\\
- \mathcal L_{\mathrm{pred}}&=D_{\mathrm{KL}}(q^+\Vert\widehat q_{t+1}),\notag\\
- y_{\mathrm{shift}}&=\frac{\operatorname{JS}(\sg(q_{T_P}),q^+)}{\log 2},\notag\\
- \mathcal L_{\mathrm{shift}}&=\operatorname{BCE}(y_{\mathrm{shift}},\rho_t).
+ q^+=\sg(q(i_{t+1})), \qquad &
+ \mathcal L_{\mathrm{pred}}=D_{\mathrm{KL}}(q^+\Vert\widehat q_{t+1}),\notag\\
+ y_{\mathrm{shift}}=\frac{\operatorname{JS}(\sg(q_{T_P}),q^+)}{\log 2},\qquad &
+ \mathcal L_{\mathrm{shift}}=\operatorname{BCE}(y_{\mathrm{shift}},\rho_t).
 \end{align}
 Here $D_{\mathrm{KL}}$, $\operatorname{JS}$, and $\operatorname{BCE}$ denote Kullback--Leibler divergence, Jensen--Shannon divergence (natural logs), and binary cross-entropy. Assignment balance, prototype separation, and assignment sharpness complete the preference loss:
 \begin{align}
@@ -171,12 +173,11 @@ Here $D_{\mathrm{KL}}$, $\operatorname{JS}$, and $\operatorname{BCE}$ denote Kul
 \end{align}
 The $\lambda$ coefficients weight the corresponding terms; their configured values are listed in Appendix~\ref{app:hyperparameters}, and their gradient handling is described in Appendix~\ref{app:implementation}.
 
-\paragraph{Single-stage joint optimization.}
+% \paragraph{Single-stage joint optimization.}
 With both specialists and the coordinator enabled,
 \begin{align}
- \mathcal L_{\mathrm{DL}}={}&\frac{\mathcal L_S+\mathcal L_{\mathrm{pref}}+\mathcal L_{\mathrm{fused}}}{3}
- +\mathcal L_P\notag\\
- &+\lambda_{\mathrm{con}}\mathcal L_{\mathrm{con}}
+ \mathcal L_{\mathrm{DL}}=\frac{\mathcal L_S+\mathcal L_{\mathrm{pref}}+\mathcal L_{\mathrm{fused}}}{3}
+ +\mathcal L_P +\lambda_{\mathrm{con}}\mathcal L_{\mathrm{con}}
  +\lambda_{\mathrm{div}}\mathcal L_{\mathrm{div}}.
  \label{eq:single_stage_loss}
 \end{align}
@@ -225,14 +226,13 @@ We evaluate RIBS on four Amazon Reviews 2023 \cite{Amazon_2023} categories using
     }
     \caption{Performance on Amazon Reviews 2023. Published baselines from~\citet{RESID} use iterative 5-core filtering, exclude items without structured metadata, and evaluate Beauty and Personal Care rather than All Beauty; our experiments instead apply a single-pass minimum count of five. These preprocessing differences prevent a controlled comparison. The best-performing results are highlighted in \textbf{bold}.}
     \label{tab:overall_main}
+    \vspace{-0.3cm}
 \end{table*}
 
 \label{sec:experimental_setup}
 
 We use All Beauty, Sports and Outdoors, Baby Products, and Toys and Games. Each eligible user contributes one held-out test item, ranked against the full processed catalog. We report Recall and NDCG at 5 and 10. Dataset construction and evaluation details are given in Appendix~\ref{app:dataset_protocol}.
-
-The default RIBS configuration enables both specialists and the coordinator, with recent window $W=4$ and $M=32$ preference prototypes. Experimental settings are listed in Appendix~\ref{app:hyperparameters}; model implementation and inference details are given in Appendix~\ref{app:implementation}. Full-test and cohort scores are computed from the same validation-selected checkpoint (Appendix~\ref{app:run_reporting}). All RIBS experiments use a frozen pretrained Mamba-130M text encoder to produce cached item features (Appendix~\ref{app:implementation}).
-
+The default RIBS configuration enables both specialists and the coordinator, with recent window $W=4$ and $M=32$ preference prototypes. Experimental settings are listed in Appendix~\ref{app:hyperparameters}; model implementation and inference details are given in Appendix~\ref{app:implementation}. Full-test and cohort scores are computed from the same validation-selected checkpoint (Appendix~\ref{app:run_reporting}). All RIBS experiments use a frozen pretrained Mamba-130M text encoder to produce cached item features (Appendix~\ref{app:implementation}). 
 Evaluated-user statistics are reported in Appendix~\ref{app:dataset_statistics}; category-specific hyperparameters are listed in Appendix~\ref{app:hyperparameters}.
 
 \subsection{Main Experiments}
@@ -302,13 +302,23 @@ $S+P+C$ (ours) & \textbf{.1215} & \textbf{.1114} & \textbf{.1277} & \textbf{.113
     }
     \caption{Component configurations on the full test set and long- and short-history cohorts. Graph features and catalog priors remain enabled. The $S+L+C$ row uses a separate four-epoch schedule and larger history limit (Appendix~\ref{app:hyperparameters}). The best-performing results are highlighted in \textbf{bold}.}
     \label{tab:amazon2023_main}
-    \label{tab:all_components}
-    \label{tab:main_length_groups}
-    \label{tab:main_length_groups_short}
+    \vspace{-0.3cm}
 \end{table*}
 
 
 Table~\ref{tab:amazon2023_main} compares the $S+L+C$ variant, which uses item-level long-term branch $L$ in place of preference agent $P$, with the default $S+P+C$ configuration. The preference-based configuration achieves higher full-test Recall and NDCG across all four categories. Among long-history users, $S+L+C$ performs slightly better in All Beauty, while $S+P+C$ leads in the other three categories. These results suggest that preference modeling can be more useful than direct item-level modeling of long histories.
+
+\subsection{Inference Efficiency}
+\label{sec:efficiency}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.48\textwidth]{Figures/memory_latency_RIBS.pdf}
+    \caption{Reported mean recommendation quality against (a) forward-pass latency per user (ms) and (b) peak GPU memory (GiB). Efficiency measurements use the All Beauty test setup.}
+    \label{fig:memory_latency}
+    \vspace{-0.3cm}
+\end{figure}
+Figure~\ref{fig:memory_latency} compares recommendation quality, forward-pass latency, and peak GPU memory on the All Beauty test setup. RIBS maintains a low memory footprint, consuming less peak GPU memory than the compared SSM baselines while introducing only a modest increase in per-user latency. These results demonstrate that RIBS achieves a favorable balance between recommendation quality and computational efficiency, with substantial memory savings at a limited latency cost. Moreover, its lower memory requirements provide greater flexibility for larger batch sizes and higher user concurrency on a single GPU, highlighting the potential of RIBS for efficient and scalable deployment in real-world recommendation scenarios.
+
 
 \subsection{RQ1: How does recommendation quality vary across history-length cohorts?}
 
@@ -368,6 +378,7 @@ This window sensitivity is consistent with the preliminary analysis in Section~\
     }
     \caption{Recent-window sweep on the full test set, with both specialists and the coordinator enabled. The best-performing results are highlighted in \textbf{bold}.}
     \label{tab:short_window}
+    \vspace{-0.3cm}
 \end{table*}
 
 
@@ -376,7 +387,7 @@ This window sensitivity is consistent with the preliminary analysis in Section~\
 
 \label{sec:preference_experiments}
 
-Table~\ref{tab:prefsweep} examines how preference-prototype granularity affects next-item ranking when both specialists and the coordinator are enabled. Performance is broadly stable across the sweep, and the best setting varies by category. Increasing prototype granularity therefore provides no consistent ranking benefit, and the results do not identify a universally optimal setting.
+Table~\ref{tab:prefsweep} examines how preference-prototype granularity affects next-item ranking when both specialists and the coordinator are enabled. Performance is broadly stable across the sweep, and the best setting varies by category. Increasing prototype granularity therefore provides no consistent ranking benefit, and the results do not identify a universally optimal setting. Because the $W=2$ recent-window setting performs well across several subsets, we also compare prototype counts under this setting; the full-test results are reported in Appendix~\ref{app:sw2_prototype_sweep}.
 
 \begin{table*}[!tbp]
     \centering
@@ -408,132 +419,7 @@ $M=128$ & .1187 & .1096 & .1256 & .1117 & .0390 & .0322 & .0476 & .0350 & \textb
     }
     \caption{Preference-prototype sweep with both specialists and the coordinator enabled. The best-performing results are highlighted in \textbf{bold}.}
     \label{tab:prefsweep}
-\end{table*}
-
-\begin{table*}[!tbp]
-    \centering
-    \setlength{\tabcolsep}{3.2pt}
-    \renewcommand{\arraystretch}{1.12}
-    \resizebox{\textwidth}{!}{%
-    \begin{tabular}{l*{4}{rrrr}}
-        \toprule
-        & \multicolumn{4}{c}{\textbf{All Beauty}}
-        & \multicolumn{4}{c}{\textbf{Sports and Outdoors}}
-        & \multicolumn{4}{c}{\textbf{Baby Products}}
-        & \multicolumn{4}{c}{\textbf{Toys and Games}} \\
-        \cmidrule(lr){2-5}\cmidrule(lr){6-9}\cmidrule(lr){10-13}\cmidrule(lr){14-17}
-        \textbf{Prototype count}
-        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
-        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
-        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
-        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10} \\
-        \midrule
-\multicolumn{17}{l}{\textbf{Full test set (all evaluated users)}} \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Full_Beauty/rl_20261006_215037_r1_2897121/Full_Beauty_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Sports_and_Outdoors/rl_20261006_225932_r1_2897121/Sports_and_Outdoors_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Baby_Products/rl_20261006_215100_r1_2897121/Baby_Products_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Toys_and_Games/rl_20261007_011455_r1_2897121/Toys_and_Games_scores.json; overall
-$M=2$ & \textbf{.1181} & .1091 & .1235 & .1109 & .0457 & .0401 & .0529 & .0424 & .0506 & .0430 & .0612 & .0464 & .0567 & .0479 & .0671 & .0512 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Full_Beauty/rl_20261007_042725_r1_2897121/Full_Beauty_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Sports_and_Outdoors/rl_20261007_053602_r1_2897121/Sports_and_Outdoors_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Baby_Products/rl_20261007_042748_r1_2897121/Baby_Products_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Toys_and_Games/rl_20261007_075216_r1_2897121/Toys_and_Games_scores.json; overall
-$M=4$ & .1167 & .1089 & .1222 & .1106 & .0458 & .0401 & .0531 & .0425 & .0506 & .0431 & .0615 & .0466 & .0566 & .0478 & .0669 & .0512 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Full_Beauty/rl_20261007_110534_r1_2897121/Full_Beauty_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Sports_and_Outdoors/rl_20261007_121428_r1_2897121/Sports_and_Outdoors_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Baby_Products/rl_20261007_110557_r1_2897121/Baby_Products_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Toys_and_Games/rl_20261007_142940_r1_2897121/Toys_and_Games_scores.json; overall
-$M=8$ & .1174 & .1091 & .1235 & .1110 & .0457 & .0402 & .0530 & .0425 & .0506 & .0430 & .0614 & .0465 & .0568 & .0479 & .0670 & .0512 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Full_Beauty/rl_20261006_215019_r1_2896957/Full_Beauty_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Sports_and_Outdoors/rl_20261006_225903_r1_2896957/Sports_and_Outdoors_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Baby_Products/rl_20261006_215042_r1_2896957/Baby_Products_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Toys_and_Games/rl_20261007_011436_r1_2896957/Toys_and_Games_scores.json; overall
-$M=16$ & .1160 & .1088 & .1215 & .1105 & .0459 & .0402 & .0534 & .0426 & .0507 & .0431 & .0618 & .0467 & .0566 & .0478 & .0670 & .0512 \\
-% P32 source: W=2 row in tab:short_window (overall).
-$M=32$ & .1167 & .1085 & .1187 & .1092 & \textbf{.0462} & \textbf{.0404} & \textbf{.0538} & \textbf{.0429} & .0510 & .0432 & .0618 & .0467 & .0569 & .0478 & .0672 & .0512 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Full_Beauty/rl_20261007_042634_r1_2896957/Full_Beauty_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Sports_and_Outdoors/rl_20261007_053516_r1_2896957/Sports_and_Outdoors_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Baby_Products/rl_20261007_042656_r1_2896957/Baby_Products_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Toys_and_Games/rl_20261007_075051_r1_2896957/Toys_and_Games_scores.json; overall
-$M=64$ & \textbf{.1181} & .1097 & \textbf{.1249} & \textbf{.1118} & \textbf{.0462} & .0402 & .0537 & .0427 & .0510 & \textbf{.0433} & .0621 & \textbf{.0469} & \textbf{.0571} & \textbf{.0480} & \textbf{.0676} & \textbf{.0514} \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Full_Beauty/rl_20261007_110224_r1_2896957/Full_Beauty_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Sports_and_Outdoors/rl_20261007_121041_r1_2896957/Sports_and_Outdoors_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Baby_Products/rl_20261007_110246_r1_2896957/Baby_Products_scores.json; overall
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Toys_and_Games/rl_20261007_142600_r1_2896957/Toys_and_Games_scores.json; overall
-$M=128$ & \textbf{.1181} & \textbf{.1099} & .1235 & .1117 & .0452 & .0388 & .0531 & .0414 & \textbf{.0512} & \textbf{.0433} & \textbf{.0623} & .0468 & .0566 & .0474 & .0672 & .0508 \\
-\midrule
-\multicolumn{17}{l}{\textbf{Long-history users ($>10$ events)}} \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Full_Beauty/rl_20261006_215037_r1_2897121/Full_Beauty_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Sports_and_Outdoors/rl_20261006_225932_r1_2897121/Sports_and_Outdoors_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Baby_Products/rl_20261006_215100_r1_2897121/Baby_Products_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Toys_and_Games/rl_20261007_011455_r1_2897121/Toys_and_Games_scores.json; long
-$M=2$ & \textbf{.0548} & .0404 & \textbf{.0594} & .0417 & .0471 & .0419 & .0534 & .0439 & .0531 & .0459 & .0637 & .0493 & .0561 & \textbf{.0482} & \textbf{.0664} & \textbf{.0515} \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Full_Beauty/rl_20261007_042725_r1_2897121/Full_Beauty_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Sports_and_Outdoors/rl_20261007_053602_r1_2897121/Sports_and_Outdoors_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Baby_Products/rl_20261007_042748_r1_2897121/Baby_Products_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Toys_and_Games/rl_20261007_075216_r1_2897121/Toys_and_Games_scores.json; long
-$M=4$ & \textbf{.0548} & .0404 & \textbf{.0594} & .0417 & .0471 & .0418 & .0536 & .0440 & .0525 & .0455 & .0635 & .0491 & .0559 & .0480 & .0661 & .0513 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Full_Beauty/rl_20261007_110534_r1_2897121/Full_Beauty_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Sports_and_Outdoors/rl_20261007_121428_r1_2897121/Sports_and_Outdoors_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Baby_Products/rl_20261007_110557_r1_2897121/Baby_Products_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Toys_and_Games/rl_20261007_142940_r1_2897121/Toys_and_Games_scores.json; long
-$M=8$ & \textbf{.0548} & .0398 & \textbf{.0594} & .0411 & .0471 & \textbf{.0420} & .0535 & \textbf{.0441} & .0523 & .0454 & .0636 & .0490 & \textbf{.0565} & \textbf{.0482} & .0660 & .0513 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Full_Beauty/rl_20261006_215019_r1_2896957/Full_Beauty_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Sports_and_Outdoors/rl_20261006_225903_r1_2896957/Sports_and_Outdoors_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Baby_Products/rl_20261006_215042_r1_2896957/Baby_Products_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Toys_and_Games/rl_20261007_011436_r1_2896957/Toys_and_Games_scores.json; long
-$M=16$ & \textbf{.0548} & \textbf{.0423} & \textbf{.0594} & \textbf{.0436} & .0470 & .0419 & .0540 & \textbf{.0441} & .0527 & .0456 & .0641 & .0493 & .0559 & .0479 & .0659 & .0511 \\
-% P32 source: W=2 row in tab:short_window_cohorts (long).
-$M=32$ & \textbf{.0548} & .0387 & \textbf{.0594} & .0401 & \textbf{.0472} & .0418 & .0538 & .0439 & .0530 & .0457 & .0639 & .0493 & .0562 & .0481 & .0662 & .0513 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Full_Beauty/rl_20261007_042634_r1_2896957/Full_Beauty_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Sports_and_Outdoors/rl_20261007_053516_r1_2896957/Sports_and_Outdoors_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Baby_Products/rl_20261007_042656_r1_2896957/Baby_Products_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Toys_and_Games/rl_20261007_075051_r1_2896957/Toys_and_Games_scores.json; long
-$M=64$ & \textbf{.0548} & .0387 & \textbf{.0594} & .0400 & .0469 & .0412 & \textbf{.0543} & .0436 & .0539 & \textbf{.0462} & .0648 & .0497 & .0563 & \textbf{.0482} & \textbf{.0664} & .0514 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Full_Beauty/rl_20261007_110224_r1_2896957/Full_Beauty_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Sports_and_Outdoors/rl_20261007_121041_r1_2896957/Sports_and_Outdoors_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Baby_Products/rl_20261007_110246_r1_2896957/Baby_Products_scores.json; long
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Toys_and_Games/rl_20261007_142600_r1_2896957/Toys_and_Games_scores.json; long
-$M=128$ & \textbf{.0548} & .0404 & \textbf{.0594} & .0417 & .0431 & .0368 & .0513 & .0394 & \textbf{.0540} & \textbf{.0462} & \textbf{.0656} & \textbf{.0499} & .0551 & .0467 & .0658 & .0502 \\
-\midrule
-\multicolumn{17}{l}{\textbf{Short-history users ($\leq10$ events)}} \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Full_Beauty/rl_20261006_215037_r1_2897121/Full_Beauty_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Sports_and_Outdoors/rl_20261006_225932_r1_2897121/Sports_and_Outdoors_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Baby_Products/rl_20261006_215100_r1_2897121/Baby_Products_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Toys_and_Games/rl_20261007_011455_r1_2897121/Toys_and_Games_scores.json; short
-$M=2$ & \textbf{.1292} & .1213 & .1349 & .1231 & .0454 & .0397 & .0529 & .0421 & .0502 & .0425 & .0608 & .0459 & .0568 & .0478 & .0672 & .0512 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Full_Beauty/rl_20261007_042725_r1_2897121/Full_Beauty_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Sports_and_Outdoors/rl_20261007_053602_r1_2897121/Sports_and_Outdoors_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Baby_Products/rl_20261007_042748_r1_2897121/Baby_Products_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Toys_and_Games/rl_20261007_075216_r1_2897121/Toys_and_Games_scores.json; short
-$M=4$ & .1276 & .1210 & .1333 & .1228 & .0455 & .0398 & .0530 & .0422 & .0503 & .0426 & .0611 & .0461 & .0568 & .0478 & .0671 & .0511 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Full_Beauty/rl_20261007_110534_r1_2897121/Full_Beauty_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Sports_and_Outdoors/rl_20261007_121428_r1_2897121/Sports_and_Outdoors_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Baby_Products/rl_20261007_110557_r1_2897121/Baby_Products_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Toys_and_Games/rl_20261007_142940_r1_2897121/Toys_and_Games_scores.json; short
-$M=8$ & .1284 & .1213 & .1349 & .1234 & .0455 & .0398 & .0529 & .0422 & .0502 & .0425 & .0610 & .0460 & .0569 & .0478 & .0672 & .0511 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Full_Beauty/rl_20261006_215019_r1_2896957/Full_Beauty_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Sports_and_Outdoors/rl_20261006_225903_r1_2896957/Sports_and_Outdoors_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Baby_Products/rl_20261006_215042_r1_2896957/Baby_Products_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Toys_and_Games/rl_20261007_011436_r1_2896957/Toys_and_Games_scores.json; short
-$M=16$ & .1268 & .1206 & .1325 & .1224 & .0457 & .0399 & .0533 & .0423 & .0504 & .0426 & .0613 & .0462 & .0567 & .0478 & .0673 & .0512 \\
-% P32 source: W=2 row in tab:short_window_cohorts (short).
-$M=32$ & .1276 & .1209 & .1292 & .1214 & \textbf{.0461} & \textbf{.0402} & \textbf{.0538} & \textbf{.0427} & .0506 & .0427 & .0614 & .0462 & .0570 & .0478 & .0674 & .0511 \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Full_Beauty/rl_20261007_042634_r1_2896957/Full_Beauty_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Sports_and_Outdoors/rl_20261007_053516_r1_2896957/Sports_and_Outdoors_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Baby_Products/rl_20261007_042656_r1_2896957/Baby_Products_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Toys_and_Games/rl_20261007_075051_r1_2896957/Toys_and_Games_scores.json; short
-$M=64$ & \textbf{.1292} & .1222 & \textbf{.1365} & \textbf{.1245} & \textbf{.0461} & .0401 & .0536 & .0425 & .0504 & \textbf{.0428} & \textbf{.0616} & \textbf{.0464} & \textbf{.0572} & \textbf{.0480} & \textbf{.0678} & \textbf{.0514} \\
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Full_Beauty/rl_20261007_110224_r1_2896957/Full_Beauty_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Sports_and_Outdoors/rl_20261007_121041_r1_2896957/Sports_and_Outdoors_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Baby_Products/rl_20261007_110246_r1_2896957/Baby_Products_scores.json; short
-% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Toys_and_Games/rl_20261007_142600_r1_2896957/Toys_and_Games_scores.json; short
-$M=128$ & \textbf{.1292} & \textbf{.1223} & .1349 & .1240 & .0456 & .0392 & .0534 & .0417 & \textbf{.0507} & .0427 & \textbf{.0616} & .0463 & .0570 & .0475 & .0676 & .0509 \\
-        \bottomrule
-    \end{tabular}%
-    }
-    \caption{Preference-prototype sweep with $W=2$ and $S=P=G=C=1$: overall, long-history, and short-history full-catalog test results. Long and short groups use filtered full-sequence lengths $>10$ and $\leq10$. The $M=32$ results reproduce the $W=2$ rows in Tables~\ref{tab:short_window} and \ref{tab:short_window_cohorts}. Within each block, the best displayed value for each dataset and metric is highlighted in \textbf{bold}; ties share a mark.}
-    \label{tab:prefsweep_sw2}
+    \vspace{-0.3cm}
 \end{table*}
 
 % \subsection{Discussion and Unavailable Controls}
@@ -544,38 +430,82 @@ $M=128$ & \textbf{.1292} & \textbf{.1223} & .1349 & .1240 & .0456 & .0392 & .053
 
 % No auxiliary-coefficient or graph-depth ablation is available, so no conclusion about removing preference losses or changing graph depth is drawn. The item-level long-term branch is compared with the preference branch in Table~\ref{tab:amazon2023_main}; jointly enabling both long-term branches remains unmeasured.
 
-\subsection{RQ4: What is the inference efficiency of RIBS?}
-\label{sec:efficiency}
-\begin{figure}[h]
+
+
+
+\subsection{RQ4: Does RIBS especially improve recommendations for users whose preferences are changing?}
+\label{sec:rq4_preference_change}
+
+We examine whether the benefit of preference modeling varies with two forms of behavioral change: drift in category distributions across history segments and switching between adjacent interactions. Users are divided into low, medium, and high change groups within history-length bands before pooling, so comparisons account for coarse differences in history length. Figures~\ref{fig:rq4_main_spc_s} and~\ref{fig:rq4_main_spc_slc} show the $W=4$ NDCG@5 differences against the short-term model $S$ and the item-level long-term alternative $S+L+C$, respectively. Each figure includes level-2 categories, level-3 category paths, and learned preference prototypes; the last view is supplementary because its groups depend on the learned model. All Beauty is excluded because category metadata are unavailable. Study definitions and the complete $W=2$ and $W=4$ results appear in Appendix~\ref{app:preference_change}.
+
+The advantage over $S$ increases with drift in both category-based views (Figure~\ref{fig:rq4_main_spc_s}a). For level-2 categories, the high-drift NDCG@5 gains are 0.0064, 0.0107, and 0.0044 for Baby Products, Sports and Outdoors, and Toys and Games, respectively, compared with $-0.0018$, 0.0016, and $-0.0001$ in the low-drift groups. The level-3 view shows the same ordering. Figure~\ref{fig:rq4_main_spc_slc}a further shows that the preference-based model outperforms the item-level long-term alternative in all displayed groups, with larger gains under high drift: 0.0180--0.0204 for level-2 categories and 0.0196--0.0234 for level-3 paths. This pattern suggests that representing long histories through preferences is particularly useful when users' broader category interests shift.
+
+Frequent adjacent switching exhibits a different pattern (Figures~\ref{fig:rq4_main_spc_s}b and~\ref{fig:rq4_main_spc_slc}b). In the level-2 view, the gain over $S$ falls from 0.0059--0.0137 in the low-switching groups to $-0.0026$--0.0012 in the high-switching groups. Although $S+P+C$ retains positive differences over $S+L+C$, these also shrink, from 0.0213--0.0260 to 0.0012--0.0033. The level-3 view follows the same pattern. Thus, the results associate the strongest gains with distributional drift rather than frequent local alternation. These exploratory test-set comparisons use one training run per configuration and do not establish a causal effect of preference change or isolate the coordinator's contribution.
+
+\begin{figure*}[!tbp]
     \centering
-    \includegraphics[width=0.48\textwidth]{Figures/memory_latency_RIBS.pdf}
-    \caption{Reported mean recommendation quality against (a) forward-pass latency per user (ms) and (b) peak GPU memory (GiB). Efficiency measurements use the All Beauty test setup.}
-    \label{fig:memory_latency}
-\end{figure}
-Figure~\ref{fig:memory_latency} compares recommendation quality, forward-pass latency, and peak GPU memory on the All Beauty test setup. RIBS maintains a low memory footprint, consuming less peak GPU memory than the compared SSM baselines while introducing only a modest increase in per-user latency. These results demonstrate that RIBS achieves a favorable balance between recommendation quality and computational efficiency, with substantial memory savings at a limited latency cost. Moreover, its lower memory requirements provide greater flexibility for larger batch sizes and higher user concurrency on a single GPU, highlighting the potential of RIBS for efficient and scalable deployment in real-world recommendation scenarios.
+    {\small
+        \textcolor[HTML]{D55E00}{\rule{1.1ex}{1.1ex}}\;Baby Products\hspace{1.5em}
+        \textcolor[HTML]{009E73}{\rule{1.1ex}{1.1ex}}\;Sports and Outdoors\hspace{1.5em}
+        \textcolor[HTML]{CC79A7}{\rule{1.1ex}{1.1ex}}\;Toys and Games
+    }\\[-1mm]
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg5_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg5_switching.pdf}
+    \end{minipage}
+    \caption{$W=4$ NDCG@5 change for $S+P+C$ relative to $S$; positive values favor $S+P+C$.}
+    \label{fig:rq4_main_spc_s}
+\end{figure*}
 
-
-
-\subsection{RQ5: Does RIBS especially improve recommendations for users whose preferences are changing?}
-\label{sec:rq5_preference_change}
+\begin{figure*}[!tbp]
+    \centering
+    {\small
+        \textcolor[HTML]{D55E00}{\rule{1.1ex}{1.1ex}}\;Baby Products\hspace{1.5em}
+        \textcolor[HTML]{009E73}{\rule{1.1ex}{1.1ex}}\;Sports and Outdoors\hspace{1.5em}
+        \textcolor[HTML]{CC79A7}{\rule{1.1ex}{1.1ex}}\;Toys and Games
+    }\\[-1mm]
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg5_SPC_minus_SLC_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg5_SPC_minus_SLC_switching.pdf}
+    \end{minipage}
+    \caption{$W=4$ NDCG@5 change for $S+P+C$ relative to $S+L+C$; positive values favor $S+P+C$.}
+    \label{fig:rq4_main_spc_slc}
+\end{figure*}
 
 % \subsection{RQ6: Does the complementarity between short-term and long-term agents vary with user history length?}
 % \label{sec:rq6_agent_complementarity}
 
-\subsection{RQ6: Does preference-transition information help when the short-term agent is uncertain?}
-\label{sec:rq6_uncertainty}
+% \subsection{RQ5: Does preference-transition information help when the short-term agent is uncertain?}
+% \label{sec:rq6_uncertainty}
 
-\subsection{RQ7: When are textual semantics and collaborative signals most helpful?}
-\label{sec:rq7_item_signals}
+% \subsection{RQ6: When are textual semantics and collaborative signals most helpful?}
+% \label{sec:rq7_item_signals}
 
-\subsection{RQ8: How does model size affect the system?}
+\subsection{RQ5: How does model size affect the system?}
 \label{sec:rq8_model_size}
+We evaluate four Mamba model sizes under the same $W=4$ setting. Figure~\ref{fig:rq7_model_size} shows the change in full-test NDCG@10 relative to the 130M model; larger models do not yield consistent gains across datasets. Appendix~\ref{app:model_size} reports the complete Recall and NDCG results for the full test set and both history cohorts.
+
+\begin{figure}[!tbp]
+    \centering
+    \includegraphics[width=\columnwidth]{Figures/RQ7_model_size_ndcg10.pdf}
+    \caption{Relative change in full-test NDCG@10 (\%) compared with the 130M model across Mamba model sizes. Colors identify datasets, following Figure~\ref{fig:preliminary}.}
+    \label{fig:rq7_model_size}
+\end{figure}
+
 \section{Conclusion}
-We propose RIBS, a sequential recommendation framework that separates recent item-level evidence from longer-term preferences. A short-term agent encodes recent interactions, a long-term preference agent summarizes the available history, and a coordinator combines their signals. Shared item representations connect textual and collaborative information across these specialized paths. Full-catalog evaluation and component analyses suggest that these signals complement one another, though their contributions vary across datasets. The use of generative AI is disclosed in the Appendix~\ref{app:genai_usage}.
-
-\section*{Limitations}
-RIBS combines short-term item modeling with a long-term preference agent and a coordinator. This richer design can use complementary behavioral signals. However, it processes the recent-item and preference sequences separately and then fuses their states and scores, which adds computation and results in higher latency than the compared SSM-based baselines, although measured per-user latency remains below one millisecond. Peak memory is lower than for both SSM baselines in the reported comparison. Even a sub-millisecond inference time can matter at high request volumes or under strict latency budgets. The long-term preference agent may also process history that adds little useful signal when recent interactions already provide a clear indication of intent. Future work could reduce potential duplicated computation, simplify the coordination path, or invoke long-history processing selectively when it is most useful. These changes could lower inference cost while preserving the benefit of combining recent and longer-term behavioral evidence.
-
+We propose RIBS, a sequential recommendation framework that separates recent item-level evidence from longer-term preferences. A short-term agent encodes recent interactions, a long-term preference agent summarizes the available history, and a coordinator combines their signals. Shared item representations connect textual and collaborative information across these specialized paths. Full-catalog evaluation and component analyses suggest that these signals complement one another, though their contributions vary across datasets. The use of generative AI is disclosed in the Appendix~\ref{app:genai_usage}. The limitations of RIBS are discussed in Appendix~\ref{app:limitations}.
 
 \bibliography{custom}
 
@@ -696,6 +626,39 @@ The additional two-panel alignment and preference displays of Figure~\ref{fig:pr
 
 Across the four-category plots, All Beauty is blue with a solid line and circles, Baby Products is orange with a dashed line and squares, Sports and Outdoors is green with a dash-dot line and triangles, and Toys and Games is pink with a dotted line and diamonds. Category estimates are overlaid without pooling or smoothing. Binned estimates use the arithmetic bin midpoint on a linear x-axis; influence uses exact integer lag. Zero-reference lines appear for excess alignment, excess preference agreement, and margin influence. The combined coverage display is restricted visually to $k=1,\ldots,20$, while its denominator still includes up to 100 positions. The individual influence display includes all available lags; the individual coverage display uses the full $k=1,\ldots,100$ range.
 
+\subsection{Item-Level Diagnostics on Additional Datasets}
+\label{app:additional_item_diagnostics}
+Figure~\ref{fig:additional_item_preliminary} extends the item-level preliminary diagnostics to Yelp19, Yelp23, Steam, and MovieLens 1M using the same item-lag estimators and plotting conventions. Panels (a) and (d) aggregate item positions into lag bins, panel (b) measures individual-item deletion effects at each lag, and panel (c) accumulates signal over the most recent items. These analyses use the saved diagnostic histories capped at 100 interactions. Yelp19 and Yelp23 use the timestamp-matched populations described in Appendix~\ref{app:grouped_preliminary}.
+
+\begin{figure*}[!tbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/preliminary_additional.pdf}
+    \caption{Item-level preliminary diagnostics on Yelp19, Yelp23, Steam, and MovieLens 1M: (a) semantic alignment, (b) item influence, (c) cumulative signal coverage, and (d) preference-proxy match relative to the user-specific chance reference. Lag 1 denotes the last observed item. Shading indicates the across-user interquartile range in (c) and 95\% user-bootstrap intervals elsewhere; panels (a), (b), and (d) require at least 100 contributing users per point.}
+    \label{fig:additional_item_preliminary}
+\end{figure*}
+
+\section{Period-Level Preliminary Diagnostics}
+\label{app:grouped_preliminary}
+We provide period-level preliminary diagnostics by aggregating the item-level signals over activity periods. Figures~\ref{fig:preliminary} and~\ref{fig:additional_item_preliminary} present item-level diagnostics indexed by interaction lag, whereas Figures~\ref{fig:grouped_preliminary_amazon} and~\ref{fig:grouped_preliminary_additional} present period-level diagnostics indexed by activity period. For each sampled user, we use the observed history preceding the held-out test interaction, retaining at most the 100 most recent interactions. We traverse the timestamped history from newest to oldest and start a new period whenever the gap between consecutive interactions exceeds 30 days. Period 1 is the most recent period. A gap of exactly 30 days does not split a period. These periods represent consecutive activity, rather than fixed calendar bins; a period can therefore span more than 30 days.
+
+For panel (a), we average the original excess-cosine $z$ scores over items within each user's period, then average these period means equally across users with that period. For panel (b), we similarly average the individual item-deletion margin changes within each user and period before averaging across users. This measures average single-item influence within an activity period, not the effect of deleting the whole period. For panel (c), we sum positive excess-cosine scores within each period and compute the cumulative fraction captured by the most recent $k$ periods relative to the user's total positive signal in the observed history. We exclude users with zero positive signal and average the resulting percentages across users.
+
+Panels (a) and (b) show periods supported by at least 100 users, with 95\% user-bootstrap confidence intervals from 2,000 resamples. Panel (c) shows the mean cumulative coverage, with shading indicating the user-level interquartile range. Figure~\ref{fig:grouped_preliminary_amazon} presents the period-level preliminary analysis for the four Amazon categories. Figure~\ref{fig:grouped_preliminary_additional} extends the period-level analysis to Steam, MovieLens 1M, Yelp19, and Yelp23. For the temporal analysis only, Yelp histories use interactions whose original user--item--rating records can be matched unambiguously to real timestamps in the downloaded Yelp mirrors; these matched populations differ from the original Yelp inputs used for the recommendation benchmarks below.
+
+\begin{figure*}[!tbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{Figures/preliminary_gouped_amazons.pdf}
+    \caption{Period-level preliminary diagnostics on four Amazon categories: (a) semantic alignment, (b) average item influence, and (c) cumulative signal coverage. }
+    \label{fig:grouped_preliminary_amazon}
+\end{figure*}
+
+\begin{figure*}[!tbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{Figures/preliminary_gouped_additional.pdf}
+    \caption{Period-level preliminary diagnostics on Steam, MovieLens 1M, Yelp19, and Yelp23.}
+    \label{fig:grouped_preliminary_additional}
+\end{figure*}
+
 \section{Dataset and Evaluation Protocol}
 \label{app:dataset_protocol}
 \subsection{Dataset Construction}
@@ -714,7 +677,7 @@ Table~\ref{tab:config} reports evaluated-user counts by history-length cohort. E
     \centering
     \setlength{\tabcolsep}{3.2pt}
     \renewcommand{\arraystretch}{1.12}
-    \resizebox{0.8\textwidth}{!}{%
+    \resizebox{0.85\textwidth}{!}{%
     \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lrrrr@{}}
         \toprule
         \textbf{Setting} & \textbf{All Beauty} & \textbf{Sports and Outdoors} & \textbf{Baby Products} & \textbf{Toys and Games} \\
@@ -730,6 +693,54 @@ Table~\ref{tab:config} reports evaluated-user counts by history-length cohort. E
 \end{table*}
 
 For cohort analysis, short histories contain at most 10 events and long histories contain more than 10, measured on each complete filtered sequence before validation/test holdout. Membership is fixed across evaluation splits and independent of the model's context window. Each model is trained on both groups together. Short-history users account for approximately 82--85\% of evaluated users in every category.
+
+\section{Results on Additional Recommendation Datasets}
+\label{app:additional_results}
+Table~\ref{tab:additional_datasets} reports available reproduced test scores on Yelp19, Yelp23, MovieLens 1M, and Steam. Baseline checkpoints are selected by validation NDCG@10 among the available first 10 epochs, and the corresponding test scores are reported. Test scores are not used for checkpoint selection. For MovieLens 1M, SASRec uses its first available test evaluation at epoch 20, since no test evaluation is recorded within the first 10 epochs. Ours uses the latest completed ver5 runs (\texttt{group\_window\_aligned\_20261024\_013517\_P32}), with recent-window lengths 7, 6, 79, and 5 for Yelp19, Yelp23, MovieLens 1M, and Steam, respectively. Yelp ordering follows source-row order, while Steam and MovieLens use timestamps.
+
+\begin{table*}[!tbp]
+    \centering
+    \setlength{\tabcolsep}{3.2pt}
+    \renewcommand{\arraystretch}{1.12}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{l*{4}{rrrr}}
+        \toprule
+        & \multicolumn{4}{c}{\textbf{Yelp19}}
+        & \multicolumn{4}{c}{\textbf{Yelp23}}
+        & \multicolumn{4}{c}{\textbf{MovieLens 1M}}
+        & \multicolumn{4}{c}{\textbf{Steam}} \\
+        \cmidrule(lr){2-5}\cmidrule(lr){6-9}\cmidrule(lr){10-13}\cmidrule(lr){14-17}
+        \textbf{Baseline}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10} \\
+        \midrule
+        SASRec & .0341 & .0213 & .0586 & .0291 & .0214 & .0140 & .0358 & .0186 & .1250 & .0814 & .1964 & .1044 & .1727 & .1516 & .2065 & .1625 \\
+        BERT4Rec & .0677 & .0431 & .1111 & .0570 & .0280 & .0175 & .0478 & .0238 & .0454 & .0289 & .0761 & .0386 & .1763 & .1552 & .2109 & .1663 \\
+        EAGER & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- \\
+        ReSID & .0027 & .0014 & .0050 & .0022 & .0072 & .0051 & .0096 & .0059 & .0273 & .0168 & .0504 & .0243 & .1440 & .1303 & .1671 & .1377 \\
+        Mamba4Rec & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- \\
+        SIGMA & .0049 & .0027 & .0138 & .0055 & .0126 & .0083 & .0197 & .0106 & .0264 & .0159 & .0499 & .0234 & .1495 & .1336 & .1763 & .1422 \\
+% LLM-SRec yelp19: no paired recommender validation/test in llm_four_8ep_20261024_144540; teacher scores excluded.
+% LLM-SRec yelp23: no paired recommender validation/test in llm_four_8ep_20261024_144540; teacher scores excluded.
+% LLM-SRec movielens-1m: no paired recommender validation/test in llm_four_8ep_20261024_144540; teacher scores excluded.
+% LLM-SRec steam: no paired recommender validation/test in llm_four_8ep_20261024_144540; teacher scores excluded.
+        LLM-SRec & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- & -- \\
+% Source: ../Reproduce/LLMRec/outputs/yelp19/llm_four_8ep_20261024_144540/evaluations.jsonl; best validation NDCG@10, epoch 2, paired TEST.
+% Source: ../Reproduce/LLMRec/outputs/yelp23/llm_four_8ep_20261024_144540/evaluations.jsonl; best validation NDCG@10, epoch 7, paired TEST.
+% Source: ../Reproduce/LLMRec/outputs/movielens-1m/llm_four_8ep_20261024_144540/evaluations.jsonl; best validation NDCG@10, epoch 8, paired TEST.
+% Source: ../Reproduce/LLMRec/outputs/steam/llm_four_8ep_20261024_144540/evaluations.jsonl; best validation NDCG@10, epoch 1, paired TEST.
+        LLMRec & .0154 & .0092 & .0270 & .0129 & .0277 & .0176 & .0470 & .0238 & .0370 & .0229 & .0666 & .0323 & .0280 & .0197 & .0422 & .0243 \\
+        \midrule
+        \textbf{Ours} & \textbf{.0921} & \textbf{.0602} & \textbf{.1409} & \textbf{.0759} & \textbf{.0309} & \textbf{.0189} & \textbf{.0545} & \textbf{.0265} & \textbf{.1596} & \textbf{.1078} & \textbf{.2408} & \textbf{.1340} & \textbf{.1536} & \textbf{.1432} & \textbf{.1692} & \textbf{.1482} \\
+        \bottomrule
+    \end{tabular}%
+    }
+    \caption{Performance on Yelp19, Yelp23, MovieLens 1M, and Steam. R and N denote full-catalog Recall and NDCG, respectively. Test scores are rounded to four decimal places. Baselines use the best validation NDCG@10 checkpoint among available epochs 1--10, except MovieLens 1M SASRec, which uses its first available test evaluation (epoch 20); -- denotes unavailable eligible test results. Ours reports the latest completed ver5 runs.}
+    \label{tab:additional_datasets}
+    \vspace{-0.3cm}
+\end{table*}
 
 \section{Recent-Window Cohort Results}
 \label{app:short_window_cohorts}
@@ -774,7 +785,251 @@ Table~\ref{tab:short_window_cohorts} gives the long- and short-history cohort re
     }
     \caption{Recent-window sweep on the long- and short-history cohorts, with both specialists and the coordinator enabled. The best-performing results are highlighted in \textbf{bold}.}
     \label{tab:short_window_cohorts}
+    \vspace{-0.3cm}
 \end{table*}
+
+\subsection{Preference-Prototype Sweep at $W=2$}
+
+\label{app:sw2_prototype_sweep}
+
+Because the $W=2$ recent-window setting performs well across several subsets, we additionally evaluate prototype counts with $W=2$, keeping the short-term and long-term agents and coordinator enabled. Table~\ref{tab:prefsweep_sw2} reports full-test Recall and NDCG for all four categories. The $M=32$ row matches the $W=2$ setting in the recent-window sweep, providing a reference point for interpreting the other prototype counts.
+
+\begin{table*}[!tbp]
+    \centering
+    \setlength{\tabcolsep}{3.2pt}
+    \renewcommand{\arraystretch}{1.12}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{l*{4}{rrrr}}
+        \toprule
+        & \multicolumn{4}{c}{\textbf{All Beauty}}
+        & \multicolumn{4}{c}{\textbf{Sports and Outdoors}}
+        & \multicolumn{4}{c}{\textbf{Baby Products}}
+        & \multicolumn{4}{c}{\textbf{Toys and Games}} \\
+        \cmidrule(lr){2-5}\cmidrule(lr){6-9}\cmidrule(lr){10-13}\cmidrule(lr){14-17}
+        \textbf{Prototype count}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10} \\
+        \midrule
+% \multicolumn{17}{l}{\textbf{Full test set (all evaluated users)}} \\
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Full_Beauty/rl_20261006_215037_r1_2897121/Full_Beauty_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Sports_and_Outdoors/rl_20261006_225932_r1_2897121/Sports_and_Outdoors_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Baby_Products/rl_20261006_215100_r1_2897121/Baby_Products_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P2/Toys_and_Games/rl_20261007_011455_r1_2897121/Toys_and_Games_scores.json; overall
+$M=2$ & \textbf{.1181} & .1091 & .1235 & .1109 & .0457 & .0401 & .0529 & .0424 & .0506 & .0430 & .0612 & .0464 & .0567 & .0479 & .0671 & .0512 \\
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Full_Beauty/rl_20261007_042725_r1_2897121/Full_Beauty_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Sports_and_Outdoors/rl_20261007_053602_r1_2897121/Sports_and_Outdoors_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Baby_Products/rl_20261007_042748_r1_2897121/Baby_Products_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P4/Toys_and_Games/rl_20261007_075216_r1_2897121/Toys_and_Games_scores.json; overall
+$M=4$ & .1167 & .1089 & .1222 & .1106 & .0458 & .0401 & .0531 & .0425 & .0506 & .0431 & .0615 & .0466 & .0566 & .0478 & .0669 & .0512 \\
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Full_Beauty/rl_20261007_110534_r1_2897121/Full_Beauty_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Sports_and_Outdoors/rl_20261007_121428_r1_2897121/Sports_and_Outdoors_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Baby_Products/rl_20261007_110557_r1_2897121/Baby_Products_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P8/Toys_and_Games/rl_20261007_142940_r1_2897121/Toys_and_Games_scores.json; overall
+$M=8$ & .1174 & .1091 & .1235 & .1110 & .0457 & .0402 & .0530 & .0425 & .0506 & .0430 & .0614 & .0465 & .0568 & .0479 & .0670 & .0512 \\
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Full_Beauty/rl_20261006_215019_r1_2896957/Full_Beauty_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Sports_and_Outdoors/rl_20261006_225903_r1_2896957/Sports_and_Outdoors_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Baby_Products/rl_20261006_215042_r1_2896957/Baby_Products_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P16/Toys_and_Games/rl_20261007_011436_r1_2896957/Toys_and_Games_scores.json; overall
+$M=16$ & .1160 & .1088 & .1215 & .1105 & .0459 & .0402 & .0534 & .0426 & .0507 & .0431 & .0618 & .0467 & .0566 & .0478 & .0670 & .0512 \\
+% P32 source: W=2 row in tab:short_window (overall).
+$M=32$ & .1167 & .1085 & .1187 & .1092 & \textbf{.0462} & \textbf{.0404} & \textbf{.0538} & \textbf{.0429} & .0510 & .0432 & .0618 & .0467 & .0569 & .0478 & .0672 & .0512 \\
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Full_Beauty/rl_20261007_042634_r1_2896957/Full_Beauty_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Sports_and_Outdoors/rl_20261007_053516_r1_2896957/Sports_and_Outdoors_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Baby_Products/rl_20261007_042656_r1_2896957/Baby_Products_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P64/Toys_and_Games/rl_20261007_075051_r1_2896957/Toys_and_Games_scores.json; overall
+$M=64$ & \textbf{.1181} & .1097 & \textbf{.1249} & \textbf{.1118} & \textbf{.0462} & .0402 & .0537 & .0427 & .0510 & \textbf{.0433} & .0621 & \textbf{.0469} & \textbf{.0571} & \textbf{.0480} & \textbf{.0676} & \textbf{.0514} \\
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Full_Beauty/rl_20261007_110224_r1_2896957/Full_Beauty_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Sports_and_Outdoors/rl_20261007_121041_r1_2896957/Sports_and_Outdoors_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Baby_Products/rl_20261007_110246_r1_2896957/Baby_Products_scores.json; overall
+% Source: outputs_mamba_rl/amazons_long_short_S1_P1_G1_C1_SW2_P128/Toys_and_Games/rl_20261007_142600_r1_2896957/Toys_and_Games_scores.json; overall
+$M=128$ & \textbf{.1181} & \textbf{.1099} & .1235 & .1117 & .0452 & .0388 & .0531 & .0414 & \textbf{.0512} & \textbf{.0433} & \textbf{.0623} & .0468 & .0566 & .0474 & .0672 & .0508 \\
+\bottomrule
+    \end{tabular}%
+    }
+    \caption{Preference-prototype sweep on the full test set with $W=2$ and $S=P=G=C=1$. The $M=32$ results reproduce the $W=2$ row in Table~\ref{tab:short_window}. For each dataset and metric, the best displayed value is highlighted in \textbf{bold}; ties share a mark.}
+    \label{tab:prefsweep_sw2}
+    \vspace{-0.3cm}
+\end{table*}
+
+\section{Preference-Change Study}
+\label{app:preference_change}
+
+\subsection{Study Design and Change Groups}
+
+We compare four configurations on the $W=2$ setting with random seed 25252. $S+P+C$ is the full model with short-term agent $S$, preference agent $P$, GCN features, and coordinator $C$. $S$ retains the short-term agent and GCN features but removes $P$ and $C$. $S+L+C$ replaces preference modeling with an item-level long-history branch while retaining the coordinator, allowing a comparison with added history without preference modeling. $S+P$ retains $S$, $P$, and GCN features but removes $C$, mixing the two agent scores with a fixed preference weight of 0.2. The primary $(S+P+C)-S$ contrast compares the full configuration with a variant that also removes coordination and preference-specific losses; $(S+L+C)-S$ and $(S+P)-S$ provide additional context.
+
+We measure preference change using three representations, each of which maps the $t$-th interaction in user $u$'s history ($t=1,\dots,n$) to a distribution $p_t$ over units. The level-2 category view assigns each interaction to its level-2 Amazon category, and the level-3 category-path view assigns it to its level-3 category path. The learned preference-prototype view uses the $S+P+C$ model's soft assignments to its 32 learned prototypes, reflecting the preference agent's own representation rather than an independent measure. Let $T=\sum_{t=1}^{n} p_t$ be the user's overall unit mix and $\pi$ a uniformly random permutation of the history. Both scores subtract the value expected under $\pi$, so they capture temporal structure beyond what the overall mix implies.
+
+\paragraph{Drift.}
+Drift is the Jensen--Shannon divergence between the unit mixes of the earlier and later halves of the history, minus its mean over shuffled histories. With
+$h=\lfloor n/2 \rfloor$ and $E_\pi=\sum_{t=1}^{h} p_{\pi(t)}$, we define
+\begin{equation}
+  \mathrm{drift}_u
+  = \operatorname{JSD}\bigl(E,\, T-E\bigr)
+  - \frac{1}{S}\sum_{s=1}^{S}\operatorname{JSD}\bigl(E_{\pi_s},\, T-E_{\pi_s}\bigr),
+  \label{eq:drift}
+\end{equation}
+where $E$ is $E_\pi$ under the observed order, $\operatorname{JSD}$ is the base-2 Jensen--Shannon divergence between the normalised vectors, and $\pi_1,\dots,\pi_S$ are $S=100$ random permutations.
+
+\paragraph{Switching.}
+Switching is the mean probability that consecutive interactions fall in different units, minus its exact expectation under $\pi$:
+\begin{equation}
+  \mathrm{switch}_u
+  = \underbrace{1-\frac{1}{n-1}\sum_{t=2}^{n} p_t^{\top}p_{t-1}}_{\text{observed}}
+  \;-\;
+  \underbrace{\Bigl(1-\frac{\lVert T\rVert_2^{2}-\sum_{t=1}^{n}\lVert p_t\rVert_2^{2}}{n(n-1)}\Bigr)}_{\mathbb{E}_\pi[\,\cdot\,]}.
+  \label{eq:switch}
+\end{equation}
+The second term is the exact expectation of the first under $\pi$, as consecutive positions in a random order form a uniformly random pair of distinct interactions. For one-hot units with category counts $c_k$, the observed term is the category-switch rate and the expectation reduces to $1-\sum_k c_k(c_k-1)/\bigl(n(n-1)\bigr)$.
+
+Scores use only the past available at each split: training history for validation and training history plus the validation item for test. They are computed without truncating to \texttt{MAX\_HISTORY}. Users need at least 10 usable interactions to receive a change score; for the two category-based views, no more than half of a user's items may lack a category. Eligible users are first separated into history-length bands of 10--20, 21--50, and more than 50 interactions. Within each band, users are ranked by the relevant drift or switching score and divided into low, medium, and high thirds; the bands are then pooled. Thus, high and low groups are compared among users with similar history lengths. Users without an eligible score are treated as insufficient and are not included in the change-score groups.
+
+The category analyses cover Baby Products, Sports and Outdoors, and Toys and Games; All Beauty is omitted because its Amazon metadata lacks categories. Category item coverage is 96.1\%, 95.8\%, and 94.2\%, respectively. Test-set group sizes vary slightly by view because $P$ includes items without category metadata. The figures below summarize NDCG@5 for $S+P+C$ relative to $S$, and NDCG@5 and NDCG@10 for $S+P+C$ relative to $S+L+C$.
+
+\subsection{Test-Set Results}
+\label{app:pref_change_full_results}
+The figures summarize the test-set NDCG contrasts across drift and switching groups. Each panel shows the three category representations and four change groups; colors identify datasets. Positive values favor the first configuration in each contrast.
+
+For $W=2$, the $S+P+C$ versus $S$ NDCG@10 results are shown in Figure~\ref{fig:rq4_sw2_appendix}.
+
+% Keep the four SW2 result panels in one float while retaining separate captions.
+\begin{figure*}[p]
+    \centering
+    {\small
+        \textcolor[HTML]{D55E00}{\rule{1.1ex}{1.1ex}}\;Baby Products\hspace{1.5em}
+        \textcolor[HTML]{009E73}{\rule{1.1ex}{1.1ex}}\;Sports and Outdoors\hspace{1.5em}
+        \textcolor[HTML]{CC79A7}{\rule{1.1ex}{1.1ex}}\;Toys and Games
+    }\\[-1mm]
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW2_ndcg5_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW2_ndcg5_switching.pdf}
+    \end{minipage}
+    \caption{$W=2$ NDCG@5 change for $S+P+C$ relative to $S$; positive values favor $S+P+C$.}
+    \label{fig:prefchange_n5_spc_s}
+    \vspace{5pt}
+    \centering
+    \begin{minipage}[t]{0.485\textwidth}\centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[-1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW2_ndcg10_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}\centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[-1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW2_ndcg10_switching.pdf}
+    \end{minipage}
+    \caption{$W=2$ NDCG@10 change for $S+P+C$ relative to $S$; positive values favor $S+P+C$.}
+    \label{fig:rq4_sw2_appendix}
+    \vspace{5pt}
+    \centering
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW2_ndcg5_SPC_minus_SLC_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW2_ndcg5_SPC_minus_SLC_switching.pdf}
+    \end{minipage}
+    \caption{$W=2$ NDCG@5 change for $S+P+C$ relative to $S+L+C$; positive values favor $S+P+C$.}
+    \label{fig:prefchange_n5_spc_slc}
+    \vspace{5pt}
+    \centering
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW2_ndcg10_SPC_minus_SLC_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW2_ndcg10_SPC_minus_SLC_switching.pdf}
+    \end{minipage}
+    \caption{$W=2$ NDCG@10 change for $S+P+C$ relative to $S+L+C$; positive values favor $S+P+C$.}
+    \label{fig:prefchange_n10_spc_slc}
+\end{figure*}
+
+\setlength{\dblfloatsep}{12pt}
+\begin{figure*}[p]
+    \centering
+    {\small
+        \textcolor[HTML]{D55E00}{\rule{1.1ex}{1.1ex}}\;Baby Products\hspace{1.5em}
+        \textcolor[HTML]{009E73}{\rule{1.1ex}{1.1ex}}\;Sports and Outdoors\hspace{1.5em}
+        \textcolor[HTML]{CC79A7}{\rule{1.1ex}{1.1ex}}\;Toys and Games
+    }\\[-1mm]
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg5_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg5_switching.pdf}
+    \end{minipage}
+    \caption{SW4 NDCG@5 change for $S+P+C$ relative to $S$; positive values favor $S+P+C$.}
+    \label{fig:rq4_sw4_n5_spc_s}
+    \vspace{5pt}
+    \centering
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[-1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg10_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[-1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg10_switching.pdf}
+    \end{minipage}
+    \caption{SW4 NDCG@10 change for $S+P+C$ relative to $S$; positive values favor $S+P+C$.}
+    \label{fig:rq4_sw4}
+    \vspace{5pt}
+    \centering
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg5_SPC_minus_SLC_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg5_SPC_minus_SLC_switching.pdf}
+    \end{minipage}
+    \caption{SW4 NDCG@5 change for $S+P+C$ relative to $S+L+C$; positive values favor $S+P+C$.}
+    \label{fig:rq4_sw4_n5_spc_slc}
+    \vspace{5pt}
+    \centering
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(a) Drift}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg10_SPC_minus_SLC_drift.pdf}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.485\textwidth}
+        \centering
+        \makebox[\linewidth][l]{\textbf{(b) Switching}}\\[1mm]
+        \includegraphics[height=1.55in,width=\linewidth,keepaspectratio]{Figures/RQ4_SW4_ndcg10_SPC_minus_SLC_switching.pdf}
+    \end{minipage}
+    \caption{SW4 NDCG@10 change for $S+P+C$ relative to $S+L+C$; positive values favor $S+P+C$.}
+    \label{fig:rq4_sw4_n10_spc_slc}
+\end{figure*}
+
+The trend tests provide a continuous-score check on the grouped results. With history-length-band fixed effects, the $(S+P+C)-S$ NDCG@10 difference increases with drift in both category-based views (slope +0.00123 to +0.00612 per score standard deviation; permutation $p=0.001$ throughout). This contrast's slope is negative with switching in both views (slope $-0.01180$ to $-0.00229$; $p=0.001$ throughout). On the test set, Spearman correlations between level-2 category and level-3 category-path scores range from 0.549 to 0.742 for drift and from 0.614 to 0.829 for switching; correlations involving learned preference-prototype scores are weaker and vary across datasets (0.052--0.409 for drift and 0.072--0.435 for switching). The prototype view is therefore supplementary rather than an independent category-based test.
+
+These are exploratory test-split comparisons from one training run per configuration (seed 25252). The confidence intervals reflect user sampling, not variation across training runs. The $W=2$ validation-to-test increase for $S+P+C$ is not explained by this analysis, so the test-split estimates should be interpreted cautiously. The prototype view is defined by the $S+P+C$ model's learned representation and is not neutral. Finally, the group comparisons are descriptive and do not establish causal effects of preference change or of any single model component.
+
+\subsection{SW4 Preference-Change Results}
+\label{app:preference_change_sw4}
+
+We repeat the preference-change analysis with short window $W=4$. In the $W=4$ results, $A$, $B$, and $C$ correspond to $S+P+C$, $S$, and $S+L+C$, respectively. Figure~\ref{fig:rq4_sw4} reports the $A-B$ NDCG@10 contrast; the other figures on this page report $A-B$ NDCG@5 and the $A-C$ contrasts at NDCG@5 and NDCG@10. The figures use the same category representations, change groups, and dataset colors as the $W=2$ figures.
+
+\setlength{\dblfloatsep}{12pt}
 
 \section{Item-Level Long-Term Branch Experiments}
 
@@ -832,6 +1087,7 @@ The window sweeps show that the best setting depends on both category and histor
     \caption{Recent-window sweep for short-term agent $S$ and item-level long-term branch $L$, with coordinator $C$ enabled and preference agent $P$ disabled, on the full test set and long- and short-history cohorts. Graph features are retained. All scores use the restored validation-selected model. The best-performing results are highlighted in \textbf{bold}.}
     \label{tab:long_short_window}
 \end{table*}
+% 幫我把steam、yelp、movielens還有amazons的資料集過濾後的user、item、資料數量等詳細訊息寫到ribs_www2027的appendix合適的位置做成表格
 
 \section{Implementation Details}
 \label{app:implementation}
@@ -848,8 +1104,7 @@ where $W_f$ projects $f_i$ into the shared $d$-dimensional space and $\norm{x}=x
 For each agent $m\in\{S,P\}$, the retention factor, candidate state, and output gate in Eq.~\eqref{eq:state_update} are computed elementwise from the current input as
 \begin{align}
  a_k^{(m)}&=\exp\!\Bigl[-\min\!\Bigl\{
-    \operatorname{softplus}\!\bigl(b_{\delta,m}\notag\\
- &\qquad+\mathcal R_{\delta,m}(y_k^{(m)})\bigr),12\Bigr\}\Bigr],\notag\\
+    \operatorname{softplus}\!\bigl(b_{\delta,m}+\mathcal R_{\delta,m}(y_k^{(m)})\bigr),12\Bigr\}\Bigr],\notag\\
  \widetilde h_k^{(m)}&=\tanh\!\bigl(y_k^{(m)}+\mathcal R_{\mathrm{cand},m}(y_k^{(m)})\bigr),\notag\\
  g_k^{(m)}&=\sigma\!\left(\mathcal R_{\mathrm{gate},m}(y_k^{(m)})\right).
 \end{align}
@@ -979,12 +1234,168 @@ The following tables summarize the hyperparameters used in the reported experime
     \label{tab:hyperparameters_dataset}
 \end{table*}
 
+\subsection{Hyperparameters for Yelp, Steam, and MovieLens 1M}
+\label{app:additional_hyperparameters}
+Tables~\ref{tab:additional_hyperparameters_model} and~\ref{tab:additional_hyperparameters_training} specify the ver5 (Ours) configuration for Yelp19, Yelp23, Steam, and MovieLens 1M. These settings apply to the additional-dataset experiments in Appendix~\ref{app:additional_results}, independently of the Amazon settings above. The preference specialist reads the full observed history.
+
+\begin{table*}[!tbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.08}
+    \begin{tabular}{p{0.47\textwidth}p{0.45\textwidth}}
+        \toprule
+        \textbf{Hyperparameter} & \textbf{Value} \\
+        \midrule
+        Text encoder & state-spaces/mamba-130m-hf (frozen; cached item vectors) \\
+        Ranker dimension & 128 \\
+        Text length; encoding batch size & 32 tokens; 32 \\
+        Item-text prompt & Preference-aware product representation: \\
+        LoRA enabled; rank; scale; dropout & Yes; 8; 16; 0.05 \\
+        Short-term specialist; preference specialist & Enabled; enabled \\
+        Graph embeddings; coordinator & Enabled; enabled \\
+        Preference history; input order & Full observed history (no truncation); original order \\
+        Recent window $W$ & Table~\ref{tab:additional_group_means} \\
+        Preference prototypes; temperature & 32; 0.2 \\
+        Preference score mixing weight & 0.2 \\
+        Popularity prior; transition prior & 0; 0 \\
+        Rating threshold; interaction filtering & Rating $\geq 4$ where applicable; single-pass minimum count 5 \\
+        Raw-event limit; sampled prefix cap & No raw-event cap; 500,000 training prefixes \\
+        Training slate; in-batch negatives & 64 candidates; enabled \\
+        Supervised full-catalog loss & Disabled (sampled-slate training) \\
+        Hard-negative pool multiplier; fraction; warm-up & 12; 0.75; 2 epochs \\
+        Future-target horizon; decay & 3; 0.5 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Shared model, data, and sampling hyperparameters for the four additional datasets.}
+    \label{tab:additional_hyperparameters_model}
+\end{table*}
+
+\begin{table*}[!tbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.08}
+    \begin{tabular}{p{0.47\textwidth}p{0.45\textwidth}}
+        \toprule
+        \textbf{Hyperparameter} & \textbf{Value} \\
+        \midrule
+        Random seed & 25252 \\
+        Training batch size; evaluation batch size & 128; 64 \\
+        Supervised specialist epochs & 3 \\
+        Specialist learning rate & $2\times10^{-4}$ \\
+        Preference auxiliary coefficient & 0.2 \\
+        Preference transition coefficient & 0.1 \\
+        Preference balance; separation coefficients & 0.01; 0.01 \\
+        Preference sharpness coefficient & 0.05 \\
+        Preference contrastive; agent diversity coefficients & 0.05; 0.02 \\
+        Validation interval & Every 1,000 optimizer steps \\
+        Selection metric; early-stopping patience & Validation NDCG@10; 12 evaluations \\
+        Learning-rate scheduler patience & 3 validation intervals \\
+        Validation and periodic-test user limits & All eligible users \\
+        Evaluation candidates; reported metrics & Full catalog; Recall and NDCG at 5 and 10 \\
+        History-length cohort threshold & Disabled for these runs \\
+        Initialization; resume & Fresh run; no resumed checkpoint \\
+        Execution & One GPU per run; graph and ranker on the same GPU \\
+        Model-weight saving; generated explanations & Disabled; disabled \\
+        Item-influence export & Disabled \\
+        Recall@10 reporting target & 0.15 (reporting only) \\
+        \bottomrule
+    \end{tabular}
+    \caption{Shared optimization and evaluation hyperparameters for the four additional datasets.}
+    \label{tab:additional_hyperparameters_training}
+\end{table*}
+
+\subsection{Average Activity-Period Size and Default Recent Window}
+\label{app:group_window_default}
+We set the default recent-window length to twice the mean number of interactions per activity period, rounded to the nearest integer (half up). With $G_u$ the set of periods in user $u$'s observed history and $|g|$ the number of interactions in period $g$, we compute
+\begin{equation}
+    \bar{n}_{\mathrm{period}} = \frac{\sum_u\sum_{g\in G_u}|g|}{\sum_u|G_u|},
+    \qquad W = \left\lfloor 2\bar{n}_{\mathrm{period}} + \tfrac{1}{2}\right\rfloor.
+    \label{eq:group_window_default}
+\end{equation}
+All four Amazon categories have a mean period size close to two interactions, yielding the same default $W=4$ under this rule. Thus, the average is weighted equally over observed periods, rather than averaging each user's mean period size equally. We use the same sampled cohort of 2,000 users per dataset and the same at-most-100-item observed histories as the period-level preliminary analysis in Appendix~\ref{app:grouped_preliminary}; the held-out test interaction is excluded. The Yelp period-size estimates use the timestamp-matched populations described there. The 100-item cap is used to estimate the period statistics, whereas the ver5 preference history remains untruncated. We refer to these events as interactions: Yelp reviews, MovieLens ratings, and Steam reviews do not directly establish individual purchase events.
+
+\begin{table}[!tbp]
+    \centering
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.12}
+    \begin{tabular}{lrr}
+        \toprule
+        \textbf{Dataset} & \shortstack{\textbf{Mean interactions}\\\textbf{per period}} & $\boldsymbol{W}$ \\
+        \midrule
+        All Beauty & 1.9148 & 4 \\
+        Sports and Outdoors & 1.8041 & 4 \\
+        Baby Products & 2.1573 & 4 \\
+        Toys and Games & 2.1447 & 4 \\
+        \midrule
+        Yelp19 & 3.3026 & 7 \\
+        Yelp23 & 2.8681 & 6 \\
+        MovieLens 1M & 39.4751 & 79 \\
+        Steam & 2.2514 & 5 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Mean activity-period size and default recent-window length for the four Amazon categories and four additional datasets. $W$ is computed from the unrounded mean using Equation~\ref{eq:group_window_default}.}
+    \label{tab:additional_group_means}
+\end{table}
+
 \section{Run Selection and Reporting}
 \label{app:run_reporting}
 The validation-selected checkpoint supplies the full-test and history-cohort results for each configuration. Cohort metrics use the same eligible-user definitions as the overall evaluation; their user-count-weighted means reproduce the full-test metrics within $10^{-6}$. Test results are point estimates and are not used for checkpoint selection.
 
+\section{Model-Size Study}
+\label{app:model_size}
+Table~\ref{tab:rq7_model_size} reports full-test and history-cohort Recall and NDCG at 5 and 10 for all four model sizes and datasets. The long-history and short-history cohorts are defined as users with more than 10 events and users with at most 10 events, respectively. The plotted values correspond to the NDCG@10 columns in the two cohort panels.
+\begin{table*}[!tbp]
+    \centering
+    \setlength{\tabcolsep}{3.2pt}
+    \renewcommand{\arraystretch}{1.12}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{l*{4}{rrrr}}
+        \toprule
+        & \multicolumn{4}{c}{\textbf{All Beauty}}
+        & \multicolumn{4}{c}{\textbf{Sports and Outdoors}}
+        & \multicolumn{4}{c}{\textbf{Baby Products}}
+        & \multicolumn{4}{c}{\textbf{Toys and Games}} \\
+        \cmidrule(lr){2-5}\cmidrule(lr){6-9}\cmidrule(lr){10-13}\cmidrule(lr){14-17}
+        \textbf{Model size}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10}
+        & \textbf{R@5} & \textbf{N@5} & \textbf{R@10} & \textbf{N@10} \\
+        \midrule
+        \multicolumn{17}{l}{\textbf{Full test set (all evaluated users)}} \\
+130M & \textbf{.1215} & \textbf{.1114} & \textbf{.1277} & \textbf{.1134} & .0393 & .0326 & .0479 & .0353 & .0457 & .0373 & .0576 & .0411 & .0507 & .0410 & .0620 & .0446 \\
+370M & .1194 & .1109 & .1235 & .1122 & .0394 & .0326 & .0479 & .0353 & .0459 & .0372 & .0575 & .0409 & .0510 & .0412 & .0624 & .0449 \\
+790M & .1181 & .1095 & .1256 & .1120 & .0395 & .0327 & .0480 & .0354 & .0461 & .0374 & \textbf{.0579} & .0412 & .0510 & .0413 & .0622 & .0449 \\
+1.4B & .1181 & .1096 & .1249 & .1119 & .0397 & \textbf{.0329} & .0484 & .0357 & \textbf{.0462} & \textbf{.0375} & .0579 & \textbf{.0413} & .0512 & .0415 & .0626 & .0452 \\
+2.8B & .1160 & .1078 & .1194 & .1089 & \textbf{.0398} & .0329 & \textbf{.0484} & \textbf{.0357} & .0460 & .0375 & .0577 & .0412 & \textbf{.0513} & \textbf{.0416} & \textbf{.0628} & \textbf{.0453} \\
+        \midrule
+        \multicolumn{17}{l}{\textbf{Long-history users ($>10$ events)}} \\
+130M & \textbf{.0548} & \textbf{.0403} & .0639 & \textbf{.0430} & .0393 & .0329 & .0474 & .0355 & .0478 & .0395 & .0599 & .0434 & .0499 & .0404 & .0606 & .0439 \\
+370M & .0548 & .0374 & \textbf{.0639} & .0400 & \textbf{.0396} & \textbf{.0331} & \textbf{.0479} & \textbf{.0358} & \textbf{.0482} & .0396 & .0597 & .0433 & .0500 & .0406 & .0607 & .0440 \\
+790M & .0548 & .0378 & .0594 & .0391 & .0390 & .0329 & .0474 & .0355 & .0480 & \textbf{.0398} & \textbf{.0605} & \textbf{.0438} & .0496 & .0404 & .0606 & .0440 \\
+1.4B & .0548 & .0378 & .0594 & .0391 & .0394 & .0329 & .0477 & .0356 & .0481 & .0396 & .0601 & .0434 & \textbf{.0501} & .0407 & .0605 & .0441 \\
+2.8B & .0502 & .0337 & .0548 & .0353 & .0394 & .0329 & \textbf{.0479} & .0356 & .0474 & .0391 & .0600 & .0431 & .0499 & \textbf{.0407} & \textbf{.0609} & \textbf{.0443} \\
+        \midrule
+        \multicolumn{17}{l}{\textbf{Short-history users ($\leq10$ events)}} \\
+130M & \textbf{.1333} & \textbf{.1240} & \textbf{.1389} & \textbf{.1258} & .0394 & .0325 & .0479 & .0353 & .0453 & .0369 & .0571 & .0407 & .0509 & .0411 & .0623 & .0448 \\
+370M & .1309 & .1239 & .1341 & .1250 & .0394 & .0325 & .0479 & .0353 & .0455 & .0367 & .0570 & .0404 & .0512 & .0414 & .0628 & .0451 \\
+790M & .1292 & .1222 & .1373 & .1248 & .0395 & .0326 & .0481 & .0354 & .0457 & .0370 & .0574 & .0407 & .0513 & .0414 & .0626 & .0451 \\
+1.4B & .1292 & .1223 & .1365 & .1247 & .0398 & .0329 & .0485 & .0357 & \textbf{.0459} & .0372 & \textbf{.0574} & \textbf{.0409} & .0515 & .0417 & .0631 & .0454 \\
+2.8B & .1276 & .1209 & .1309 & .1219 & \textbf{.0398} & \textbf{.0329} & \textbf{.0485} & \textbf{.0357} & .0458 & \textbf{.0372} & .0573 & .0409 & \textbf{.0516} & \textbf{.0418} & \textbf{.0633} & \textbf{.0455} \\
+        \bottomrule
+    \end{tabular}%
+    }
+    \caption{Performance of five model sizes on the full test set and long- and short-history cohorts. The 130M row reports the $S+P+C$ results from Table~\ref{tab:amazon2023_main}. For each dataset, the best result in each metric and cohort is highlighted in \textbf{bold}.}
+    \label{tab:rq7_model_size}
+\end{table*}
+
 \section{Generative AI Usage Statement}
 \label{app:genai_usage}
-During the preparation of this paper, generative AI tools assisted with searching for and reviewing related work, debugging code, and revising the manuscript for clarity, grammar, and style. The tools were also used to proofread the manuscript and flag possible errors or inconsistencies. AI-generated suggestions were reviewed and edited by the authors, who take responsibility for the final manuscript and its contents.
+During the preparation of this paper, generative AI tools assisted with searching for and reviewing related work, debugging code, and revising the manuscript for clarity, grammar, and style. The tools were also used to proofread the manuscript and flag possible errors or inconsistencies. AI-generated suggestions were reviewed and edited by the authors, who take responsibility for the final manuscript and its contents.\section{Limitations}
+\label{app:limitations}
+RIBS combines short-term item modeling with a long-term preference agent and a coordinator. This richer design can use complementary behavioral signals. However, it processes the recent-item and preference sequences separately and then fuses their states and scores, which adds computation and results in higher latency than the compared SSM-based baselines, although measured per-user latency remains below one millisecond. Peak memory is lower than for both SSM baselines in the reported comparison. Even a sub-millisecond inference time can matter at high request volumes or under strict latency budgets. The long-term preference agent may also process history that adds little useful signal when recent interactions already provide a clear indication of intent. Future work could reduce potential duplicated computation, simplify the coordination path, or invoke long-history processing selectively when it is most useful. These changes could lower inference cost while preserving the benefit of combining recent and longer-term behavioral evidence.
 
 \end{document}

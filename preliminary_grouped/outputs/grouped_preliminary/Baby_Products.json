@@ -1,0 +1,2390 @@
+{
+  "subset": "Baby_Products",
+  "dataset": "amazon:Baby_Products",
+  "split": "test",
+  "grouping": {
+    "rule": "new group iff consecutive observed timestamp gap > 30 days",
+    "gap_days": 30,
+    "exactly_30_days_stays_in_group": true,
+    "timestamp_unit": "Unix milliseconds (UTC)",
+    "group_1": "most recent group",
+    "singleton_span_days": 0,
+    "missing_timestamps": "excluded from temporal grouping; counted separately",
+    "rule_evidence": "preliminary_grouped/analyze.py (CPython 3.12 test_histories bytecode): Jan1,Jan1,Jan2,Feb1 form size4 group; Mar3 is separate"
+  },
+  "history": {
+    "construction": "train + observed validation item; test target excluded",
+    "plotted_max_interactions": 100,
+    "group_after_history_truncation": true,
+    "duplicates": "retained exactly as original preliminary preprocessing"
+  },
+  "mean_interactions_per_group": 2.157308657465496,
+  "mean_group_span_days": 3.473965935760984,
+  "figure_cohorts": {
+    "figure1_alignment_and_figure2_preference_all_available": {
+      "users": 2000,
+      "groups": 6376,
+      "dated_interactions": 13755,
+      "missing_timestamp_interactions": 0,
+      "mean_interactions_per_group": 2.157308657465496,
+      "mean_group_span_days": 3.473965935760984,
+      "group_length_interactions": {
+        "count": 6376,
+        "mean": 2.157308657465496,
+        "median": 1.0,
+        "p25": 1.0,
+        "p75": 3.0,
+        "min": 1.0,
+        "max": 33.0
+      },
+      "group_span_days": {
+        "count": 6376,
+        "mean": 3.473965935760984,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 0.010422201967592592,
+        "min": 0.0,
+        "max": 177.98045947916665
+      },
+      "groups_per_user": {
+        "count": 2000,
+        "mean": 3.188,
+        "median": 3.0,
+        "p25": 2.0,
+        "p75": 4.0,
+        "min": 1.0,
+        "max": 28.0
+      },
+      "user_weighted_mean_interactions_per_group": 2.5804386435459965,
+      "by_group_from_most_recent": [
+        {
+          "group": 1,
+          "contributing_users": 2000,
+          "mean_interactions": 2.4395,
+          "median_interactions": 2.0,
+          "mean_span_days": 3.2518484631365743
+        },
+        {
+          "group": 2,
+          "contributing_users": 1687,
+          "mean_interactions": 2.0574985180794307,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.2004317314046413
+        },
+        {
+          "group": 3,
+          "contributing_users": 1187,
+          "mean_interactions": 1.8997472620050548,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.057848877743845
+        },
+        {
+          "group": 4,
+          "contributing_users": 681,
+          "mean_interactions": 1.8854625550660793,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.0530071345243925
+        },
+        {
+          "group": 5,
+          "contributing_users": 332,
+          "mean_interactions": 2.1295180722891565,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.251888347696341
+        },
+        {
+          "group": 6,
+          "contributing_users": 184,
+          "mean_interactions": 1.940217391304348,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.1104193751258054
+        },
+        {
+          "group": 7,
+          "contributing_users": 104,
+          "mean_interactions": 2.0961538461538463,
+          "median_interactions": 1.0,
+          "mean_span_days": 4.44487118656517
+        },
+        {
+          "group": 8,
+          "contributing_users": 60,
+          "mean_interactions": 2.8333333333333335,
+          "median_interactions": 1.0,
+          "mean_span_days": 4.984075028742284
+        },
+        {
+          "group": 9,
+          "contributing_users": 37,
+          "mean_interactions": 3.4594594594594597,
+          "median_interactions": 2.0,
+          "mean_span_days": 15.03315295920921
+        },
+        {
+          "group": 10,
+          "contributing_users": 26,
+          "mean_interactions": 2.576923076923077,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.167161295851139
+        },
+        {
+          "group": 11,
+          "contributing_users": 19,
+          "mean_interactions": 2.8421052631578947,
+          "median_interactions": 1.0,
+          "mean_span_days": 9.584249915935672
+        },
+        {
+          "group": 12,
+          "contributing_users": 15,
+          "mean_interactions": 2.6666666666666665,
+          "median_interactions": 1.0,
+          "mean_span_days": 8.239021935185185
+        },
+        {
+          "group": 13,
+          "contributing_users": 12,
+          "mean_interactions": 1.25,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.4170849681712963
+        },
+        {
+          "group": 14,
+          "contributing_users": 10,
+          "mean_interactions": 5.2,
+          "median_interactions": 2.0,
+          "mean_span_days": 22.229136795138892
+        },
+        {
+          "group": 15,
+          "contributing_users": 4,
+          "mean_interactions": 1.75,
+          "median_interactions": 1.5,
+          "mean_span_days": 6.762228012152778
+        },
+        {
+          "group": 16,
+          "contributing_users": 3,
+          "mean_interactions": 4.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 19.153636307870368
+        },
+        {
+          "group": 17,
+          "contributing_users": 3,
+          "mean_interactions": 5.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 9.45359045910494
+        },
+        {
+          "group": 18,
+          "contributing_users": 2,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 19,
+          "contributing_users": 1,
+          "mean_interactions": 3.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 7.050300925925926
+        },
+        {
+          "group": 20,
+          "contributing_users": 1,
+          "mean_interactions": 6.0,
+          "median_interactions": 6.0,
+          "mean_span_days": 32.01959490740741
+        },
+        {
+          "group": 21,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 22,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 23,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 24,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 25,
+          "contributing_users": 1,
+          "mean_interactions": 3.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 0.018090277777777778
+        },
+        {
+          "group": 26,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 27,
+          "contributing_users": 1,
+          "mean_interactions": 3.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 7.251527777777778
+        },
+        {
+          "group": 28,
+          "contributing_users": 1,
+          "mean_interactions": 2.0,
+          "median_interactions": 2.0,
+          "mean_span_days": 26.39644675925926
+        }
+      ]
+    },
+    "figure1_alignment_and_figure2_preference_fixed_K16": {
+      "users": 84,
+      "groups": 607,
+      "dated_interactions": 2278,
+      "missing_timestamp_interactions": 0,
+      "mean_interactions_per_group": 3.7528830313014825,
+      "mean_group_span_days": 10.169672898437977,
+      "group_length_interactions": {
+        "count": 607,
+        "mean": 3.7528830313014825,
+        "median": 2.0,
+        "p25": 1.0,
+        "p75": 4.0,
+        "min": 1.0,
+        "max": 33.0
+      },
+      "group_span_days": {
+        "count": 607,
+        "mean": 10.169672898437977,
+        "median": 0.002638888888888889,
+        "p25": 0.0,
+        "p75": 11.160031817129628,
+        "min": 0.0,
+        "max": 177.98045947916665
+      },
+      "groups_per_user": {
+        "count": 84,
+        "mean": 7.226190476190476,
+        "median": 6.5,
+        "p25": 3.0,
+        "p75": 10.0,
+        "min": 1.0,
+        "max": 28.0
+      },
+      "user_weighted_mean_interactions_per_group": 5.212735088207777,
+      "by_group_from_most_recent": [
+        {
+          "group": 1,
+          "contributing_users": 84,
+          "mean_interactions": 3.857142857142857,
+          "median_interactions": 1.0,
+          "mean_span_days": 4.929472682567241
+        },
+        {
+          "group": 2,
+          "contributing_users": 83,
+          "mean_interactions": 5.096385542168675,
+          "median_interactions": 2.0,
+          "mean_span_days": 15.914183720437304
+        },
+        {
+          "group": 3,
+          "contributing_users": 76,
+          "mean_interactions": 3.986842105263158,
+          "median_interactions": 2.0,
+          "mean_span_days": 10.499551449957359
+        },
+        {
+          "group": 4,
+          "contributing_users": 61,
+          "mean_interactions": 3.6065573770491803,
+          "median_interactions": 2.0,
+          "mean_span_days": 11.320168427823317
+        },
+        {
+          "group": 5,
+          "contributing_users": 56,
+          "mean_interactions": 4.571428571428571,
+          "median_interactions": 3.0,
+          "mean_span_days": 13.187666865286044
+        },
+        {
+          "group": 6,
+          "contributing_users": 46,
+          "mean_interactions": 2.4782608695652173,
+          "median_interactions": 2.0,
+          "mean_span_days": 4.899834744363928
+        },
+        {
+          "group": 7,
+          "contributing_users": 42,
+          "mean_interactions": 2.857142857142857,
+          "median_interactions": 2.0,
+          "mean_span_days": 7.9995582360559965
+        },
+        {
+          "group": 8,
+          "contributing_users": 34,
+          "mean_interactions": 3.9411764705882355,
+          "median_interactions": 1.0,
+          "mean_span_days": 8.300495414964598
+        },
+        {
+          "group": 9,
+          "contributing_users": 25,
+          "mean_interactions": 4.12,
+          "median_interactions": 2.0,
+          "mean_span_days": 18.858802568055555
+        },
+        {
+          "group": 10,
+          "contributing_users": 22,
+          "mean_interactions": 2.8181818181818183,
+          "median_interactions": 1.0,
+          "mean_span_days": 8.062872545770203
+        },
+        {
+          "group": 11,
+          "contributing_users": 19,
+          "mean_interactions": 2.8421052631578947,
+          "median_interactions": 1.0,
+          "mean_span_days": 9.584249915935672
+        },
+        {
+          "group": 12,
+          "contributing_users": 15,
+          "mean_interactions": 2.6666666666666665,
+          "median_interactions": 1.0,
+          "mean_span_days": 8.239021935185185
+        },
+        {
+          "group": 13,
+          "contributing_users": 12,
+          "mean_interactions": 1.25,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.4170849681712963
+        },
+        {
+          "group": 14,
+          "contributing_users": 10,
+          "mean_interactions": 5.2,
+          "median_interactions": 2.0,
+          "mean_span_days": 22.229136795138892
+        },
+        {
+          "group": 15,
+          "contributing_users": 4,
+          "mean_interactions": 1.75,
+          "median_interactions": 1.5,
+          "mean_span_days": 6.762228012152778
+        },
+        {
+          "group": 16,
+          "contributing_users": 3,
+          "mean_interactions": 4.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 19.153636307870368
+        },
+        {
+          "group": 17,
+          "contributing_users": 3,
+          "mean_interactions": 5.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 9.45359045910494
+        },
+        {
+          "group": 18,
+          "contributing_users": 2,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 19,
+          "contributing_users": 1,
+          "mean_interactions": 3.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 7.050300925925926
+        },
+        {
+          "group": 20,
+          "contributing_users": 1,
+          "mean_interactions": 6.0,
+          "median_interactions": 6.0,
+          "mean_span_days": 32.01959490740741
+        },
+        {
+          "group": 21,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 22,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 23,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 24,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 25,
+          "contributing_users": 1,
+          "mean_interactions": 3.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 0.018090277777777778
+        },
+        {
+          "group": 26,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 27,
+          "contributing_users": 1,
+          "mean_interactions": 3.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 7.251527777777778
+        },
+        {
+          "group": 28,
+          "contributing_users": 1,
+          "mean_interactions": 2.0,
+          "median_interactions": 2.0,
+          "mean_span_days": 26.39644675925926
+        }
+      ]
+    },
+    "figure3_trained_model_influence": {
+      "users": 2000,
+      "groups": 6407,
+      "dated_interactions": 14437,
+      "missing_timestamp_interactions": 0,
+      "mean_interactions_per_group": 2.253316684875917,
+      "mean_group_span_days": 3.796183056568987,
+      "group_length_interactions": {
+        "count": 6407,
+        "mean": 2.253316684875917,
+        "median": 1.0,
+        "p25": 1.0,
+        "p75": 3.0,
+        "min": 1.0,
+        "max": 100.0
+      },
+      "group_span_days": {
+        "count": 6407,
+        "mean": 3.796183056568987,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 0.011509872685185184,
+        "min": 0.0,
+        "max": 330.6749897800926
+      },
+      "groups_per_user": {
+        "count": 2000,
+        "mean": 3.2035,
+        "median": 3.0,
+        "p25": 2.0,
+        "p75": 4.0,
+        "min": 1.0,
+        "max": 22.0
+      },
+      "user_weighted_mean_interactions_per_group": 2.762101563385445,
+      "by_group_from_most_recent": [
+        {
+          "group": 1,
+          "contributing_users": 2000,
+          "mean_interactions": 2.578,
+          "median_interactions": 2.0,
+          "mean_span_days": 3.4938102331712964
+        },
+        {
+          "group": 2,
+          "contributing_users": 1676,
+          "mean_interactions": 2.155131264916468,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.6147277013308803
+        },
+        {
+          "group": 3,
+          "contributing_users": 1171,
+          "mean_interactions": 2.0426985482493594,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.408062343359585
+        },
+        {
+          "group": 4,
+          "contributing_users": 704,
+          "mean_interactions": 1.9176136363636365,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.37024879200534
+        },
+        {
+          "group": 5,
+          "contributing_users": 347,
+          "mean_interactions": 2.3314121037463975,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.154545962649429
+        },
+        {
+          "group": 6,
+          "contributing_users": 184,
+          "mean_interactions": 2.1630434782608696,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.021036356305354
+        },
+        {
+          "group": 7,
+          "contributing_users": 108,
+          "mean_interactions": 2.314814814814815,
+          "median_interactions": 1.0,
+          "mean_span_days": 6.445190304891118
+        },
+        {
+          "group": 8,
+          "contributing_users": 73,
+          "mean_interactions": 1.9863013698630136,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.516692786180872
+        },
+        {
+          "group": 9,
+          "contributing_users": 41,
+          "mean_interactions": 2.5121951219512195,
+          "median_interactions": 1.0,
+          "mean_span_days": 8.573734422990064
+        },
+        {
+          "group": 10,
+          "contributing_users": 30,
+          "mean_interactions": 1.7666666666666666,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.8019876064814815
+        },
+        {
+          "group": 11,
+          "contributing_users": 22,
+          "mean_interactions": 2.3636363636363638,
+          "median_interactions": 2.0,
+          "mean_span_days": 12.859042088594276
+        },
+        {
+          "group": 12,
+          "contributing_users": 13,
+          "mean_interactions": 3.0,
+          "median_interactions": 2.0,
+          "mean_span_days": 5.524651103098291
+        },
+        {
+          "group": 13,
+          "contributing_users": 12,
+          "mean_interactions": 2.4166666666666665,
+          "median_interactions": 2.0,
+          "mean_span_days": 11.12523052372685
+        },
+        {
+          "group": 14,
+          "contributing_users": 8,
+          "mean_interactions": 2.125,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.616867199074074
+        },
+        {
+          "group": 15,
+          "contributing_users": 6,
+          "mean_interactions": 2.3333333333333335,
+          "median_interactions": 2.5,
+          "mean_span_days": 4.948510368441358
+        },
+        {
+          "group": 16,
+          "contributing_users": 3,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 17,
+          "contributing_users": 2,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 18,
+          "contributing_users": 2,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 19,
+          "contributing_users": 2,
+          "mean_interactions": 1.5,
+          "median_interactions": 1.5,
+          "mean_span_days": 7.124033564814815
+        },
+        {
+          "group": 20,
+          "contributing_users": 1,
+          "mean_interactions": 6.0,
+          "median_interactions": 6.0,
+          "mean_span_days": 42.768368055555555
+        },
+        {
+          "group": 21,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 22,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        }
+      ]
+    },
+    "figure4_information_coverage": {
+      "users": 1917,
+      "groups": 6179,
+      "dated_interactions": 13421,
+      "missing_timestamp_interactions": 0,
+      "mean_interactions_per_group": 2.172034309758861,
+      "mean_group_span_days": 3.5180651209049616,
+      "group_length_interactions": {
+        "count": 6179,
+        "mean": 2.172034309758861,
+        "median": 1.0,
+        "p25": 1.0,
+        "p75": 3.0,
+        "min": 1.0,
+        "max": 33.0
+      },
+      "group_span_days": {
+        "count": 6179,
+        "mean": 3.5180651209049616,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 0.011049947916666667,
+        "min": 0.0,
+        "max": 177.98045947916665
+      },
+      "groups_per_user": {
+        "count": 1917,
+        "mean": 3.223265519040167,
+        "median": 3.0,
+        "p25": 2.0,
+        "p75": 4.0,
+        "min": 1.0,
+        "max": 28.0
+      },
+      "user_weighted_mean_interactions_per_group": 2.6030050184795654,
+      "by_group_from_most_recent": [
+        {
+          "group": 1,
+          "contributing_users": 1917,
+          "mean_interactions": 2.455399061032864,
+          "median_interactions": 2.0,
+          "mean_span_days": 3.2694668339684885
+        },
+        {
+          "group": 2,
+          "contributing_users": 1622,
+          "mean_interactions": 2.0752157829839706,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.249245576570135
+        },
+        {
+          "group": 3,
+          "contributing_users": 1151,
+          "mean_interactions": 1.9218071242397914,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.112746121679618
+        },
+        {
+          "group": 4,
+          "contributing_users": 671,
+          "mean_interactions": 1.8986587183308494,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.098506495694652
+        },
+        {
+          "group": 5,
+          "contributing_users": 330,
+          "mean_interactions": 2.1333333333333333,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.283701061097081
+        },
+        {
+          "group": 6,
+          "contributing_users": 183,
+          "mean_interactions": 1.9453551912568305,
+          "median_interactions": 1.0,
+          "mean_span_days": 3.127416202312285
+        },
+        {
+          "group": 7,
+          "contributing_users": 104,
+          "mean_interactions": 2.0961538461538463,
+          "median_interactions": 1.0,
+          "mean_span_days": 4.44487118656517
+        },
+        {
+          "group": 8,
+          "contributing_users": 60,
+          "mean_interactions": 2.8333333333333335,
+          "median_interactions": 1.0,
+          "mean_span_days": 4.984075028742284
+        },
+        {
+          "group": 9,
+          "contributing_users": 37,
+          "mean_interactions": 3.4594594594594597,
+          "median_interactions": 2.0,
+          "mean_span_days": 15.03315295920921
+        },
+        {
+          "group": 10,
+          "contributing_users": 26,
+          "mean_interactions": 2.576923076923077,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.167161295851139
+        },
+        {
+          "group": 11,
+          "contributing_users": 19,
+          "mean_interactions": 2.8421052631578947,
+          "median_interactions": 1.0,
+          "mean_span_days": 9.584249915935672
+        },
+        {
+          "group": 12,
+          "contributing_users": 15,
+          "mean_interactions": 2.6666666666666665,
+          "median_interactions": 1.0,
+          "mean_span_days": 8.239021935185185
+        },
+        {
+          "group": 13,
+          "contributing_users": 12,
+          "mean_interactions": 1.25,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.4170849681712963
+        },
+        {
+          "group": 14,
+          "contributing_users": 10,
+          "mean_interactions": 5.2,
+          "median_interactions": 2.0,
+          "mean_span_days": 22.229136795138892
+        },
+        {
+          "group": 15,
+          "contributing_users": 4,
+          "mean_interactions": 1.75,
+          "median_interactions": 1.5,
+          "mean_span_days": 6.762228012152778
+        },
+        {
+          "group": 16,
+          "contributing_users": 3,
+          "mean_interactions": 4.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 19.153636307870368
+        },
+        {
+          "group": 17,
+          "contributing_users": 3,
+          "mean_interactions": 5.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 9.45359045910494
+        },
+        {
+          "group": 18,
+          "contributing_users": 2,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 19,
+          "contributing_users": 1,
+          "mean_interactions": 3.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 7.050300925925926
+        },
+        {
+          "group": 20,
+          "contributing_users": 1,
+          "mean_interactions": 6.0,
+          "median_interactions": 6.0,
+          "mean_span_days": 32.01959490740741
+        },
+        {
+          "group": 21,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 22,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 23,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 24,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 25,
+          "contributing_users": 1,
+          "mean_interactions": 3.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 0.018090277777777778
+        },
+        {
+          "group": 26,
+          "contributing_users": 1,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 27,
+          "contributing_users": 1,
+          "mean_interactions": 3.0,
+          "median_interactions": 3.0,
+          "mean_span_days": 7.251527777777778
+        },
+        {
+          "group": 28,
+          "contributing_users": 1,
+          "mean_interactions": 2.0,
+          "median_interactions": 2.0,
+          "mean_span_days": 26.39644675925926
+        }
+      ]
+    }
+  },
+  "full_untruncated_observed_history_reference": {
+    "users": 2000,
+    "groups": 6379,
+    "dated_interactions": 13775,
+    "missing_timestamp_interactions": 0,
+    "mean_interactions_per_group": 2.1594293776453988,
+    "mean_group_span_days": 3.493461661755079,
+    "group_length_interactions": {
+      "count": 6379,
+      "mean": 2.1594293776453988,
+      "median": 1.0,
+      "p25": 1.0,
+      "p75": 3.0,
+      "min": 1.0,
+      "max": 34.0
+    },
+    "group_span_days": {
+      "count": 6379,
+      "mean": 3.493461661755079,
+      "median": 0.0,
+      "p25": 0.0,
+      "p75": 0.01050759837962963,
+      "min": 0.0,
+      "max": 221.91755827546297
+    },
+    "groups_per_user": {
+      "count": 2000,
+      "mean": 3.1895,
+      "median": 3.0,
+      "p25": 2.0,
+      "p75": 4.0,
+      "min": 1.0,
+      "max": 28.0
+    },
+    "user_weighted_mean_interactions_per_group": 2.579883087990441,
+    "by_group_from_most_recent": [
+      {
+        "group": 1,
+        "contributing_users": 2000,
+        "mean_interactions": 2.4395,
+        "median_interactions": 2.0,
+        "mean_span_days": 3.2518484631365743
+      },
+      {
+        "group": 2,
+        "contributing_users": 1687,
+        "mean_interactions": 2.0574985180794307,
+        "median_interactions": 1.0,
+        "mean_span_days": 3.2004317314046413
+      },
+      {
+        "group": 3,
+        "contributing_users": 1187,
+        "mean_interactions": 1.8997472620050548,
+        "median_interactions": 1.0,
+        "mean_span_days": 3.057848877743845
+      },
+      {
+        "group": 4,
+        "contributing_users": 681,
+        "mean_interactions": 1.8854625550660793,
+        "median_interactions": 1.0,
+        "mean_span_days": 3.0530071345243925
+      },
+      {
+        "group": 5,
+        "contributing_users": 332,
+        "mean_interactions": 2.1295180722891565,
+        "median_interactions": 1.0,
+        "mean_span_days": 5.251888347696341
+      },
+      {
+        "group": 6,
+        "contributing_users": 184,
+        "mean_interactions": 1.940217391304348,
+        "median_interactions": 1.0,
+        "mean_span_days": 3.1104193751258054
+      },
+      {
+        "group": 7,
+        "contributing_users": 104,
+        "mean_interactions": 2.0961538461538463,
+        "median_interactions": 1.0,
+        "mean_span_days": 4.44487118656517
+      },
+      {
+        "group": 8,
+        "contributing_users": 60,
+        "mean_interactions": 2.8333333333333335,
+        "median_interactions": 1.0,
+        "mean_span_days": 4.984075028742284
+      },
+      {
+        "group": 9,
+        "contributing_users": 37,
+        "mean_interactions": 3.810810810810811,
+        "median_interactions": 2.0,
+        "mean_span_days": 18.625691825575576
+      },
+      {
+        "group": 10,
+        "contributing_users": 27,
+        "mean_interactions": 2.5555555555555554,
+        "median_interactions": 1.0,
+        "mean_span_days": 6.902131802983539
+      },
+      {
+        "group": 11,
+        "contributing_users": 20,
+        "mean_interactions": 2.8,
+        "median_interactions": 1.5,
+        "mean_span_days": 9.107478616898149
+      },
+      {
+        "group": 12,
+        "contributing_users": 16,
+        "mean_interactions": 2.6875,
+        "median_interactions": 1.0,
+        "mean_span_days": 7.836645998263889
+      },
+      {
+        "group": 13,
+        "contributing_users": 12,
+        "mean_interactions": 1.25,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.4170849681712963
+      },
+      {
+        "group": 14,
+        "contributing_users": 10,
+        "mean_interactions": 5.2,
+        "median_interactions": 2.0,
+        "mean_span_days": 22.229136795138892
+      },
+      {
+        "group": 15,
+        "contributing_users": 4,
+        "mean_interactions": 1.75,
+        "median_interactions": 1.5,
+        "mean_span_days": 6.762228012152778
+      },
+      {
+        "group": 16,
+        "contributing_users": 3,
+        "mean_interactions": 4.0,
+        "median_interactions": 3.0,
+        "mean_span_days": 19.153636307870368
+      },
+      {
+        "group": 17,
+        "contributing_users": 3,
+        "mean_interactions": 5.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 9.45359045910494
+      },
+      {
+        "group": 18,
+        "contributing_users": 2,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      },
+      {
+        "group": 19,
+        "contributing_users": 1,
+        "mean_interactions": 3.0,
+        "median_interactions": 3.0,
+        "mean_span_days": 7.050300925925926
+      },
+      {
+        "group": 20,
+        "contributing_users": 1,
+        "mean_interactions": 6.0,
+        "median_interactions": 6.0,
+        "mean_span_days": 32.01959490740741
+      },
+      {
+        "group": 21,
+        "contributing_users": 1,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      },
+      {
+        "group": 22,
+        "contributing_users": 1,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      },
+      {
+        "group": 23,
+        "contributing_users": 1,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      },
+      {
+        "group": 24,
+        "contributing_users": 1,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      },
+      {
+        "group": 25,
+        "contributing_users": 1,
+        "mean_interactions": 3.0,
+        "median_interactions": 3.0,
+        "mean_span_days": 0.018090277777777778
+      },
+      {
+        "group": 26,
+        "contributing_users": 1,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      },
+      {
+        "group": 27,
+        "contributing_users": 1,
+        "mean_interactions": 3.0,
+        "median_interactions": 3.0,
+        "mean_span_days": 7.251527777777778
+      },
+      {
+        "group": 28,
+        "contributing_users": 1,
+        "mean_interactions": 2.0,
+        "median_interactions": 2.0,
+        "mean_span_days": 26.39644675925926
+      }
+    ]
+  },
+  "provenance": {
+    "figure_sources": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon_Baby_Products/run_20260927_033250",
+    "preliminary_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon_Baby_Products_e6e228b87df8.pkl",
+    "preliminary_cache_sha256": "08786c44c648f0532249fb039d11d2cc0607d56d20ca2357e8d1297f58938c6f",
+    "timestamp_recovery": {
+      "raw_rows": 6028884,
+      "filtered_rows": 1490973,
+      "filtered_users": 184834,
+      "verified_user_sequences": 3967,
+      "verified_distinct_item_ids": 14459,
+      "raw_arrow_files": [
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00000-of-00005.arrow",
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00001-of-00005.arrow",
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00002-of-00005.arrow",
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00003-of-00005.arrow",
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00004-of-00005.arrow"
+      ]
+    },
+    "seed": 25252,
+    "sampled_users": 2000,
+    "no_training_or_figures_modified": true,
+    "figure3_verified_lag_item_target_rows": 14437,
+    "figure4_history_lengths_verified": true
+  },
+  "interpretation": "Temporal groups supplement the existing four figures; they are not the original semantic KMeans preference clusters. A 30-day consecutive-gap group can span more than 30 days.",
+  "five_figure_statistics": {
+    "alignment": {
+      "all_available": [
+        {
+          "group": 1,
+          "mean": 0.49638105563765395,
+          "n_users": 2000,
+          "ci_low": 0.41155797287038964,
+          "ci_high": 0.5847997735977568
+        },
+        {
+          "group": 2,
+          "mean": 0.1530814692359652,
+          "n_users": 1687,
+          "ci_low": 0.11216155410158486,
+          "ci_high": 0.19587813535051757
+        },
+        {
+          "group": 3,
+          "mean": 0.08619517478915815,
+          "n_users": 1187,
+          "ci_low": 0.04146609493213305,
+          "ci_high": 0.1318279239519956
+        },
+        {
+          "group": 4,
+          "mean": 0.10355478912239913,
+          "n_users": 681,
+          "ci_low": 0.035326478847797785,
+          "ci_high": 0.17747900887438803
+        },
+        {
+          "group": 5,
+          "mean": 0.06819005912387308,
+          "n_users": 332,
+          "ci_low": -0.012902544131058773,
+          "ci_high": 0.1549051322421377
+        },
+        {
+          "group": 6,
+          "mean": 0.18686161807419233,
+          "n_users": 184,
+          "ci_low": 0.06149770132205005,
+          "ci_high": 0.3287576967853227
+        },
+        {
+          "group": 7,
+          "mean": -0.011995584307820445,
+          "n_users": 104,
+          "ci_low": -0.16287756921431695,
+          "ci_high": 0.13931833222497514
+        },
+        {
+          "group": 8,
+          "mean": 0.15473254340689518,
+          "n_users": 60,
+          "ci_low": -0.0396992018018963,
+          "ci_high": 0.373457465947518
+        },
+        {
+          "group": 9,
+          "mean": 0.1349691966342357,
+          "n_users": 37,
+          "ci_low": -0.09684487081498588,
+          "ci_high": 0.36936897493163284
+        },
+        {
+          "group": 10,
+          "mean": -0.11121730879993644,
+          "n_users": 26,
+          "ci_low": -0.33505880592740755,
+          "ci_high": 0.09302585887855637
+        },
+        {
+          "group": 11,
+          "mean": -0.1152298359699846,
+          "n_users": 19,
+          "ci_low": -0.40771141865082006,
+          "ci_high": 0.16794638661168404
+        },
+        {
+          "group": 12,
+          "mean": -0.033285495418896825,
+          "n_users": 15,
+          "ci_low": -0.32563020294307415,
+          "ci_high": 0.26051763774150777
+        },
+        {
+          "group": 13,
+          "mean": 0.05623050265842011,
+          "n_users": 12,
+          "ci_low": -0.36360510357355663,
+          "ci_high": 0.5477374712266939
+        },
+        {
+          "group": 14,
+          "mean": -0.2746032787759915,
+          "n_users": 10,
+          "ci_low": -0.5175761884076276,
+          "ci_high": -0.03764131383361987
+        },
+        {
+          "group": 15,
+          "mean": 0.825245519950565,
+          "n_users": 4,
+          "ci_low": 0.37672367419226693,
+          "ci_high": 1.273767365708863
+        },
+        {
+          "group": 16,
+          "mean": -0.4410697930854015,
+          "n_users": 3,
+          "ci_low": -0.7970462087857522,
+          "ci_high": -0.07961413958459443
+        },
+        {
+          "group": 17,
+          "mean": 0.3642798286580563,
+          "n_users": 3,
+          "ci_low": -0.09096534858315675,
+          "ci_high": 0.7960552668167372
+        },
+        {
+          "group": 18,
+          "mean": -0.30757570428363346,
+          "n_users": 2,
+          "ci_low": -0.46850751456567796,
+          "ci_high": -0.14664389400158898
+        },
+        {
+          "group": 19,
+          "mean": 0.9890164994924081,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 20,
+          "mean": 0.283729130804202,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 21,
+          "mean": 2.04933688923464,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 22,
+          "mean": 0.3778525142346398,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 23,
+          "mean": 0.43302126092425847,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 24,
+          "mean": 0.14237970901747876,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 25,
+          "mean": 0.20234188791048724,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 26,
+          "mean": -0.5359219825873941,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 27,
+          "mean": 0.026877675891596075,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 28,
+          "mean": -0.7629141080177437,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        }
+      ],
+      "fixed_K16": [
+        {
+          "group": 1,
+          "mean": 0.3551210132865,
+          "n_users": 84,
+          "ci_low": 0.11437479232300635,
+          "ci_high": 0.6599751843184528
+        },
+        {
+          "group": 2,
+          "mean": 0.22436784223145748,
+          "n_users": 83,
+          "ci_low": 0.08465038828236703,
+          "ci_high": 0.382209395538119
+        },
+        {
+          "group": 3,
+          "mean": 0.1166359353785738,
+          "n_users": 76,
+          "ci_low": -0.03443661434992084,
+          "ci_high": 0.2735736361710314
+        },
+        {
+          "group": 4,
+          "mean": 0.12114759473237346,
+          "n_users": 61,
+          "ci_low": -0.03016742461216113,
+          "ci_high": 0.29006186353720836
+        },
+        {
+          "group": 5,
+          "mean": -0.00686863845422483,
+          "n_users": 56,
+          "ci_low": -0.18324009199704513,
+          "ci_high": 0.17218581718581782
+        },
+        {
+          "group": 6,
+          "mean": 0.08067315831387449,
+          "n_users": 46,
+          "ci_low": -0.11186639371916604,
+          "ci_high": 0.29985117786068677
+        },
+        {
+          "group": 7,
+          "mean": -0.029811821822845617,
+          "n_users": 42,
+          "ci_low": -0.23560490303538145,
+          "ci_high": 0.1677425957063846
+        },
+        {
+          "group": 8,
+          "mean": 0.15540199587918807,
+          "n_users": 34,
+          "ci_low": -0.09467431726273073,
+          "ci_high": 0.4280666448415675
+        },
+        {
+          "group": 9,
+          "mean": 0.20140756226033774,
+          "n_users": 25,
+          "ci_low": -0.02671397242605488,
+          "ci_high": 0.4677116007546652
+        },
+        {
+          "group": 10,
+          "mean": -0.028928825495414312,
+          "n_users": 22,
+          "ci_low": -0.22786860850454027,
+          "ci_high": 0.1665880372396383
+        },
+        {
+          "group": 11,
+          "mean": -0.1152298359699846,
+          "n_users": 19,
+          "ci_low": -0.40771141865082006,
+          "ci_high": 0.16794638661168404
+        },
+        {
+          "group": 12,
+          "mean": -0.033285495418896825,
+          "n_users": 15,
+          "ci_low": -0.32563020294307415,
+          "ci_high": 0.26051763774150777
+        },
+        {
+          "group": 13,
+          "mean": 0.05623050265842011,
+          "n_users": 12,
+          "ci_low": -0.36360510357355663,
+          "ci_high": 0.5477374712266939
+        },
+        {
+          "group": 14,
+          "mean": -0.2746032787759915,
+          "n_users": 10,
+          "ci_low": -0.5175761884076276,
+          "ci_high": -0.03764131383361987
+        },
+        {
+          "group": 15,
+          "mean": 0.825245519950565,
+          "n_users": 4,
+          "ci_low": 0.37672367419226693,
+          "ci_high": 1.273767365708863
+        },
+        {
+          "group": 16,
+          "mean": -0.4410697930854015,
+          "n_users": 3,
+          "ci_low": -0.7970462087857522,
+          "ci_high": -0.07961413958459443
+        },
+        {
+          "group": 17,
+          "mean": 0.3642798286580563,
+          "n_users": 3,
+          "ci_low": -0.09096534858315675,
+          "ci_high": 0.7960552668167372
+        },
+        {
+          "group": 18,
+          "mean": -0.30757570428363346,
+          "n_users": 2,
+          "ci_low": -0.46850751456567796,
+          "ci_high": -0.14664389400158898
+        },
+        {
+          "group": 19,
+          "mean": 0.9890164994924081,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 20,
+          "mean": 0.283729130804202,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 21,
+          "mean": 2.04933688923464,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 22,
+          "mean": 0.3778525142346398,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 23,
+          "mean": 0.43302126092425847,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 24,
+          "mean": 0.14237970901747876,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 25,
+          "mean": 0.20234188791048724,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 26,
+          "mean": -0.5359219825873941,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 27,
+          "mean": 0.026877675891596075,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 28,
+          "mean": -0.7629141080177437,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        }
+      ]
+    },
+    "preference": {
+      "all_available": [
+        {
+          "group": 1,
+          "mean": 0.0357437894428413,
+          "n_users": 2000,
+          "ci_low": 0.02561400318383242,
+          "ci_high": 0.04552913579712341
+        },
+        {
+          "group": 2,
+          "mean": -0.003361193371993495,
+          "n_users": 1687,
+          "ci_low": -0.013008164960346406,
+          "ci_high": 0.006434229170707327
+        },
+        {
+          "group": 3,
+          "mean": -0.006578384306337543,
+          "n_users": 1187,
+          "ci_low": -0.017880832639569248,
+          "ci_high": 0.005692699777463511
+        },
+        {
+          "group": 4,
+          "mean": -0.0038147252362824924,
+          "n_users": 681,
+          "ci_low": -0.018922232872537862,
+          "ci_high": 0.011777418334978588
+        },
+        {
+          "group": 5,
+          "mean": -0.002410484904703264,
+          "n_users": 332,
+          "ci_low": -0.022887675139845583,
+          "ci_high": 0.019255758769480262
+        },
+        {
+          "group": 6,
+          "mean": -0.010959982906072556,
+          "n_users": 184,
+          "ci_low": -0.03597975039544816,
+          "ci_high": 0.017298583109646583
+        },
+        {
+          "group": 7,
+          "mean": -0.016988413748803124,
+          "n_users": 104,
+          "ci_low": -0.04703195026441633,
+          "ci_high": 0.020857568138998618
+        },
+        {
+          "group": 8,
+          "mean": 0.06974971279150843,
+          "n_users": 60,
+          "ci_low": -0.006442837006546373,
+          "ci_high": 0.15800588321887662
+        },
+        {
+          "group": 9,
+          "mean": 0.030860546146923858,
+          "n_users": 37,
+          "ci_low": -0.03597677238157114,
+          "ci_high": 0.11328491291339586
+        },
+        {
+          "group": 10,
+          "mean": 0.059880347980193184,
+          "n_users": 26,
+          "ci_low": -0.04949712052653228,
+          "ci_high": 0.19343152370290487
+        },
+        {
+          "group": 11,
+          "mean": -0.013462980676195597,
+          "n_users": 19,
+          "ci_low": -0.058747810412253534,
+          "ci_high": 0.042541758235653815
+        },
+        {
+          "group": 12,
+          "mean": -0.05378821757304729,
+          "n_users": 15,
+          "ci_low": -0.07580461412369306,
+          "ci_high": -0.030213327808529082
+        },
+        {
+          "group": 13,
+          "mean": 0.13445031454899875,
+          "n_users": 12,
+          "ci_low": -0.048486080653021436,
+          "ci_high": 0.34963159556087187
+        },
+        {
+          "group": 14,
+          "mean": -0.02123538011695907,
+          "n_users": 10,
+          "ci_low": -0.07500548245614036,
+          "ci_high": 0.052695175438596344
+        },
+        {
+          "group": 15,
+          "mean": 0.039619883040935666,
+          "n_users": 4,
+          "ci_low": -0.06315789473684211,
+          "ci_high": 0.1951754385964912
+        },
+        {
+          "group": 16,
+          "mean": 0.011556669451406293,
+          "n_users": 3,
+          "ci_low": -0.05263157894736842,
+          "ci_high": 0.08730158730158728
+        },
+        {
+          "group": 17,
+          "mean": 0.34855300644774334,
+          "n_users": 3,
+          "ci_low": 0.0,
+          "ci_high": 0.9473684210526315
+        },
+        {
+          "group": 18,
+          "mean": -0.02631578947368421,
+          "n_users": 2,
+          "ci_low": -0.05263157894736842,
+          "ci_high": 0.0
+        },
+        {
+          "group": 19,
+          "mean": 0.6140350877192983,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 20,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 21,
+          "mean": 0.9473684210526316,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 22,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 23,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 24,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 25,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 26,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 27,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 28,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        }
+      ],
+      "fixed_K16": [
+        {
+          "group": 1,
+          "mean": 0.09219193264554829,
+          "n_users": 84,
+          "ci_low": 0.030664468799420155,
+          "ci_high": 0.1607918356391446
+        },
+        {
+          "group": 2,
+          "mean": 0.022721078164212934,
+          "n_users": 83,
+          "ci_low": -0.01626612390706305,
+          "ci_high": 0.06981134836660266
+        },
+        {
+          "group": 3,
+          "mean": 0.05477102367785926,
+          "n_users": 76,
+          "ci_low": -0.0009008400745507609,
+          "ci_high": 0.1203498813026702
+        },
+        {
+          "group": 4,
+          "mean": -0.0067932184830626725,
+          "n_users": 61,
+          "ci_low": -0.04252651935528591,
+          "ci_high": 0.038178044307266276
+        },
+        {
+          "group": 5,
+          "mean": -0.013658130409567829,
+          "n_users": 56,
+          "ci_low": -0.048030549732161296,
+          "ci_high": 0.03130611344648275
+        },
+        {
+          "group": 6,
+          "mean": -0.027179538876940947,
+          "n_users": 46,
+          "ci_low": -0.055683332244381,
+          "ci_high": 0.008431096402811976
+        },
+        {
+          "group": 7,
+          "mean": -0.014002747052282657,
+          "n_users": 42,
+          "ci_low": -0.05749978763537476,
+          "ci_high": 0.047678584571275835
+        },
+        {
+          "group": 8,
+          "mean": 0.04147326448819801,
+          "n_users": 34,
+          "ci_low": -0.04577196649189455,
+          "ci_high": 0.15297357690848168
+        },
+        {
+          "group": 9,
+          "mean": -0.019912250288411273,
+          "n_users": 25,
+          "ci_low": -0.059197380148231546,
+          "ci_high": 0.03249862633496533
+        },
+        {
+          "group": 10,
+          "mean": 0.07489991538155062,
+          "n_users": 22,
+          "ci_low": -0.05580275515853724,
+          "ci_high": 0.2418954679250995
+        },
+        {
+          "group": 11,
+          "mean": -0.013462980676195597,
+          "n_users": 19,
+          "ci_low": -0.058747810412253534,
+          "ci_high": 0.042541758235653815
+        },
+        {
+          "group": 12,
+          "mean": -0.05378821757304729,
+          "n_users": 15,
+          "ci_low": -0.07580461412369306,
+          "ci_high": -0.030213327808529082
+        },
+        {
+          "group": 13,
+          "mean": 0.13445031454899875,
+          "n_users": 12,
+          "ci_low": -0.048486080653021436,
+          "ci_high": 0.34963159556087187
+        },
+        {
+          "group": 14,
+          "mean": -0.02123538011695907,
+          "n_users": 10,
+          "ci_low": -0.07500548245614036,
+          "ci_high": 0.052695175438596344
+        },
+        {
+          "group": 15,
+          "mean": 0.039619883040935666,
+          "n_users": 4,
+          "ci_low": -0.06315789473684211,
+          "ci_high": 0.1951754385964912
+        },
+        {
+          "group": 16,
+          "mean": 0.011556669451406293,
+          "n_users": 3,
+          "ci_low": -0.05263157894736842,
+          "ci_high": 0.08730158730158728
+        },
+        {
+          "group": 17,
+          "mean": 0.34855300644774334,
+          "n_users": 3,
+          "ci_low": 0.0,
+          "ci_high": 0.9473684210526315
+        },
+        {
+          "group": 18,
+          "mean": -0.02631578947368421,
+          "n_users": 2,
+          "ci_low": -0.05263157894736842,
+          "ci_high": 0.0
+        },
+        {
+          "group": 19,
+          "mean": 0.6140350877192983,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 20,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 21,
+          "mean": 0.9473684210526316,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 22,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 23,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 24,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 25,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 26,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 27,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        },
+        {
+          "group": 28,
+          "mean": -0.05263157894736842,
+          "n_users": 1,
+          "ci_low": null,
+          "ci_high": null
+        }
+      ]
+    },
+    "influence": [
+      {
+        "group": 1,
+        "mean": 0.046177861752995375,
+        "n_users": 2000,
+        "ci_low": 0.036161917826701785,
+        "ci_high": 0.05605157042147705
+      },
+      {
+        "group": 2,
+        "mean": -0.002690289004475313,
+        "n_users": 1676,
+        "ci_low": -0.008045942700915402,
+        "ci_high": 0.002298380068362317
+      },
+      {
+        "group": 3,
+        "mean": -0.0018534044915234499,
+        "n_users": 1171,
+        "ci_low": -0.007918696648666894,
+        "ci_high": 0.003587012201831232
+      },
+      {
+        "group": 4,
+        "mean": -0.005604582478578393,
+        "n_users": 704,
+        "ci_low": -0.011378899446634458,
+        "ci_high": -0.00040937194208926235
+      },
+      {
+        "group": 5,
+        "mean": -0.0014397280605566722,
+        "n_users": 347,
+        "ci_low": -0.005177877218272105,
+        "ci_high": 0.0022103057374913103
+      },
+      {
+        "group": 6,
+        "mean": -0.002938816786323995,
+        "n_users": 184,
+        "ci_low": -0.008583825970389298,
+        "ci_high": 0.0019514750195230076
+      },
+      {
+        "group": 7,
+        "mean": -0.005296201356793417,
+        "n_users": 108,
+        "ci_low": -0.014736382463171657,
+        "ci_high": 0.0010288645517954852
+      },
+      {
+        "group": 8,
+        "mean": -0.0059047314470217094,
+        "n_users": 73,
+        "ci_low": -0.016723677508328875,
+        "ci_high": 0.00250778121269865
+      },
+      {
+        "group": 9,
+        "mean": 0.0010129135262121585,
+        "n_users": 41,
+        "ci_low": -0.0026348103473393487,
+        "ci_high": 0.005048880463208602
+      },
+      {
+        "group": 10,
+        "mean": 0.0027968273560206097,
+        "n_users": 30,
+        "ci_low": 0.00057831176618735,
+        "ci_high": 0.005571858975622386
+      },
+      {
+        "group": 11,
+        "mean": 0.0016235378464479824,
+        "n_users": 22,
+        "ci_low": -0.0012718258696523578,
+        "ci_high": 0.005131588982926171
+      },
+      {
+        "group": 12,
+        "mean": -0.0032731190705910704,
+        "n_users": 13,
+        "ci_low": -0.010061243080940002,
+        "ci_high": 0.0007889438133973326
+      },
+      {
+        "group": 13,
+        "mean": 0.0002996014224158393,
+        "n_users": 12,
+        "ci_low": -0.00020876244952281316,
+        "ci_high": 0.0007906533405184744
+      },
+      {
+        "group": 14,
+        "mean": -0.0004258695989847183,
+        "n_users": 8,
+        "ci_low": -0.001905149407684803,
+        "ci_high": 0.0005813304334878921
+      },
+      {
+        "group": 15,
+        "mean": 0.0004616379737854004,
+        "n_users": 6,
+        "ci_low": 5.122257603539362e-05,
+        "ci_high": 0.000997203257348802
+      },
+      {
+        "group": 16,
+        "mean": 0.0003065268198649088,
+        "n_users": 3,
+        "ci_low": -0.000990152359008789,
+        "ci_high": 0.0013748407363891602
+      },
+      {
+        "group": 17,
+        "mean": 0.0008568167686462402,
+        "n_users": 2,
+        "ci_low": -0.0003889799118041992,
+        "ci_high": 0.0021026134490966797
+      },
+      {
+        "group": 18,
+        "mean": 0.0009191632270812988,
+        "n_users": 2,
+        "ci_low": 0.0006760358810424805,
+        "ci_high": 0.0011622905731201172
+      },
+      {
+        "group": 19,
+        "mean": 0.00010016560554504395,
+        "n_users": 2,
+        "ci_low": 3.135204315185547e-05,
+        "ci_high": 0.00016897916793823242
+      },
+      {
+        "group": 20,
+        "mean": 0.0002879699071248372,
+        "n_users": 1,
+        "ci_low": null,
+        "ci_high": null
+      },
+      {
+        "group": 21,
+        "mean": 7.748603820800781e-06,
+        "n_users": 1,
+        "ci_low": null,
+        "ci_high": null
+      },
+      {
+        "group": 22,
+        "mean": 4.124641418457031e-05,
+        "n_users": 1,
+        "ci_low": null,
+        "ci_high": null
+      }
+    ],
+    "coverage": [
+      {
+        "group": 1,
+        "mean": 45.098933831286985,
+        "q25": 0.0,
+        "median": 36.102932456440655,
+        "q75": 94.67508108015146,
+        "n_users": 1917
+      },
+      {
+        "group": 2,
+        "mean": 71.40663228329795,
+        "q25": 41.00850142030064,
+        "median": 99.99999999999999,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 3,
+        "mean": 86.33461163894258,
+        "q25": 94.1511216854239,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 4,
+        "mean": 93.82099338969782,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 5,
+        "mean": 96.88923721023617,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 6,
+        "mean": 98.56242428847638,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 7,
+        "mean": 99.09468637495236,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 8,
+        "mean": 99.38928200245793,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 9,
+        "mean": 99.64126018867105,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 10,
+        "mean": 99.72076910732233,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 11,
+        "mean": 99.78265136203773,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 12,
+        "mean": 99.83509588722262,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 13,
+        "mean": 99.86327107100192,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 14,
+        "mean": 99.92013640960553,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 15,
+        "mean": 99.94301285822064,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 16,
+        "mean": 99.94666072461463,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 17,
+        "mean": 99.9637393350965,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 18,
+        "mean": 99.9637393350965,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 19,
+        "mean": 99.97486117219316,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 20,
+        "mean": 99.98186612793822,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 21,
+        "mean": 99.98954796507977,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 22,
+        "mean": 99.9909643263882,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 23,
+        "mean": 99.99258748499268,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 24,
+        "mean": 99.99312118823235,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 25,
+        "mean": 99.99772387795994,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 26,
+        "mean": 99.99772387795994,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 27,
+        "mean": 100.0,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      },
+      {
+        "group": 28,
+        "mean": 100.0,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1917
+      }
+    ]
+  },
+  "five_figure_method": {
+    "x": "recent-first 30-day consecutive-gap temporal group",
+    "alignment": "mean excess_cosine_z within user/group, then equal mean across users",
+    "preference": "mean original semantic-cluster excess match within user/group; original per-user 1/K chance retained",
+    "influence": "mean original single-item deletion margin effect within user/group; NOT joint group ablation",
+    "coverage": "sum positive original excess cosine z per group; cumulative recent groups / all positive signal in observed history",
+    "confidence_interval": "95% user bootstrap for alignment/preference/influence; coverage shading is user IQR",
+    "cohorts": "original test history and max100 items; fixed_K16 means at least16 original items, not16 groups",
+    "main_min_users": 100,
+    "supplement": "same influence estimates, all n>=1",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "physical_gpu": 0,
+    "bootstrap_repetitions": 2000,
+    "position_source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon_Baby_Products/run_20260927_033250/amazon_Baby_Products/alignment_per_position.csv",
+    "position_source_sha256": "592b103ea5e62623c5747eb84af547ca09b7fc8cd3178e11e82f78d31c594541",
+    "influence_source_sha256": "d28276c517a5baa39334a0f0082feb8c52c81d413fdd082717468756b9c8a90b",
+    "timestamp_verification": {
+      "raw_rows": 6028884,
+      "filtered_rows": 1490973,
+      "filtered_users": 184834,
+      "verified_user_sequences": 3967,
+      "verified_distinct_item_ids": 14459,
+      "raw_arrow_files": [
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00000-of-00005.arrow",
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00001-of-00005.arrow",
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00002-of-00005.arrow",
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00003-of-00005.arrow",
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_Baby_Products/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full-00004-of-00005.arrow"
+      ]
+    },
+    "training_repeated": false
+  }
+}

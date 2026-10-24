@@ -24,6 +24,7 @@ cd "$REPRO_ROOT/$MODEL"
 failed=0
 for dataset in ${DATASET_ORDER:-steam yelp23 yelp19}; do
   case "$dataset" in
+    movielens-1m) data_path="$CACHE_DIR/raw/dated_analysis/movielens-1m" ;;
     steam) data_path="$CACHE_DIR/normalized/steam.csv" ;;
     *) data_path="$CACHE_DIR/normalized/${dataset}_unique.jsonl" ;;
   esac
@@ -43,7 +44,7 @@ for dataset in ${DATASET_ORDER:-steam yelp23 yelp19}; do
       --learning-rate 1e-3 --hidden-size 128 --num-heads 4
       --early-stopping-patience 8)
   elif [[ "$MODEL" == SIGMA ]]; then
-    args+=(--no-use-large-mamba --epochs "${EPOCHS:-200}" --learning-rate 1e-3
+    args+=(--no-use-large-mamba --epochs "${EPOCHS:-20}" --learning-rate 1e-3
       --hidden-size 64 --num-layers 1 --early-stopping-patience 10
       --maxlen "${SIGMA_MAXLEN:-0}")
   elif [[ "$MODEL" == SASRec ]]; then

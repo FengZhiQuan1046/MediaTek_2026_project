@@ -1,0 +1,294 @@
+{
+  "dataset": "yelp19",
+  "run_id": "20261024_030137",
+  "group": "long",
+  "length_basis": "filtered_full_sequence",
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "all_dl",
+      "epoch": 1,
+      "global_step": 1000,
+      "scores": {
+        "recall@5": 0.006116803677874314,
+        "recall@10": 0.012116725756808354,
+        "ndcg@5": 0.0036277085413689457,
+        "ndcg@10": 0.005549080603044904,
+        "hit@5": 0.006116803677874314,
+        "hit@10": 0.012116725756808354
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 1,
+      "global_step": 2000,
+      "scores": {
+        "recall@5": 0.01831145050064285,
+        "recall@10": 0.03666186153426579,
+        "ndcg@5": 0.010962100646665612,
+        "ndcg@10": 0.016806211414691193,
+        "hit@5": 0.01831145050064285,
+        "hit@10": 0.03666186153426579
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 1,
+      "global_step": 3000,
+      "scores": {
+        "recall@5": 0.03763587485876807,
+        "recall@10": 0.061947247438344955,
+        "ndcg@5": 0.023755516506691842,
+        "ndcg@10": 0.03152186487898215,
+        "hit@5": 0.03763587485876807,
+        "hit@10": 0.061947247438344955
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 2,
+      "global_step": 4907,
+      "scores": {
+        "recall@5": 0.05637589122219192,
+        "recall@10": 0.08890793626056805,
+        "ndcg@5": 0.036904452141374534,
+        "ndcg@10": 0.04734928093397027,
+        "hit@5": 0.05637589122219192,
+        "hit@10": 0.08890793626056805
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 2,
+      "global_step": 5907,
+      "scores": {
+        "recall@5": 0.06518097167569252,
+        "recall@10": 0.10098570148439631,
+        "ndcg@5": 0.042157200791910786,
+        "ndcg@10": 0.053681348570915194,
+        "hit@5": 0.06518097167569252,
+        "hit@10": 0.10098570148439631
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 2,
+      "global_step": 6907,
+      "scores": {
+        "recall@5": 0.06841469591304009,
+        "recall@10": 0.10858300541551408,
+        "ndcg@5": 0.04439803686288467,
+        "ndcg@10": 0.057313155321529016,
+        "hit@5": 0.06841469591304009,
+        "hit@10": 0.10858300541551408
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 3,
+      "global_step": 8814,
+      "scores": {
+        "recall@5": 0.07608992091011806,
+        "recall@10": 0.11793353333073596,
+        "ndcg@5": 0.04990017286453873,
+        "ndcg@10": 0.06332813726421539,
+        "hit@5": 0.07608992091011806,
+        "hit@10": 0.11793353333073596
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 3,
+      "global_step": 9814,
+      "scores": {
+        "recall@5": 0.07975221101024663,
+        "recall@10": 0.12358281061284919,
+        "ndcg@5": 0.051821991171223575,
+        "ndcg@10": 0.06590293560891973,
+        "hit@5": 0.07975221101024663,
+        "hit@10": 0.12358281061284919
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 3,
+      "global_step": 10814,
+      "scores": {
+        "recall@5": 0.0798690926091869,
+        "recall@10": 0.1270502980480773,
+        "ndcg@5": 0.05163094328855965,
+        "ndcg@10": 0.06682203341038935,
+        "hit@5": 0.0798690926091869,
+        "hit@10": 0.1270502980480773
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 4,
+      "global_step": 12721,
+      "scores": {
+        "recall@5": 0.0859858962870612,
+        "recall@10": 0.1322320489344294,
+        "ndcg@5": 0.055742350074756225,
+        "ndcg@10": 0.07061161899588289,
+        "hit@5": 0.0859858962870612,
+        "hit@10": 0.1322320489344294
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 4,
+      "global_step": 13721,
+      "scores": {
+        "recall@5": 0.0895702653212296,
+        "recall@10": 0.13928390540382593,
+        "ndcg@5": 0.059013312537163444,
+        "ndcg@10": 0.0749375730149139,
+        "hit@5": 0.0895702653212296,
+        "hit@10": 0.13928390540382593
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 4,
+      "global_step": 14721,
+      "scores": {
+        "recall@5": 0.09268710795963689,
+        "recall@10": 0.13963455020064675,
+        "ndcg@5": 0.06022259036353293,
+        "ndcg@10": 0.0753579868737116,
+        "hit@5": 0.09268710795963689,
+        "hit@10": 0.13963455020064675
+      },
+      "evaluated_users": 25667,
+      "total_users": 25667
+    }
+  ],
+  "length_rule": "length > threshold",
+  "length_threshold": 10,
+  "config": {
+    "dataset": "yelp19",
+    "data_path": "/workspace/P78123011/cache/normalized/yelp19_unique.jsonl",
+    "cache_dir": "/workspace/P78123011/cache",
+    "refresh_data_cache": false,
+    "max_events": null,
+    "max_transitions": 500000,
+    "min_rating": 4.0,
+    "specialist_epochs": 4,
+    "joint_epochs": 0,
+    "batch_size": 128,
+    "eval_batch_size": 64,
+    "validate_every_steps": 1000,
+    "monitor_metric": "ndcg@10",
+    "early_stopping_patience": 6,
+    "lr_patience": 2,
+    "candidates": 64,
+    "dim": 128,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "enable_lora": 1,
+    "short_window": 7,
+    "preference_count": 32,
+    "preference_temperature": 0.2,
+    "preference_score_weight": 0.2,
+    "use_graph_embeddings": true,
+    "use_coordinator": true,
+    "max_history": 0,
+    "reverse_history_input": false,
+    "specialist_lr": 0.0001,
+    "joint_lr": 5e-05,
+    "rl_coef": 0.0,
+    "rl_topk": 10,
+    "preference_coef": 0.2,
+    "preference_transition_coef": 0.1,
+    "preference_balance_coef": 0.01,
+    "preference_separation_coef": 0.01,
+    "preference_sharpness_coef": 0.05,
+    "future_horizon": 3,
+    "future_decay": 0.5,
+    "hard_negative_pool_multiplier": 12,
+    "hard_negative_fraction": 0.75,
+    "hard_negative_warmup_epochs": 2,
+    "use_in_batch_negatives": true,
+    "preference_contrastive_coef": 0.05,
+    "agent_diversity_coef": 0.02,
+    "full_catalog_supervised": false,
+    "popularity_alpha": 0.0,
+    "transition_beta": 0.0,
+    "seed": 25252,
+    "device": "cuda:0",
+    "skip_mamba": false,
+    "graph_device": "cuda:0",
+    "mamba_encode_batch_size": 32,
+    "mamba_max_tokens": 32,
+    "mamba_model_id": "state-spaces/mamba-130m-hf",
+    "item_prompt_prefix": "Preference-aware product representation: ",
+    "validation_user_limit": 0,
+    "periodic_test_user_limit": 0,
+    "generate_reasons": false,
+    "save_model_weights": false,
+    "reason_count": 20,
+    "reason_max_new_tokens": 40,
+    "item_vector_artifact": null,
+    "resume_checkpoint": null,
+    "eval_length_basis": "filtered_full_sequence",
+    "eval_length_threshold": 10,
+    "experiment_note": "HF cached inputs; existing ver5 preprocessing/splits; Yelp order=source-row index; Steam/MovieLens chronological; short window=round_half_up(2*plotted mean_interactions_per_group); full preference history; weights disabled",
+    "target_recall_at_10": 0.15,
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/yelp19",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/yelp19/group_window_aligned_20261024_013517_P32",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/yelp19/group_window_aligned_20261024_013517_P32/yelp19_scores.json",
+    "history_influence_output": null,
+    "history_influence_user_limit": 0,
+    "history_influence_negatives": 64,
+    "use_short": 1,
+    "use_preference": 1
+  },
+  "valid": {
+    "ndcg@5": 0.08784299646053922,
+    "ndcg@10": 0.11108534729384276,
+    "recall@5": 0.13527097050687653,
+    "recall@10": 0.2073479565200452,
+    "hit@5": 0.13527097050687653,
+    "hit@10": 0.2073479565200452
+  },
+  "valid_users": {
+    "total_users": 25667,
+    "evaluated_users": 25667
+  },
+  "test": {
+    "ndcg@5": 0.06102086902951996,
+    "ndcg@10": 0.07686303815145103,
+    "recall@5": 0.09327151595433826,
+    "recall@10": 0.14263451124011375,
+    "hit@5": 0.09327151595433826,
+    "hit@10": 0.14263451124011375
+  },
+  "test_users": {
+    "total_users": 25667,
+    "evaluated_users": 25667
+  }
+}

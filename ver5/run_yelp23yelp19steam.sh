@@ -62,7 +62,7 @@ for i in "${!names[@]}"; do
     --joint-epochs "${JOINT_EPOCHS:-7}" --rl-coef "${RL_COEF:-0.1}"
     --batch-size "${BATCH_SIZE:-128}" --eval-batch-size "${EVAL_BATCH_SIZE:-64}"
     --max-transitions "${MAX_TRANSITIONS:-500000}" --candidates "${CANDIDATES:-64}"
-    --short-window "${SHORT_WINDOW:-4}" --max-history "${MAX_HISTORY:-0}"
+    --short-window "${SHORT_WINDOW:-auto}" --max-history "${MAX_HISTORY:-0}"
     --preference-count "${PREFERENCE_COUNT:-32}"
     --mamba-model-id "${MAMBA_MODEL_ID:-state-spaces/mamba-130m-hf}"
     --mamba-encode-batch-size "${MAMBA_ENCODE_BATCH_SIZE:-32}"

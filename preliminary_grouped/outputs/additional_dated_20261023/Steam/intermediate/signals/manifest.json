@@ -1,0 +1,53 @@
+{
+  "status": "complete",
+  "settings": {
+    "cache_dir": "/workspace/P78123011/cache",
+    "training_output_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Steam/intermediate/training",
+    "max_users": 2000,
+    "max_lag": 100,
+    "short_window": 10,
+    "random_matches": 20,
+    "reference_items": 20000,
+    "normalization_pairs": 100000,
+    "cluster_items": 10000,
+    "clusters": 32,
+    "bootstrap": 2000,
+    "seed": 25252,
+    "reverse_history_input": false
+  },
+  "datasets": [
+    {
+      "dataset": "steam",
+      "cache": "/workspace/P78123011/cache/mamba_multi_agent_data/steam_e4cf210a33ca.pkl",
+      "cache_sha256": "dc5e8a86ea96ce42f811ba18e1cb958311cc5034bd462f5f3444c42e76d892d4",
+      "eligible_users": 334728,
+      "sampled_users": 2000,
+      "num_items": 13047,
+      "train_items": 12948,
+      "reference_items": 12948,
+      "vectorized_items": 12949,
+      "cosine_normalization": {
+        "basis": "random distinct usable item pairs sampled uniformly from the full dataset catalog",
+        "catalog_items": 13047,
+        "mean": 0.23943619430065155,
+        "std": 0.13621476292610168,
+        "sampled_pairs": 100000
+      },
+      "information_coverage_users": {
+        "valid": 1927,
+        "test": 1966
+      },
+      "text_coverage": 1.0,
+      "cluster_fit_items": 10000,
+      "clusters": 32,
+      "matching_fallback_counts": {
+        "0": 43955
+      },
+      "target_occurrences_in_random_references": 227,
+      "history_input_order": "chronological",
+      "timestamp_status": "unavailable_in_ver4_cache",
+      "text_provenance": "metadata_or_review_fallback_unknown_per_item",
+      "model_item_influence_source": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Steam/intermediate/training/steam/history_item_influence.csv"
+    }
+  ]
+}

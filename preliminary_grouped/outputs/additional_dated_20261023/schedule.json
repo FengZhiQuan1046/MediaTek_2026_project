@@ -1,0 +1,30 @@
+{
+  "run": "additional_dated_20261023",
+  "max_training_epochs": 3,
+  "single_dataset_per_gpu": true,
+  "gpu0": {
+    "tmux": "ver5_gpu0",
+    "queue": [
+      "Steam",
+      "Yelp19"
+    ]
+  },
+  "gpu1": {
+    "tmux": "ver5_gpu1",
+    "queue": [
+      "MovieLens1M",
+      "Yelp23"
+    ]
+  },
+  "true_time_rule": "new group iff consecutive gap >30 days",
+  "raw_data_directory": "/workspace/P78123011/cache/raw/dated_analysis",
+  "reusable_intermediates": [
+    "dated timestamp table",
+    "data split fingerprint",
+    "position-wise semantic and cluster scores",
+    "model single-item deletion scores",
+    "user-to-time-group mapping",
+    "group summaries"
+  ],
+  "weights_saved": false
+}

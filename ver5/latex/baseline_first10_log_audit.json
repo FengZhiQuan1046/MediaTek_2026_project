@@ -1,0 +1,588 @@
+[
+  {
+    "model": "SASRec",
+    "dataset": "yelp19",
+    "run": "hf_shared_20261022_133934",
+    "evaluation_counts": {
+      "VALIDATION": 7,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      7
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/SASRec/outputs/yelp19/hf_shared_20261022_133934/train_20261022_135121.log",
+        "best_epoch": 7,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_133934/SASRec/yelp19/console.log",
+        "best_epoch": 7,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 7,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.05219739567919503,
+        "recall@10": 0.08859869783959752,
+        "hit@5": 0.05219739567919503,
+        "hit@10": 0.08859869783959752,
+        "ndcg@5": 0.03255034852624116,
+        "ndcg@10": 0.04421951711071988,
+        "evaluated_users": 27032,
+        "users_per_second": 18736.712846185404,
+        "scores_per_second": 376251930.6642491,
+        "total_users": 27032
+      }
+    }
+  },
+  {
+    "model": "SASRec",
+    "dataset": "yelp23",
+    "run": "hf_shared_20261022_133934",
+    "evaluation_counts": {
+      "VALIDATION": 7,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      7
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/SASRec/outputs/yelp23/hf_shared_20261022_133934/train_20261022_135051.log",
+        "best_epoch": 7,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_133934/SASRec/yelp23/console.log",
+        "best_epoch": 7,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 7,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.019190630797773656,
+        "recall@10": 0.0332502319109462,
+        "hit@5": 0.019190630797773656,
+        "hit@10": 0.0332502319109462,
+        "ndcg@5": 0.012082937617608258,
+        "ndcg@10": 0.016581457672409147,
+        "evaluated_users": 34496,
+        "users_per_second": 18661.874612743017,
+        "scores_per_second": 446783940.1036806,
+        "total_users": 34496
+      }
+    }
+  },
+  {
+    "model": "SASRec",
+    "dataset": "steam",
+    "run": "hf_shared_20261022_133934",
+    "evaluation_counts": {
+      "VALIDATION": 7,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      7
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/SASRec/outputs/steam/hf_shared_20261022_133934/train_20261022_133935.log",
+        "best_epoch": 7,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_133934/SASRec/steam/console.log",
+        "best_epoch": 7,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 7,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.19666714466671448,
+        "recall@10": 0.23240661074066107,
+        "hit@5": 0.19666714466671448,
+        "hit@10": 0.23240661074066107,
+        "ndcg@5": 0.17353736423191932,
+        "ndcg@10": 0.18502502071478807,
+        "evaluated_users": 334728,
+        "users_per_second": 19579.794476758976,
+        "scores_per_second": 255457578.53827435,
+        "total_users": 334728
+      }
+    }
+  },
+  {
+    "model": "BERT4Rec",
+    "dataset": "yelp19",
+    "run": "hf_shared_20261022_133934",
+    "evaluation_counts": {
+      "VALIDATION": 50,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      49
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/BERT4Rec/outputs/yelp19/hf_shared_20261022_133934/train_20261022_142223.log",
+        "best_epoch": 49,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_133934/BERT4Rec/yelp19/console.log",
+        "best_epoch": 49,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.09581237052382362,
+        "recall@10": 0.1596256288842853,
+        "hit@5": 0.09581237052382362,
+        "hit@10": 0.1596256288842853,
+        "ndcg@5": 0.06097578117417209,
+        "ndcg@10": 0.08150391459694344,
+        "evaluated_users": 27032,
+        "users_per_second": 19500.18428106945,
+        "scores_per_second": 391583200.54815567,
+        "total_users": 27032
+      }
+    }
+  },
+  {
+    "model": "BERT4Rec",
+    "dataset": "yelp23",
+    "run": "hf_shared_20261022_133934",
+    "evaluation_counts": {
+      "VALIDATION": 50,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      40
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/BERT4Rec/outputs/yelp23/hf_shared_20261022_133934/train_20261022_141750.log",
+        "best_epoch": 40,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_133934/BERT4Rec/yelp23/console.log",
+        "best_epoch": 40,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.025974025974025976,
+        "recall@10": 0.04661410018552876,
+        "hit@5": 0.025974025974025976,
+        "hit@10": 0.04661410018552876,
+        "ndcg@5": 0.016176224674110288,
+        "ndcg@10": 0.022790296115534094,
+        "evaluated_users": 34496,
+        "users_per_second": 19273.722563640713,
+        "scores_per_second": 461432191.8961223,
+        "total_users": 34496
+      }
+    }
+  },
+  {
+    "model": "BERT4Rec",
+    "dataset": "steam",
+    "run": "hf_shared_20261022_133934",
+    "evaluation_counts": {
+      "VALIDATION": 50,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      48
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/BERT4Rec/outputs/steam/hf_shared_20261022_133934/train_20261022_133935.log",
+        "best_epoch": 48,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_133934/BERT4Rec/steam/console.log",
+        "best_epoch": 48,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.20254654525465451,
+        "recall@10": 0.2402906240290624,
+        "hit@5": 0.20254654525465451,
+        "hit@10": 0.2402906240290624,
+        "ndcg@5": 0.17841278738422914,
+        "ndcg@10": 0.19054748005633493,
+        "evaluated_users": 334728,
+        "users_per_second": 19801.202830894432,
+        "scores_per_second": 258346293.33467966,
+        "total_users": 334728
+      }
+    }
+  },
+  {
+    "model": "Mamba4Rec",
+    "dataset": "yelp19",
+    "run": "hf_shared_20261022_005030",
+    "evaluation_counts": {
+      "VALIDATION": 15,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      14
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/Mamba4Rec/outputs/yelp19/hf_shared_20261022_005030/train_20261022_013436.log",
+        "best_epoch": 14,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_005030/Mamba4Rec/yelp19/console.log",
+        "best_epoch": 14,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.02841077241787511,
+        "recall@10": 0.049570878958271676,
+        "hit@5": 0.02841077241787511,
+        "hit@10": 0.049570878958271676,
+        "ndcg@5": 0.017464428637358663,
+        "ndcg@10": 0.02427971043678281,
+        "evaluated_users": 27032,
+        "users_per_second": 9026.65241887056,
+        "scores_per_second": 181264207.2233397,
+        "total_users": 27032
+      }
+    }
+  },
+  {
+    "model": "Mamba4Rec",
+    "dataset": "yelp23",
+    "run": "hf_shared_20261022_005030",
+    "evaluation_counts": {
+      "VALIDATION": 15,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      14
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/Mamba4Rec/outputs/yelp23/hf_shared_20261022_005030/train_20261022_013140.log",
+        "best_epoch": 14,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_005030/Mamba4Rec/yelp23/console.log",
+        "best_epoch": 14,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.021016929499072357,
+        "recall@10": 0.03394596474953618,
+        "hit@5": 0.021016929499072357,
+        "hit@10": 0.03394596474953618,
+        "ndcg@5": 0.013084731621111368,
+        "ndcg@10": 0.017217375954063627,
+        "evaluated_users": 34496,
+        "users_per_second": 9094.673065186451,
+        "scores_per_second": 217735567.85362884,
+        "total_users": 34496
+      }
+    }
+  },
+  {
+    "model": "Mamba4Rec",
+    "dataset": "steam",
+    "run": "hf_shared_20261022_005030",
+    "evaluation_counts": {
+      "VALIDATION": 15,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      15
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/Mamba4Rec/outputs/steam/hf_shared_20261022_005030/train_20261022_005030.log",
+        "best_epoch": 15,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_005030/Mamba4Rec/steam/console.log",
+        "best_epoch": 15,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.19934693243469323,
+        "recall@10": 0.2356331110633111,
+        "hit@5": 0.19934693243469323,
+        "hit@10": 0.2356331110633111,
+        "ndcg@5": 0.17685700263702056,
+        "ndcg@10": 0.18851922685043387,
+        "evaluated_users": 334728,
+        "users_per_second": 10884.774077983167,
+        "scores_per_second": 142013647.3954464,
+        "total_users": 334728
+      }
+    }
+  },
+  {
+    "model": "ReSID",
+    "dataset": "yelp19",
+    "run": "hf_shared_20261022_005030",
+    "evaluation_counts": {
+      "VALIDATION": 20,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      12
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/ReSID/outputs/yelp19/hf_shared_20261022_005030/train_20261022_020558.log",
+        "best_epoch": 12,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_005030/ReSID/yelp19/console.log",
+        "best_epoch": 12,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 9,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.007842556969517609,
+        "recall@10": 0.012096774193548387,
+        "hit@5": 0.007842556969517609,
+        "hit@10": 0.012096774193548387,
+        "ndcg@5": 0.00514954581115859,
+        "ndcg@10": 0.006512566576274975,
+        "evaluated_users": 27032,
+        "users_per_second": 5794.853679635116,
+        "scores_per_second": 116366456.74075277,
+        "total_users": 27032
+      }
+    }
+  },
+  {
+    "model": "ReSID",
+    "dataset": "yelp23",
+    "run": "hf_shared_20261022_005030",
+    "evaluation_counts": {
+      "VALIDATION": 12,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      4
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/ReSID/outputs/yelp23/hf_shared_20261022_005030/train_20261022_020348.log",
+        "best_epoch": 4,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_005030/ReSID/yelp23/console.log",
+        "best_epoch": 4,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 4,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.005797773654916512,
+        "recall@10": 0.008464749536178108,
+        "hit@5": 0.005797773654916512,
+        "hit@10": 0.008464749536178108,
+        "ndcg@5": 0.003817173956456233,
+        "ndcg@10": 0.0046698681324208935,
+        "evaluated_users": 34496,
+        "users_per_second": 6315.928655819271,
+        "scores_per_second": 151209647.94896916,
+        "total_users": 34496
+      }
+    }
+  },
+  {
+    "model": "ReSID",
+    "dataset": "steam",
+    "run": "hf_shared_20261022_005030",
+    "evaluation_counts": {
+      "VALIDATION": 25,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      24
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/ReSID/outputs/steam/hf_shared_20261022_005030/train_20261022_005030.log",
+        "best_epoch": 24,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/hf_shared_20261022_005030/ReSID/steam/console.log",
+        "best_epoch": 24,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.17508544250854424,
+        "recall@10": 0.20227169522716953,
+        "hit@5": 0.17508544250854424,
+        "hit@10": 0.20227169522716953,
+        "ndcg@5": 0.15822916529932549,
+        "ndcg@10": 0.16693351326021022,
+        "evaluated_users": 334728,
+        "users_per_second": 6354.335104938978,
+        "scores_per_second": 82905010.11413884,
+        "total_users": 334728
+      }
+    }
+  },
+  {
+    "model": "SIGMA",
+    "dataset": "yelp19",
+    "run": "sigma_yelp19_20epochs_20261024_010640",
+    "evaluation_counts": {
+      "VALIDATION": 20,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      20
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/SIGMA/outputs/yelp19/sigma_yelp19_20epochs_20261024_010640/train_20261024_010642.log",
+        "best_epoch": 20,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/sigma_yelp19_20epochs_20261024_010640/SIGMA/yelp19/console.log",
+        "best_epoch": 20,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.028003847292098254,
+        "recall@10": 0.04594554601953241,
+        "hit@5": 0.028003847292098254,
+        "hit@10": 0.04594554601953241,
+        "ndcg@5": 0.01763946127855379,
+        "ndcg@10": 0.02338922376457528,
+        "evaluated_users": 27032,
+        "users_per_second": 682.728364091851,
+        "scores_per_second": 13709868.279328458,
+        "total_users": 27032
+      }
+    }
+  },
+  {
+    "model": "SIGMA",
+    "dataset": "yelp23",
+    "run": "sigma_yelp23_20epochs_20261023_180442",
+    "evaluation_counts": {
+      "VALIDATION": 20,
+      "FINAL TEST": 1
+    },
+    "recorded_test_epochs": [
+      20
+    ],
+    "log_final_results": [
+      {
+        "file": "/workspace/P78123011/MediaTek_2026_project/Reproduce/SIGMA/outputs/yelp23/sigma_yelp23_20epochs_20261023_180442/train_20261023_180514.log",
+        "best_epoch": 20,
+        "test_present": true
+      },
+      {
+        "file": "/workspace/P78123011/cache/training_runs/sigma_yelp23_20epochs_20261023_180442/SIGMA/yelp23/console.log",
+        "best_epoch": 20,
+        "test_present": true
+      }
+    ],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "recall@5": 0.01788613172541744,
+        "recall@10": 0.029945500927643785,
+        "hit@5": 0.01788613172541744,
+        "hit@10": 0.029945500927643785,
+        "ndcg@5": 0.010847401720556345,
+        "ndcg@10": 0.014708165527737816,
+        "evaluated_users": 34496,
+        "users_per_second": 1741.3551212442035,
+        "scores_per_second": 41689782.95770747,
+        "total_users": 34496
+      }
+    }
+  },
+  {
+    "model": "SIGMA",
+    "dataset": "steam",
+    "run": "sigma_shared_20261022_194000_micro4",
+    "evaluation_counts": {
+      "VALIDATION": 98
+    },
+    "recorded_test_epochs": [],
+    "log_final_results": [],
+    "best_validation_within_10": {
+      "epoch": 10,
+      "split": "validation",
+      "scores": {
+        "evaluated_users": 334728,
+        "hit@10": 0.2322661982266198,
+        "hit@5": 0.19732140723214073,
+        "ndcg@10": 0.18659128684532983,
+        "ndcg@5": 0.17535851108628916,
+        "recall@10": 0.2322661982266198,
+        "recall@5": 0.19732140723214073,
+        "scores_per_second": 24075615.17942959,
+        "total_users": 334728,
+        "users_per_second": 1845.2989330443468
+      }
+    }
+  }
+]

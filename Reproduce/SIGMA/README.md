@@ -19,7 +19,7 @@ The padding ID shift exists only within the neural network, with no data remappi
 
 Both training prefixes and evaluation inputs use complete observed histories
 (`SIGMA_MAXLEN=0`), matching the new unrestricted ver5 preference input. The
-objective and architecture remain SIGMA-specific. Training defaults to 200 epochs
+objective and architecture remain SIGMA-specific. Training defaults to 20 epochs
 with patience 10, Adam at 1e-3, effective batch 128 (micro-batch 4 with gradient accumulation), evaluation batch 4, hidden size 64 and one gated layer.
 Set `EPOCHS`, `BATCH_SIZE`, or `EVAL_BATCH_SIZE` to override run settings.
 

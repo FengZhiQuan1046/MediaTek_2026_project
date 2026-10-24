@@ -1,0 +1,418 @@
+"""Stream recommendation datasets into SQLite and explore a one-pass k-filter."""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import csv
+import gzip
+import json
+import math
+import re
+import sqlite3
+import sys
+import tempfile
+from contextlib import closing
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+FORMATS = {"amazon23", "yelp", "movielens1m", "steam_reviews",
+           "steam_user_reviews", "steam_items", "csv"}
+
+
+def open_text(path):
+    return (gzip.open if str(path).endswith(".gz") else open)(
+        path, "rt", encoding="utf-8-sig")
+
+
+def identifier(value):
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        raise ValueError("ID must be a string or integer")
+    value = str(value).strip()
+    if not value:
+        raise ValueError("empty ID")
+    return value
+
+
+def number(value):
+    if value is None or value == "":
+        return None
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError("non-finite numeric value")
+    return result
+
+
+def timestamp(value, unit="iso"):
+    if value is None or value == "":
+        return None
+    if unit in {"s", "ms"}:
+        seconds = number(value) / (1000 if unit == "ms" else 1)
+        result = datetime.fromtimestamp(seconds, timezone.utc)
+    elif unit == "posted":
+        # Australian Steam dates sometimes omit the year. Do not invent it.
+        value = str(value).removeprefix("Posted ").rstrip(".")
+        if not re.search(r"\b\d{4}\b", value):
+            return None
+        result = datetime.strptime(value, "%B %d, %Y").replace(tzinfo=timezone.utc)
+    elif unit == "iso":
+        result = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if result.tzinfo is None:
+            result = result.replace(tzinfo=timezone.utc)
+    else:
+        raise ValueError(f"unknown timestamp unit: {unit}")
+    return result.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+
+def normalize(record, spec, quality=None):
+    kind = spec["format"]
+    defaults = {
+        "amazon23": ("user_id", "parent_asin", "rating", "timestamp", "ms"),
+        "yelp": ("user_id", "business_id", "stars", "date", "iso"),
+        "movielens1m": ("user_id", "item_id", "rating", "timestamp", "s"),
+        "steam_reviews": ("username", "product_id", None, "date", "iso"),
+        "steam_user_reviews": ("user_id", "item_id", "recommend", "posted", "posted"),
+        "steam_items": ("user_id", "item_id", None, None, "iso"),
+        "csv": ("user_id", "item_id", "rating", "timestamp", "iso"),
+    }
+    user, item, rating, date, unit = defaults[kind]
+    user = spec.get("user_field", user)
+    item = spec.get("item_field", item)
+    rating = spec.get("rating_field", rating)
+    date = spec.get("timestamp_field", date)
+    unit = spec.get("timestamp_unit", unit)
+    score = number(record.get(rating)) if rating else None
+    if kind in {"amazon23", "yelp", "movielens1m"} and score is not None and not 1 <= score <= 5:
+        # Rating quality must not change which user-item interactions enter the filter.
+        if quality is not None:
+            quality["out_of_range_star_ratings"] += 1
+            key = str(score)
+            values = quality["out_of_range_star_rating_values"]
+            values[key] = values.get(key, 0) + 1
+        score = None
+    return (identifier(record[user]), identifier(record[item]), score,
+            timestamp(record.get(date), unit) if date else None)
+
+
+def read_records(path, spec):
+    """Yield (source line, mapped record); errors include path and line number."""
+    kind = spec["format"]
+    with open_text(path) as handle:
+        if kind == "csv":
+            reader = csv.DictReader(handle, delimiter=spec.get("delimiter", ","))
+            if not reader.fieldnames:
+                raise ValueError(f"{path}: missing CSV header")
+            for record in reader:
+                yield reader.line_num, record
+            return
+        for line_no, line in enumerate(handle, 1):
+            if not line.strip():
+                continue
+            try:
+                if kind == "movielens1m":
+                    fields = line.strip().split("::")
+                    if len(fields) != 4:
+                        raise ValueError("expected four ::-delimited fields")
+                    yield line_no, dict(zip(
+                        ("user_id", "item_id", "rating", "timestamp"), fields))
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    if not kind.startswith("steam"):
+                        raise
+                    record = ast.literal_eval(line)
+                if not isinstance(record, dict):
+                    raise ValueError("expected one object per line")
+                nested = {"steam_user_reviews": "reviews", "steam_items": "items"}.get(kind)
+                if nested:
+                    for child in record[nested]:
+                        yield line_no, {**child, "user_id": record["user_id"]}
+                else:
+                    yield line_no, record
+            except (ValueError, KeyError, TypeError, SyntaxError) as exc:
+                raise ValueError(f"{path}:{line_no}: {exc}") from exc
+
+
+def ingest(conn, paths, spec):
+    conn.execute("CREATE TABLE raw(user_id TEXT, item_id TEXT, rating REAL, timestamp TEXT)")
+    batch = []
+    total = 0
+    quality = {"out_of_range_star_ratings": 0, "out_of_range_star_rating_values": {}}
+    for path in paths:
+        for line_no, record in read_records(path, spec):
+            try:
+                batch.append(normalize(record, spec, quality))
+            except (ValueError, KeyError, TypeError, OverflowError, OSError) as exc:
+                raise ValueError(f"{path}:{line_no}: {exc}") from exc
+            if len(batch) >= 10000:
+                conn.executemany("INSERT INTO raw VALUES (?, ?, ?, ?)", batch)
+                total += len(batch)
+                batch.clear()
+                if total % 1000000 == 0:
+                    print(f"  loaded {total:,} interactions", flush=True)
+    conn.executemany("INSERT INTO raw VALUES (?, ?, ?, ?)", batch)
+    conn.commit()
+    if quality["out_of_range_star_ratings"]:
+        print(f"  retained {quality['out_of_range_star_ratings']:,} interactions with out-of-range star ratings as null", flush=True)
+    return quality
+
+
+def prepare(conn, k, deduplicate=False):
+    if deduplicate:
+        # Prefer earliest known timestamp, then source order; all-null pairs use source order.
+        conn.execute("""CREATE TABLE interactions AS
+            SELECT user_id, item_id, rating, timestamp FROM (
+                SELECT *, ROW_NUMBER() OVER (
+                    PARTITION BY user_id, item_id
+                    ORDER BY timestamp IS NULL, timestamp, rowid) AS position FROM raw
+            ) WHERE position = 1""")
+    else:
+        conn.execute("CREATE VIEW interactions AS SELECT * FROM raw")
+    # Both eligibility sets come from exactly the same pre-filter table.
+    conn.execute("CREATE TABLE eligible_users AS SELECT user_id FROM interactions GROUP BY user_id HAVING COUNT(*) >= ?", (k,))
+    conn.execute("CREATE TABLE eligible_items AS SELECT item_id FROM interactions GROUP BY item_id HAVING COUNT(*) >= ?", (k,))
+    conn.execute("CREATE UNIQUE INDEX eu ON eligible_users(user_id)")
+    conn.execute("CREATE UNIQUE INDEX ei ON eligible_items(item_id)")
+    conn.execute("""CREATE TABLE filtered AS SELECT a.* FROM interactions a
+        JOIN eligible_users u USING(user_id) JOIN eligible_items i USING(item_id)""")
+    conn.commit()
+
+
+def distribution(conn, table, field):
+    return list(conn.execute(f"SELECT {field}, COUNT(*) FROM {table} GROUP BY {field} ORDER BY {field}"))
+
+
+def degree_summary(histogram, k):
+    n = sum(count for _, count in histogram)
+    total = sum(degree * count for degree, count in histogram)
+    if not n:
+        return dict(entities=0, min=None, mean=None, p25=None, median=None,
+                    p75=None, p95=None, max=None, below_threshold=0, gini=None,
+                    top_1_percent_interaction_share=None)
+
+    def at_rank(rank):
+        cumulative = 0
+        for degree, count in histogram:
+            cumulative += count
+            if cumulative > rank:
+                return degree
+        raise AssertionError("rank out of range")
+
+    def quantile(q):
+        rank = (n - 1) * q
+        lower = math.floor(rank)
+        return at_rank(lower) + (at_rank(math.ceil(rank)) - at_rank(lower)) * (rank - lower)
+
+    rank = 0
+    weighted_ranks = 0
+    for degree, count in histogram:
+        weighted_ranks += degree * count * (2 * rank + count + 1) / 2
+        rank += count
+    remaining = max(1, math.ceil(n * .01))
+    top_total = 0
+    for degree, count in reversed(histogram):
+        take = min(count, remaining)
+        top_total += degree * take
+        remaining -= take
+        if not remaining:
+            break
+    return dict(entities=n, min=histogram[0][0], mean=total / n,
+                p25=quantile(.25), median=quantile(.5), p75=quantile(.75),
+                p95=quantile(.95), max=histogram[-1][0],
+                below_threshold=sum(count for degree, count in histogram if degree < k),
+                gini=2 * weighted_ranks / (n * total) - (n + 1) / n,
+                top_1_percent_interaction_share=top_total / total)
+
+
+def write_csv(path, columns, rows):
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(columns)
+        writer.writerows(rows)
+
+
+def summarize(conn, table, k, out):
+    n, rated, avg, start, end, dated = conn.execute(f"""SELECT COUNT(*), COUNT(rating),
+        AVG(rating), MIN(timestamp), MAX(timestamp), COUNT(timestamp) FROM {table}""").fetchone()
+    pairs = conn.execute(f"SELECT COUNT(*) FROM (SELECT 1 FROM {table} GROUP BY user_id, item_id)").fetchone()[0]
+    histograms = {}
+    degrees = {}
+    for axis in ("user", "item"):
+        hist = list(conn.execute(f"""SELECT degree, COUNT(*) FROM (
+            SELECT COUNT(*) AS degree FROM {table} GROUP BY {axis}_id)
+            GROUP BY degree ORDER BY degree"""))
+        histograms[axis] = hist
+        degrees[axis] = degree_summary(hist, k)
+        write_csv(out / f"{table}_{axis}_degrees.csv", ["interactions", "entities"], hist)
+    users, items = degrees["user"]["entities"], degrees["item"]["entities"]
+    density = pairs / (users * items) if users and items else None
+    ratings = distribution(conn, table, "rating")
+    months = list(conn.execute(f"""SELECT SUBSTR(timestamp, 1, 7), COUNT(*)
+        FROM {table} WHERE timestamp IS NOT NULL GROUP BY 1 ORDER BY 1"""))
+    write_csv(out / f"{table}_ratings.csv", ["rating", "interactions"], ratings)
+    write_csv(out / f"{table}_months.csv", ["month_utc", "interactions"], months)
+    return dict(interactions=n, users=users, items=items, unique_user_item_pairs=pairs,
+                repeated_pair_rows=n - pairs, density=density,
+                sparsity=1 - density if density is not None else None,
+                mean_rating=avg, missing_ratings=n - rated, missing_timestamps=n - dated,
+                first_timestamp_utc=start, last_timestamp_utc=end, degrees=degrees), histograms
+
+
+def plot(out, histograms):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+    for axis, ax in zip(("user", "item"), axes[0]):
+        for stage, hists in histograms.items():
+            hist = hists[axis]
+            if hist:
+                ax.plot(*zip(*hist), ".", label=stage)
+        ax.set(xscale="log", yscale="log", xlabel=f"Interactions per {axis}", ylabel="Entities")
+        if ax.lines:
+            ax.legend()
+    for filename, ax, xlabel in (("filtered_ratings.csv", axes[1, 0], "Rating / recommendation"),
+                                 ("filtered_months.csv", axes[1, 1], "Month (UTC)")):
+        with (out / filename).open(encoding="utf-8") as handle:
+            rows = [r for r in csv.reader(handle)][1:]
+        rows = [r for r in rows if r[0]]
+        if rows:
+            labels, counts = zip(*rows)
+            ax.bar(range(len(labels)), [int(c) for c in counts])
+            step = max(1, math.ceil(len(labels) / 8))
+            ax.set_xticks(range(0, len(labels), step), labels[::step], rotation=45, ha="right")
+        ax.set(xlabel=xlabel, ylabel="Filtered interactions")
+    fig.tight_layout()
+    fig.savefig(out / "exploration.png", dpi=160)
+    plt.close(fig)
+
+
+def analyze_dataset(spec, config_dir, output, k=5, deduplicate=False,
+                    plots=False, export=False, work_dir=None):
+    paths = [Path(p) if Path(p).is_absolute() else config_dir / p for p in spec["paths"]]
+    for path in paths:
+        if not path.is_file():
+            raise FileNotFoundError(f"{spec['name']}: missing input {path}")
+    out = output / spec["name"]
+    out.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="recsys-eda-", dir=work_dir) as scratch:
+        with closing(sqlite3.connect(str(Path(scratch) / "interactions.sqlite"))) as conn:
+            conn.execute("PRAGMA temp_store=FILE")
+            conn.execute("PRAGMA cache_size=-65536")
+            quality = ingest(conn, paths, spec)
+            raw_rows = conn.execute("SELECT COUNT(*) FROM raw").fetchone()[0]
+            prepare(conn, k, deduplicate)
+            before, h_before = summarize(conn, "interactions", k, out)
+            after, h_after = summarize(conn, "filtered", k, out)
+            result = dict(dataset=spec["name"], source=spec,
+                          input_files=[dict(path=str(p.resolve()), bytes=p.stat().st_size) for p in paths],
+                          generated_at_utc=datetime.now(timezone.utc).isoformat(),
+                          filter=dict(threshold=k, mode="simultaneous_single_pass",
+                                      deduplicate=deduplicate),
+                          raw_interactions=raw_rows,
+                          data_quality=quality,
+                          deduplicated_rows_removed=raw_rows - before["interactions"],
+                          before=before, after=after,
+                          interaction_retention=after["interactions"] / before["interactions"]
+                          if before["interactions"] else None)
+            if export:
+                with gzip.open(out / "filtered_interactions.csv.gz", "wt", encoding="utf-8", newline="") as handle:
+                    writer = csv.writer(handle)
+                    writer.writerow(["user_id", "item_id", "rating", "timestamp_utc"])
+                    writer.writerows(conn.execute("SELECT * FROM filtered"))
+            if plots:
+                plot(out, {"before": h_before, "after": h_after})
+    (out / "summary.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    return result
+
+
+def report(results, output):
+    columns = ["dataset", "stage", "users", "items", "interactions", "unique_user_item_pairs",
+               "sparsity", "mean_rating", "missing_timestamps", "users_below_threshold", "items_below_threshold"]
+    rows = []
+    lines = ["# Dataset exploration", "", "Both eligibility sets use pre-filter counts; filtering occurs once.",
+             "Counts refer to interaction rows; duplicates are kept unless explicitly removed.", "",
+             "| Dataset | Stage | Users | Items | Interactions | Sparsity |", "| --- | --- | ---: | ---: | ---: | ---: |"]
+    for result in results:
+        for stage in ("before", "after"):
+            stats = result[stage]
+            rows.append([result["dataset"], stage] + [stats[c] for c in columns[2:9]] +
+                        [stats["degrees"][a]["below_threshold"] for a in ("user", "item")])
+            sparsity = f"{stats['sparsity']:.6%}" if stats["sparsity"] is not None else "N/A"
+            lines.append(f"| {result['dataset']} | {stage} | {stats['users']:,} | {stats['items']:,} | {stats['interactions']:,} | {sparsity} |")
+    for result in results:
+        lines.extend(["", f"## {result['dataset']}", "",
+                      f"Raw rows: {result['raw_interactions']:,}. Deduplication removed: {result['deduplicated_rows_removed']:,}.",
+                      f"Source star ratings outside 1–5 converted to null (interactions retained): "
+                      f"{result.get('data_quality', {}).get('out_of_range_star_ratings', 0):,}.",
+                      f"Post-filter entities below the threshold: {result['after']['degrees']['user']['below_threshold']:,} users; "
+                      f"{result['after']['degrees']['item']['below_threshold']:,} items.", ""])
+    write_csv(output / "comparison.csv", columns, rows)
+    (output / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def validate_config(specs):
+    if not isinstance(specs, list) or not specs:
+        raise ValueError("config must be a nonempty JSON list")
+    names = set()
+    for spec in specs:
+        name = spec.get("name", "")
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", name) or name in names:
+            raise ValueError(f"invalid or duplicate dataset name: {name!r}")
+        names.add(name)
+        if spec.get("format") not in FORMATS:
+            raise ValueError(f"{name}: format must be one of {sorted(FORMATS)}")
+        if not isinstance(spec.get("paths"), list) or not spec["paths"] or not all(isinstance(p, str) and p for p in spec["paths"]):
+            raise ValueError(f"{name}: paths must be a nonempty list of filenames")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=Path, default=Path("datasets.json"))
+    parser.add_argument("--output", type=Path, default=Path("results"))
+    parser.add_argument("--datasets", nargs="+", help="Names to analyze (default: all configured datasets)")
+    parser.add_argument("--k", type=int, default=5)
+    parser.add_argument("--deduplicate", action="store_true", help="Keep earliest row per user-item pair before filtering")
+    parser.add_argument("--plots", action="store_true", help="Generate PNG plots (requires matplotlib)")
+    parser.add_argument("--export", action="store_true", help="Export filtered interactions as compressed CSV")
+    parser.add_argument("--work-dir", type=Path, help="Directory for temporary SQLite storage")
+    args = parser.parse_args()
+    if args.k < 1:
+        parser.error("--k must be positive")
+    try:
+        specs = json.loads(args.config.read_text(encoding="utf-8-sig"))
+        validate_config(specs)
+        if args.datasets:
+            unknown = set(args.datasets) - {s["name"] for s in specs}
+            if unknown:
+                raise ValueError(f"unknown datasets: {sorted(unknown)}")
+            specs = [s for s in specs if s["name"] in args.datasets]
+        # Preflight all files before doing expensive ingestion.
+        for spec in specs:
+            for value in spec["paths"]:
+                path = args.config.resolve().parent / value
+                if not path.is_file():
+                    raise FileNotFoundError(f"{spec['name']}: missing {path}; see DATASETS.md")
+        if args.plots:
+            import matplotlib  # noqa: F401
+        if args.work_dir:
+            args.work_dir.mkdir(parents=True, exist_ok=True)
+        args.output.mkdir(parents=True, exist_ok=True)
+        results = []
+        for spec in specs:
+            print(f"Analyzing {spec['name']}...", flush=True)
+            results.append(analyze_dataset(spec, args.config.resolve().parent, args.output,
+                                           args.k, args.deduplicate, args.plots, args.export, args.work_dir))
+            report(results, args.output)
+        print(f"Reports written to {args.output.resolve()}")
+    except (ValueError, OSError, sqlite3.Error, ImportError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

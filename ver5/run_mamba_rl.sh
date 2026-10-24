@@ -67,7 +67,11 @@ if [[ -z "${OUTPUT_DIR:-}" ]]; then
     OUTPUT_DIR="$PROJECT_ROOT/outputs_mamba_rl"
   fi
 fi
-SHORT_WINDOW="${SHORT_WINDOW:-4}"
+# Keep other datasets' existing defaults; these four use temporal-group statistics.
+case "${DATASET,,}" in
+  steam|movielens|movielens1m|movielens-1m|ml-1m|yelp19|yelp23) SHORT_WINDOW="${SHORT_WINDOW:-auto}" ;;
+  *) SHORT_WINDOW="${SHORT_WINDOW:-4}" ;;
+esac
 PREFERENCE_COUNT="${PREFERENCE_COUNT:-32}"
 PREFERENCE_TEMPERATURE="${PREFERENCE_TEMPERATURE:-0.2}"
 PREFERENCE_SCORE_WEIGHT="${PREFERENCE_SCORE_WEIGHT:-0.2}"

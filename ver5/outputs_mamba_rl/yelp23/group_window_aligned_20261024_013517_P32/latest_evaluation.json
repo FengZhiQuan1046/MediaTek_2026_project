@@ -1,0 +1,61 @@
+{
+  "dataset": "yelp23",
+  "timestamp": "2026-10-23T19:01:36.243070+00:00",
+  "evaluation": "FINAL FULL TEST",
+  "stage": "all_dl",
+  "epoch": 0,
+  "step": 10814,
+  "evaluated_users": 34496,
+  "total_users": 34496,
+  "metrics": {
+    "recall@5": 0.030873144712430425,
+    "recall@10": 0.05449907235621521,
+    "ndcg@5": 0.01889940359541569,
+    "ndcg@10": 0.026475200235173243,
+    "hit@5": 0.030873144712430425,
+    "hit@10": 0.05449907235621521,
+    "preference_change_probability": 0.07855444184481987,
+    "preference_current_entropy": 1.5129654818872795,
+    "preference_next_entropy": 1.6648036725888227,
+    "preference_ranking_weight": 0.010187724606930546,
+    "short_agent_weight": 0.9898122741472744,
+    "preference_agent_weight": 0.010187724606930546,
+    "short_preference_state_cosine": 0.34181731071233307,
+    "users_per_second": 1953.9240490063971,
+    "scores_per_second": 46778895.657262154,
+    "evaluated_users": 34496,
+    "total_users": 34496,
+    "sequence_length": {
+      "basis": "filtered_full_sequence",
+      "threshold": 10,
+      "short_rule": "length <= threshold",
+      "long_rule": "length > threshold",
+      "short": {
+        "total_users": 4709,
+        "evaluated_users": 4709,
+        "history_length_min": 4,
+        "history_length_max": 10,
+        "history_length_mean": 8.130176258228923,
+        "recall@5": 0.04162242514334254,
+        "recall@10": 0.07156508812911447,
+        "ndcg@5": 0.02547464302156802,
+        "ndcg@10": 0.035099368226902974,
+        "hit@5": 0.04162242514334254,
+        "hit@10": 0.07156508812911447
+      },
+      "long": {
+        "total_users": 29787,
+        "evaluated_users": 29787,
+        "history_length_min": 11,
+        "history_length_max": 756,
+        "history_length_mean": 30.76842246617652,
+        "recall@5": 0.02917380065129083,
+        "recall@10": 0.05180112129452446,
+        "ndcg@5": 0.017859929632650685,
+        "ndcg@10": 0.025111812789494266,
+        "hit@5": 0.02917380065129083,
+        "hit@10": 0.05180112129452446
+      }
+    }
+  }
+}

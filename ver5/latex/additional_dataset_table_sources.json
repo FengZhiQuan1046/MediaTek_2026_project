@@ -1,0 +1,272 @@
+{
+  "baseline_epoch_limit": 10,
+  "selection_metric": "validation ndcg@10",
+  "entries": [
+    {
+      "model": "SASRec",
+      "dataset": "yelp19",
+      "source": "Reproduce/SASRec/outputs/yelp19/hf_shared_20261022_133934/metrics.json",
+      "selected_epoch": 7,
+      "provisional": false,
+      "available_epochs": null,
+      "test": {
+        "recall@5": 0.03414471737200355,
+        "ndcg@5": 0.02132730155446784,
+        "recall@10": 0.05856022491861498,
+        "ndcg@10": 0.0291299129813936
+      }
+    },
+    {
+      "model": "SASRec",
+      "dataset": "yelp23",
+      "source": "Reproduce/SASRec/outputs/yelp23/hf_shared_20261022_133934/metrics.json",
+      "selected_epoch": 7,
+      "provisional": false,
+      "available_epochs": null,
+      "test": {
+        "recall@5": 0.02139378478664193,
+        "ndcg@5": 0.013956563703625953,
+        "recall@10": 0.035830241187384045,
+        "ndcg@10": 0.018572490190627514
+      }
+    },
+    {
+      "model": "SASRec",
+      "dataset": "steam",
+      "source": "Reproduce/SASRec/outputs/steam/hf_shared_20261022_133934/metrics.json",
+      "selected_epoch": 7,
+      "provisional": false,
+      "available_epochs": null,
+      "test": {
+        "recall@5": 0.17269544226954422,
+        "ndcg@5": 0.15163460093811723,
+        "recall@10": 0.2064810831481083,
+        "ndcg@10": 0.16248612442432228
+      }
+    },
+    {
+      "model": "BERT4Rec",
+      "dataset": "yelp19",
+      "source": "Reproduce/BERT4Rec/outputs/yelp19/baselines10_valid_test_20261024_142512/epoch_010_metrics.json",
+      "selected_epoch": 10,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.0676605504587156,
+        "ndcg@5": 0.04310950555720954,
+        "recall@10": 0.11105356614382954,
+        "ndcg@10": 0.05704513856312621
+      }
+    },
+    {
+      "model": "BERT4Rec",
+      "dataset": "yelp23",
+      "source": "Reproduce/BERT4Rec/outputs/yelp23/baselines10_valid_test_20261024_142512/epoch_010_metrics.json",
+      "selected_epoch": 10,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.028032235621521337,
+        "ndcg@5": 0.01746924144279813,
+        "recall@10": 0.04777365491651206,
+        "ndcg@10": 0.023790873686484092
+      }
+    },
+    {
+      "model": "BERT4Rec",
+      "dataset": "movielens-1m",
+      "source": "Reproduce/BERT4Rec/outputs/movielens-1m/baselines10_valid_test_20261024_142512/epoch_010_metrics.json",
+      "selected_epoch": 10,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.04540934703347697,
+        "ndcg@5": 0.028896692936531868,
+        "recall@10": 0.0760689426582698,
+        "ndcg@10": 0.03861103560756997
+      }
+    },
+    {
+      "model": "BERT4Rec",
+      "dataset": "steam",
+      "source": "Reproduce/BERT4Rec/outputs/steam/baselines10_valid_test_20261024_142512/epoch_010_metrics.json",
+      "selected_epoch": 10,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.17629239262923926,
+        "ndcg@5": 0.1552028043057112,
+        "recall@10": 0.21089660858966086,
+        "ndcg@10": 0.1663215803682928
+      }
+    },
+    {
+      "model": "ReSID",
+      "dataset": "yelp19",
+      "source": "Reproduce/ReSID/outputs/yelp19/resid10_valid_test_20261024_144740/epoch_009_metrics.json",
+      "selected_epoch": 9,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.0027374963006806747,
+        "ndcg@5": 0.0014470280491236788,
+        "recall@10": 0.004957087895827167,
+        "ndcg@10": 0.002165837223870615
+      }
+    },
+    {
+      "model": "ReSID",
+      "dataset": "yelp23",
+      "source": "Reproduce/ReSID/outputs/yelp23/resid10_valid_test_20261024_144740/epoch_004_metrics.json",
+      "selected_epoch": 4,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.007160250463821892,
+        "ndcg@5": 0.005086558169455497,
+        "recall@10": 0.009566326530612245,
+        "ndcg@10": 0.005860741249353025
+      }
+    },
+    {
+      "model": "ReSID",
+      "dataset": "movielens-1m",
+      "source": "Reproduce/ReSID/outputs/movielens-1m/resid10_valid_test_20261024_144740/epoch_009_metrics.json",
+      "selected_epoch": 9,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.02734504474643686,
+        "ndcg@5": 0.016806546612255297,
+        "recall@10": 0.05038117335101094,
+        "ndcg@10": 0.024282616097325713
+      }
+    },
+    {
+      "model": "ReSID",
+      "dataset": "steam",
+      "source": "Reproduce/ReSID/outputs/steam/resid10_valid_test_20261024_144740/epoch_005_metrics.json",
+      "selected_epoch": 5,
+      "provisional": true,
+      "available_epochs": 5,
+      "test": {
+        "recall@5": 0.14404531440453144,
+        "ndcg@5": 0.13029132665032733,
+        "recall@10": 0.1670640042064004,
+        "ndcg@10": 0.1376772886240295
+      }
+    },
+    {
+      "model": "SIGMA",
+      "dataset": "yelp19",
+      "source": "Reproduce/SIGMA/outputs/yelp19/baselines10_valid_test_20261024_142512/epoch_010_metrics.json",
+      "selected_epoch": 10,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.004883101509322285,
+        "ndcg@5": 0.0026906403930944322,
+        "recall@10": 0.01383545427641314,
+        "ndcg@10": 0.00553896215301394
+      }
+    },
+    {
+      "model": "SIGMA",
+      "dataset": "yelp23",
+      "source": "Reproduce/SIGMA/outputs/yelp23/baselines10_valid_test_20261024_142512/epoch_009_metrics.json",
+      "selected_epoch": 9,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.012639146567717996,
+        "ndcg@5": 0.008306331438373546,
+        "recall@10": 0.01971243042671614,
+        "ndcg@10": 0.010553066915934405
+      }
+    },
+    {
+      "model": "SIGMA",
+      "dataset": "movielens-1m",
+      "source": "Reproduce/SIGMA/outputs/movielens-1m/baselines10_valid_test_20261024_142512/epoch_008_metrics.json",
+      "selected_epoch": 8,
+      "provisional": false,
+      "available_epochs": 10,
+      "test": {
+        "recall@5": 0.026350679482930062,
+        "ndcg@5": 0.01590629390209054,
+        "recall@10": 0.04988399071925754,
+        "ndcg@10": 0.023389677614971308
+      }
+    },
+    {
+      "model": "SIGMA",
+      "dataset": "steam",
+      "source": "Reproduce/SIGMA/outputs/steam/baselines10_valid_test_20261024_142512/epoch_001_metrics.json",
+      "selected_epoch": 1,
+      "provisional": true,
+      "available_epochs": 1,
+      "test": {
+        "recall@5": 0.14948256494825649,
+        "ndcg@5": 0.13355624483890402,
+        "recall@10": 0.17629836762983675,
+        "ndcg@10": 0.1421583295909282
+      }
+    },
+    {
+      "model": "Ours",
+      "dataset": "yelp19",
+      "source": "ver5/outputs_mamba_rl/yelp19/group_window_aligned_20261024_013517_P32/metrics.json",
+      "selected_epoch": null,
+      "provisional": false,
+      "available_epochs": null,
+      "test": {
+        "recall@5": 0.09211305119857946,
+        "ndcg@5": 0.06021621584182274,
+        "recall@10": 0.1409440662918023,
+        "ndcg@10": 0.07589237653678181
+      }
+    },
+    {
+      "model": "Ours",
+      "dataset": "yelp23",
+      "source": "ver5/outputs_mamba_rl/yelp23/group_window_aligned_20261024_013517_P32/metrics.json",
+      "selected_epoch": null,
+      "provisional": false,
+      "available_epochs": null,
+      "test": {
+        "recall@5": 0.030873144712430425,
+        "ndcg@5": 0.01889940359541569,
+        "recall@10": 0.05449907235621521,
+        "ndcg@10": 0.026475200235173243
+      }
+    },
+    {
+      "model": "Ours",
+      "dataset": "movielens-1m",
+      "source": "ver5/outputs_mamba_rl/movielens-1m/group_window_aligned_20261024_013517_P32/metrics.json",
+      "selected_epoch": null,
+      "provisional": false,
+      "available_epochs": null,
+      "test": {
+        "recall@5": 0.15959562479284056,
+        "ndcg@5": 0.10777457662477452,
+        "recall@10": 0.24080212131256215,
+        "ndcg@10": 0.1339867498687375
+      }
+    },
+    {
+      "model": "Ours",
+      "dataset": "steam",
+      "source": "ver5/outputs_mamba_rl/steam/group_window_aligned_20261024_013517_P32/metrics.json",
+      "selected_epoch": null,
+      "provisional": false,
+      "available_epochs": null,
+      "test": {
+        "recall@5": 0.1536441528644153,
+        "ndcg@5": 0.14320968228173567,
+        "recall@10": 0.16922097942209793,
+        "ndcg@10": 0.14820883684690994
+      }
+    }
+  ]
+}

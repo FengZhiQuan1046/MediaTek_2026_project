@@ -1,0 +1,1530 @@
+{
+  "subset": "All_Beauty",
+  "dataset": "amazon-all-beauty",
+  "split": "test",
+  "grouping": {
+    "rule": "new group iff consecutive observed timestamp gap > 30 days",
+    "gap_days": 30,
+    "exactly_30_days_stays_in_group": true,
+    "timestamp_unit": "Unix milliseconds (UTC)",
+    "group_1": "most recent group",
+    "singleton_span_days": 0,
+    "missing_timestamps": "excluded from temporal grouping; counted separately",
+    "rule_evidence": "preliminary_grouped/analyze.py (CPython 3.12 test_histories bytecode): Jan1,Jan1,Jan2,Feb1 form size4 group; Mar3 is separate"
+  },
+  "history": {
+    "construction": "train + observed validation item; test target excluded",
+    "plotted_max_interactions": 100,
+    "group_after_history_truncation": true,
+    "duplicates": "retained exactly as original preliminary preprocessing"
+  },
+  "mean_interactions_per_group": 1.9148471615720524,
+  "mean_group_span_days": 7.755413287471238,
+  "figure_cohorts": {
+    "figure1_alignment_and_figure2_preference_all_available": {
+      "users": 1457,
+      "groups": 5038,
+      "dated_interactions": 9647,
+      "missing_timestamp_interactions": 0,
+      "mean_interactions_per_group": 1.9148471615720524,
+      "mean_group_span_days": 7.755413287471238,
+      "group_length_interactions": {
+        "count": 5038,
+        "mean": 1.9148471615720524,
+        "median": 1.0,
+        "p25": 1.0,
+        "p75": 2.0,
+        "min": 1.0,
+        "max": 52.0
+      },
+      "group_span_days": {
+        "count": 5038,
+        "mean": 7.755413287471238,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 4.266074603587963,
+        "min": 0.0,
+        "max": 331.0842476388889
+      },
+      "groups_per_user": {
+        "count": 1457,
+        "mean": 3.457789979409746,
+        "median": 3.0,
+        "p25": 2.0,
+        "p75": 4.0,
+        "min": 1.0,
+        "max": 16.0
+      },
+      "user_weighted_mean_interactions_per_group": 2.0645024959026332,
+      "by_group_from_most_recent": [
+        {
+          "group": 1,
+          "contributing_users": 1457,
+          "mean_interactions": 1.8682223747426219,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.366089675782939
+        },
+        {
+          "group": 2,
+          "contributing_users": 1253,
+          "mean_interactions": 1.762170790103751,
+          "median_interactions": 1.0,
+          "mean_span_days": 6.49853136415196
+        },
+        {
+          "group": 3,
+          "contributing_users": 879,
+          "mean_interactions": 1.608646188850967,
+          "median_interactions": 1.0,
+          "mean_span_days": 6.596457607748178
+        },
+        {
+          "group": 4,
+          "contributing_users": 518,
+          "mean_interactions": 1.832046332046332,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.980406841931217
+        },
+        {
+          "group": 5,
+          "contributing_users": 313,
+          "mean_interactions": 2.3610223642172525,
+          "median_interactions": 1.0,
+          "mean_span_days": 13.750049538774997
+        },
+        {
+          "group": 6,
+          "contributing_users": 202,
+          "mean_interactions": 2.722772277227723,
+          "median_interactions": 1.0,
+          "mean_span_days": 14.55564259070178
+        },
+        {
+          "group": 7,
+          "contributing_users": 140,
+          "mean_interactions": 3.2071428571428573,
+          "median_interactions": 1.0,
+          "mean_span_days": 18.888953436838626
+        },
+        {
+          "group": 8,
+          "contributing_users": 97,
+          "mean_interactions": 2.6391752577319587,
+          "median_interactions": 1.0,
+          "mean_span_days": 16.677236295461054
+        },
+        {
+          "group": 9,
+          "contributing_users": 62,
+          "mean_interactions": 2.6451612903225805,
+          "median_interactions": 1.0,
+          "mean_span_days": 14.296297043010751
+        },
+        {
+          "group": 10,
+          "contributing_users": 44,
+          "mean_interactions": 1.6136363636363635,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.4686262970854385
+        },
+        {
+          "group": 11,
+          "contributing_users": 31,
+          "mean_interactions": 1.5806451612903225,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.761671636424731
+        },
+        {
+          "group": 12,
+          "contributing_users": 18,
+          "mean_interactions": 2.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.889339352494854
+        },
+        {
+          "group": 13,
+          "contributing_users": 12,
+          "mean_interactions": 2.25,
+          "median_interactions": 1.0,
+          "mean_span_days": 11.329955948109566
+        },
+        {
+          "group": 14,
+          "contributing_users": 7,
+          "mean_interactions": 1.1428571428571428,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.12323129794973545
+        },
+        {
+          "group": 15,
+          "contributing_users": 3,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 16,
+          "contributing_users": 2,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        }
+      ]
+    },
+    "figure1_alignment_and_figure2_preference_fixed_K16": {
+      "users": 105,
+      "groups": 869,
+      "dated_interactions": 2994,
+      "missing_timestamp_interactions": 0,
+      "mean_interactions_per_group": 3.4453394706559264,
+      "mean_group_span_days": 21.793650147745918,
+      "group_length_interactions": {
+        "count": 869,
+        "mean": 3.4453394706559264,
+        "median": 2.0,
+        "p25": 1.0,
+        "p75": 3.0,
+        "min": 1.0,
+        "max": 52.0
+      },
+      "group_span_days": {
+        "count": 869,
+        "mean": 21.793650147745918,
+        "median": 1.1096572800925926,
+        "p25": 0.0,
+        "p75": 26.236955787037036,
+        "min": 0.0,
+        "max": 331.0842476388889
+      },
+      "groups_per_user": {
+        "count": 105,
+        "mean": 8.276190476190477,
+        "median": 8.0,
+        "p25": 6.0,
+        "p75": 10.0,
+        "min": 2.0,
+        "max": 16.0
+      },
+      "user_weighted_mean_interactions_per_group": 4.283839546696689,
+      "by_group_from_most_recent": [
+        {
+          "group": 1,
+          "contributing_users": 105,
+          "mean_interactions": 2.5714285714285716,
+          "median_interactions": 1.0,
+          "mean_span_days": 14.873238895833333
+        },
+        {
+          "group": 2,
+          "contributing_users": 105,
+          "mean_interactions": 4.133333333333334,
+          "median_interactions": 2.0,
+          "mean_span_days": 23.790538714285717
+        },
+        {
+          "group": 3,
+          "contributing_users": 100,
+          "mean_interactions": 2.69,
+          "median_interactions": 2.0,
+          "mean_span_days": 17.712191183449075
+        },
+        {
+          "group": 4,
+          "contributing_users": 96,
+          "mean_interactions": 3.4583333333333335,
+          "median_interactions": 2.0,
+          "mean_span_days": 21.459599917775847
+        },
+        {
+          "group": 5,
+          "contributing_users": 93,
+          "mean_interactions": 4.526881720430108,
+          "median_interactions": 3.0,
+          "mean_span_days": 34.40842784834229
+        },
+        {
+          "group": 6,
+          "contributing_users": 88,
+          "mean_interactions": 4.318181818181818,
+          "median_interactions": 2.0,
+          "mean_span_days": 26.978654166140572
+        },
+        {
+          "group": 7,
+          "contributing_users": 76,
+          "mean_interactions": 4.723684210526316,
+          "median_interactions": 2.5,
+          "mean_span_days": 31.00590318500244
+        },
+        {
+          "group": 8,
+          "contributing_users": 63,
+          "mean_interactions": 3.3333333333333335,
+          "median_interactions": 2.0,
+          "mean_span_days": 23.601115567497057
+        },
+        {
+          "group": 9,
+          "contributing_users": 45,
+          "mean_interactions": 3.1777777777777776,
+          "median_interactions": 1.0,
+          "mean_span_days": 18.892866028292183
+        },
+        {
+          "group": 10,
+          "contributing_users": 35,
+          "mean_interactions": 1.7428571428571429,
+          "median_interactions": 1.0,
+          "mean_span_days": 9.217124249669313
+        },
+        {
+          "group": 11,
+          "contributing_users": 25,
+          "mean_interactions": 1.72,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.144472829166666
+        },
+        {
+          "group": 12,
+          "contributing_users": 15,
+          "mean_interactions": 2.2,
+          "median_interactions": 1.0,
+          "mean_span_days": 9.467207222993828
+        },
+        {
+          "group": 13,
+          "contributing_users": 11,
+          "mean_interactions": 2.3636363636363638,
+          "median_interactions": 1.0,
+          "mean_span_days": 12.359951943392254
+        },
+        {
+          "group": 14,
+          "contributing_users": 7,
+          "mean_interactions": 1.1428571428571428,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.12323129794973545
+        },
+        {
+          "group": 15,
+          "contributing_users": 3,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 16,
+          "contributing_users": 2,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        }
+      ]
+    },
+    "figure3_trained_model_influence": {
+      "users": 1457,
+      "groups": 5038,
+      "dated_interactions": 9647,
+      "missing_timestamp_interactions": 0,
+      "mean_interactions_per_group": 1.9148471615720524,
+      "mean_group_span_days": 7.755413287471238,
+      "group_length_interactions": {
+        "count": 5038,
+        "mean": 1.9148471615720524,
+        "median": 1.0,
+        "p25": 1.0,
+        "p75": 2.0,
+        "min": 1.0,
+        "max": 52.0
+      },
+      "group_span_days": {
+        "count": 5038,
+        "mean": 7.755413287471238,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 4.266074603587963,
+        "min": 0.0,
+        "max": 331.0842476388889
+      },
+      "groups_per_user": {
+        "count": 1457,
+        "mean": 3.457789979409746,
+        "median": 3.0,
+        "p25": 2.0,
+        "p75": 4.0,
+        "min": 1.0,
+        "max": 16.0
+      },
+      "user_weighted_mean_interactions_per_group": 2.0645024959026332,
+      "by_group_from_most_recent": [
+        {
+          "group": 1,
+          "contributing_users": 1457,
+          "mean_interactions": 1.8682223747426219,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.366089675782939
+        },
+        {
+          "group": 2,
+          "contributing_users": 1253,
+          "mean_interactions": 1.762170790103751,
+          "median_interactions": 1.0,
+          "mean_span_days": 6.49853136415196
+        },
+        {
+          "group": 3,
+          "contributing_users": 879,
+          "mean_interactions": 1.608646188850967,
+          "median_interactions": 1.0,
+          "mean_span_days": 6.596457607748178
+        },
+        {
+          "group": 4,
+          "contributing_users": 518,
+          "mean_interactions": 1.832046332046332,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.980406841931217
+        },
+        {
+          "group": 5,
+          "contributing_users": 313,
+          "mean_interactions": 2.3610223642172525,
+          "median_interactions": 1.0,
+          "mean_span_days": 13.750049538774997
+        },
+        {
+          "group": 6,
+          "contributing_users": 202,
+          "mean_interactions": 2.722772277227723,
+          "median_interactions": 1.0,
+          "mean_span_days": 14.55564259070178
+        },
+        {
+          "group": 7,
+          "contributing_users": 140,
+          "mean_interactions": 3.2071428571428573,
+          "median_interactions": 1.0,
+          "mean_span_days": 18.888953436838626
+        },
+        {
+          "group": 8,
+          "contributing_users": 97,
+          "mean_interactions": 2.6391752577319587,
+          "median_interactions": 1.0,
+          "mean_span_days": 16.677236295461054
+        },
+        {
+          "group": 9,
+          "contributing_users": 62,
+          "mean_interactions": 2.6451612903225805,
+          "median_interactions": 1.0,
+          "mean_span_days": 14.296297043010751
+        },
+        {
+          "group": 10,
+          "contributing_users": 44,
+          "mean_interactions": 1.6136363636363635,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.4686262970854385
+        },
+        {
+          "group": 11,
+          "contributing_users": 31,
+          "mean_interactions": 1.5806451612903225,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.761671636424731
+        },
+        {
+          "group": 12,
+          "contributing_users": 18,
+          "mean_interactions": 2.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.889339352494854
+        },
+        {
+          "group": 13,
+          "contributing_users": 12,
+          "mean_interactions": 2.25,
+          "median_interactions": 1.0,
+          "mean_span_days": 11.329955948109566
+        },
+        {
+          "group": 14,
+          "contributing_users": 7,
+          "mean_interactions": 1.1428571428571428,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.12323129794973545
+        },
+        {
+          "group": 15,
+          "contributing_users": 3,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 16,
+          "contributing_users": 2,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        }
+      ]
+    },
+    "figure4_information_coverage": {
+      "users": 1355,
+      "groups": 4779,
+      "dated_interactions": 9313,
+      "missing_timestamp_interactions": 0,
+      "mean_interactions_per_group": 1.9487340447792425,
+      "mean_group_span_days": 8.015009193200576,
+      "group_length_interactions": {
+        "count": 4779,
+        "mean": 1.9487340447792425,
+        "median": 1.0,
+        "p25": 1.0,
+        "p75": 2.0,
+        "min": 1.0,
+        "max": 52.0
+      },
+      "group_span_days": {
+        "count": 4779,
+        "mean": 8.015009193200576,
+        "median": 0.0,
+        "p25": 0.0,
+        "p75": 5.047836504629629,
+        "min": 0.0,
+        "max": 331.0842476388889
+      },
+      "groups_per_user": {
+        "count": 1355,
+        "mean": 3.5269372693726937,
+        "median": 3.0,
+        "p25": 2.0,
+        "p75": 4.0,
+        "min": 1.0,
+        "max": 16.0
+      },
+      "user_weighted_mean_interactions_per_group": 2.1119738604978457,
+      "by_group_from_most_recent": [
+        {
+          "group": 1,
+          "contributing_users": 1355,
+          "mean_interactions": 1.8996309963099631,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.4300272738229465
+        },
+        {
+          "group": 2,
+          "contributing_users": 1168,
+          "mean_interactions": 1.80736301369863,
+          "median_interactions": 1.0,
+          "mean_span_days": 6.853054320825802
+        },
+        {
+          "group": 3,
+          "contributing_users": 835,
+          "mean_interactions": 1.6251497005988025,
+          "median_interactions": 1.0,
+          "mean_span_days": 6.7768895807690175
+        },
+        {
+          "group": 4,
+          "contributing_users": 501,
+          "mean_interactions": 1.8582834331337326,
+          "median_interactions": 1.0,
+          "mean_span_days": 8.22284255872514
+        },
+        {
+          "group": 5,
+          "contributing_users": 308,
+          "mean_interactions": 2.3798701298701297,
+          "median_interactions": 1.0,
+          "mean_span_days": 13.923739323517918
+        },
+        {
+          "group": 6,
+          "contributing_users": 199,
+          "mean_interactions": 2.7386934673366836,
+          "median_interactions": 1.0,
+          "mean_span_days": 14.77506785402708
+        },
+        {
+          "group": 7,
+          "contributing_users": 139,
+          "mean_interactions": 3.223021582733813,
+          "median_interactions": 1.0,
+          "mean_span_days": 19.024845188182788
+        },
+        {
+          "group": 8,
+          "contributing_users": 96,
+          "mean_interactions": 2.65625,
+          "median_interactions": 1.0,
+          "mean_span_days": 16.850957506872106
+        },
+        {
+          "group": 9,
+          "contributing_users": 61,
+          "mean_interactions": 2.6721311475409837,
+          "median_interactions": 1.0,
+          "mean_span_days": 14.53066256830601
+        },
+        {
+          "group": 10,
+          "contributing_users": 44,
+          "mean_interactions": 1.6136363636363635,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.4686262970854385
+        },
+        {
+          "group": 11,
+          "contributing_users": 31,
+          "mean_interactions": 1.5806451612903225,
+          "median_interactions": 1.0,
+          "mean_span_days": 5.761671636424731
+        },
+        {
+          "group": 12,
+          "contributing_users": 18,
+          "mean_interactions": 2.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 7.889339352494854
+        },
+        {
+          "group": 13,
+          "contributing_users": 12,
+          "mean_interactions": 2.25,
+          "median_interactions": 1.0,
+          "mean_span_days": 11.329955948109566
+        },
+        {
+          "group": 14,
+          "contributing_users": 7,
+          "mean_interactions": 1.1428571428571428,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.12323129794973545
+        },
+        {
+          "group": 15,
+          "contributing_users": 3,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        },
+        {
+          "group": 16,
+          "contributing_users": 2,
+          "mean_interactions": 1.0,
+          "median_interactions": 1.0,
+          "mean_span_days": 0.0
+        }
+      ]
+    }
+  },
+  "full_untruncated_observed_history_reference": {
+    "users": 1457,
+    "groups": 5045,
+    "dated_interactions": 9665,
+    "missing_timestamp_interactions": 0,
+    "mean_interactions_per_group": 1.9157581764122893,
+    "mean_group_span_days": 7.7600493619094815,
+    "group_length_interactions": {
+      "count": 5045,
+      "mean": 1.9157581764122893,
+      "median": 1.0,
+      "p25": 1.0,
+      "p75": 2.0,
+      "min": 1.0,
+      "max": 52.0
+    },
+    "group_span_days": {
+      "count": 5045,
+      "mean": 7.7600493619094815,
+      "median": 0.0,
+      "p25": 0.0,
+      "p75": 4.281865439814815,
+      "min": 0.0,
+      "max": 331.0842476388889
+    },
+    "groups_per_user": {
+      "count": 1457,
+      "mean": 3.4625943719972545,
+      "median": 3.0,
+      "p25": 2.0,
+      "p75": 4.0,
+      "min": 1.0,
+      "max": 16.0
+    },
+    "user_weighted_mean_interactions_per_group": 2.0604824939416564,
+    "by_group_from_most_recent": [
+      {
+        "group": 1,
+        "contributing_users": 1457,
+        "mean_interactions": 1.8682223747426219,
+        "median_interactions": 1.0,
+        "mean_span_days": 5.366089675782939
+      },
+      {
+        "group": 2,
+        "contributing_users": 1253,
+        "mean_interactions": 1.762170790103751,
+        "median_interactions": 1.0,
+        "mean_span_days": 6.49853136415196
+      },
+      {
+        "group": 3,
+        "contributing_users": 879,
+        "mean_interactions": 1.608646188850967,
+        "median_interactions": 1.0,
+        "mean_span_days": 6.596457607748178
+      },
+      {
+        "group": 4,
+        "contributing_users": 518,
+        "mean_interactions": 1.832046332046332,
+        "median_interactions": 1.0,
+        "mean_span_days": 7.980406841931217
+      },
+      {
+        "group": 5,
+        "contributing_users": 313,
+        "mean_interactions": 2.3610223642172525,
+        "median_interactions": 1.0,
+        "mean_span_days": 13.750049538774997
+      },
+      {
+        "group": 6,
+        "contributing_users": 202,
+        "mean_interactions": 2.722772277227723,
+        "median_interactions": 1.0,
+        "mean_span_days": 14.55564259070178
+      },
+      {
+        "group": 7,
+        "contributing_users": 140,
+        "mean_interactions": 3.2071428571428573,
+        "median_interactions": 1.0,
+        "mean_span_days": 18.888953436838626
+      },
+      {
+        "group": 8,
+        "contributing_users": 98,
+        "mean_interactions": 2.704081632653061,
+        "median_interactions": 1.0,
+        "mean_span_days": 17.003909433815195
+      },
+      {
+        "group": 9,
+        "contributing_users": 63,
+        "mean_interactions": 2.634920634920635,
+        "median_interactions": 1.0,
+        "mean_span_days": 14.400737848691946
+      },
+      {
+        "group": 10,
+        "contributing_users": 45,
+        "mean_interactions": 1.6222222222222222,
+        "median_interactions": 1.0,
+        "mean_span_days": 7.482684833076132
+      },
+      {
+        "group": 11,
+        "contributing_users": 32,
+        "mean_interactions": 1.5625,
+        "median_interactions": 1.0,
+        "mean_span_days": 5.581619397786458
+      },
+      {
+        "group": 12,
+        "contributing_users": 19,
+        "mean_interactions": 1.9473684210526316,
+        "median_interactions": 1.0,
+        "mean_span_days": 7.474110965521441
+      },
+      {
+        "group": 13,
+        "contributing_users": 13,
+        "mean_interactions": 2.230769230769231,
+        "median_interactions": 1.0,
+        "mean_span_days": 10.459063681445867
+      },
+      {
+        "group": 14,
+        "contributing_users": 8,
+        "mean_interactions": 1.125,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.10782738570601852
+      },
+      {
+        "group": 15,
+        "contributing_users": 3,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      },
+      {
+        "group": 16,
+        "contributing_users": 2,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      }
+    ]
+  },
+  "provenance": {
+    "figure_sources": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon-all-beauty/run_20260927_033236",
+    "preliminary_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl",
+    "preliminary_cache_sha256": "331d07169c5df65d30bc394312a518050d8cb28f91c847f4068180c3ac4f7af2",
+    "timestamp_recovery": {
+      "raw_rows": 701528,
+      "filtered_rows": 11359,
+      "filtered_users": 1603,
+      "verified_user_sequences": 1457,
+      "verified_distinct_item_ids": 3933,
+      "raw_arrow_files": [
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_All_Beauty/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full.arrow"
+      ]
+    },
+    "seed": 25252,
+    "sampled_users": 1457,
+    "no_training_or_figures_modified": true,
+    "figure3_verified_lag_item_target_rows": 9647,
+    "figure4_history_lengths_verified": true
+  },
+  "interpretation": "Temporal groups supplement the existing four figures; they are not the original semantic KMeans preference clusters. A 30-day consecutive-gap group can span more than 30 days.",
+  "five_figure_statistics": {
+    "alignment": {
+      "all_available": [
+        {
+          "group": 1,
+          "mean": 2.0929497408520796,
+          "n_users": 1457,
+          "ci_low": 1.8577671252650676,
+          "ci_high": 2.3371033460955233
+        },
+        {
+          "group": 2,
+          "mean": 0.5217971535594942,
+          "n_users": 1253,
+          "ci_low": 0.43321435418920656,
+          "ci_high": 0.6186430861462431
+        },
+        {
+          "group": 3,
+          "mean": 0.3826994647935726,
+          "n_users": 879,
+          "ci_low": 0.29230914827039006,
+          "ci_high": 0.47540285100160184
+        },
+        {
+          "group": 4,
+          "mean": 0.28622134714217495,
+          "n_users": 518,
+          "ci_low": 0.1704885703380588,
+          "ci_high": 0.41963861464641045
+        },
+        {
+          "group": 5,
+          "mean": 0.2335739671172733,
+          "n_users": 313,
+          "ci_low": 0.09584043452848678,
+          "ci_high": 0.39328777910673424
+        },
+        {
+          "group": 6,
+          "mean": 0.10397815050817552,
+          "n_users": 202,
+          "ci_low": -0.003861806206154588,
+          "ci_high": 0.21608468442009518
+        },
+        {
+          "group": 7,
+          "mean": 0.10335262022944869,
+          "n_users": 140,
+          "ci_low": -0.054796822692236076,
+          "ci_high": 0.2691980187811812
+        },
+        {
+          "group": 8,
+          "mean": 0.19388623774673328,
+          "n_users": 97,
+          "ci_low": 0.013365917410639317,
+          "ci_high": 0.39620027086387705
+        },
+        {
+          "group": 9,
+          "mean": 0.35411730320516593,
+          "n_users": 62,
+          "ci_low": 0.04378207977345419,
+          "ci_high": 0.7426535243115113
+        },
+        {
+          "group": 10,
+          "mean": 0.33408715269385053,
+          "n_users": 44,
+          "ci_low": -0.05166875185203047,
+          "ci_high": 0.7649638610919858
+        },
+        {
+          "group": 11,
+          "mean": 0.14808930060995157,
+          "n_users": 31,
+          "ci_low": -0.17089922616237432,
+          "ci_high": 0.4756024844491324
+        },
+        {
+          "group": 12,
+          "mean": 0.1580781145231155,
+          "n_users": 18,
+          "ci_low": -0.2611698133846053,
+          "ci_high": 0.6704931981715616
+        },
+        {
+          "group": 13,
+          "mean": 0.06394738832371513,
+          "n_users": 12,
+          "ci_low": -0.4387167068305054,
+          "ci_high": 0.6120485627705498
+        },
+        {
+          "group": 14,
+          "mean": 0.11563792770765968,
+          "n_users": 7,
+          "ci_low": -0.4296903025666861,
+          "ci_high": 0.7303782843229837
+        },
+        {
+          "group": 15,
+          "mean": 1.6171244210862237,
+          "n_users": 3,
+          "ci_low": 0.9644059541245822,
+          "ci_high": 2.7008376225512465
+        },
+        {
+          "group": 16,
+          "mean": -0.5103563075912089,
+          "n_users": 2,
+          "ci_low": -0.733600374967899,
+          "ci_high": -0.2871122402145187
+        }
+      ],
+      "fixed_K16": [
+        {
+          "group": 1,
+          "mean": 0.987208668139399,
+          "n_users": 105,
+          "ci_low": 0.48443475075347253,
+          "ci_high": 1.566798532645158
+        },
+        {
+          "group": 2,
+          "mean": 0.1273995774870316,
+          "n_users": 105,
+          "ci_low": -0.05584193948332182,
+          "ci_high": 0.33758593438725176
+        },
+        {
+          "group": 3,
+          "mean": 0.027273568327391647,
+          "n_users": 100,
+          "ci_low": -0.1636543526506706,
+          "ci_high": 0.2198319420055119
+        },
+        {
+          "group": 4,
+          "mean": 0.2262598396077724,
+          "n_users": 96,
+          "ci_low": 0.03983532735716001,
+          "ci_high": 0.44299429042609256
+        },
+        {
+          "group": 5,
+          "mean": 0.15603805513953378,
+          "n_users": 93,
+          "ci_low": -0.00826965634747518,
+          "ci_high": 0.3510430672600055
+        },
+        {
+          "group": 6,
+          "mean": 0.04658458904525064,
+          "n_users": 88,
+          "ci_low": -0.0944876861828645,
+          "ci_high": 0.19173947445171086
+        },
+        {
+          "group": 7,
+          "mean": 0.10816399232938577,
+          "n_users": 76,
+          "ci_low": -0.06809427809282846,
+          "ci_high": 0.2922840794165513
+        },
+        {
+          "group": 8,
+          "mean": 0.25261217032929095,
+          "n_users": 63,
+          "ci_low": 0.03522107632447522,
+          "ci_high": 0.5137325581516254
+        },
+        {
+          "group": 9,
+          "mean": 0.5214187176081422,
+          "n_users": 45,
+          "ci_low": 0.11735507216104489,
+          "ci_high": 0.9952385006181401
+        },
+        {
+          "group": 10,
+          "mean": 0.3799574947091317,
+          "n_users": 35,
+          "ci_low": -0.08861717785710355,
+          "ci_high": 0.9175100724604656
+        },
+        {
+          "group": 11,
+          "mean": 0.2421793706918531,
+          "n_users": 25,
+          "ci_low": -0.10235738409625322,
+          "ci_high": 0.6096170559718267
+        },
+        {
+          "group": 12,
+          "mean": 0.21043337010925373,
+          "n_users": 15,
+          "ci_low": -0.25009330111245426,
+          "ci_high": 0.7714326475492087
+        },
+        {
+          "group": 13,
+          "mean": -0.04436129468364436,
+          "n_users": 11,
+          "ci_low": -0.5705796107618148,
+          "ci_high": 0.5414261527656711
+        },
+        {
+          "group": 14,
+          "mean": 0.11563792770765968,
+          "n_users": 7,
+          "ci_low": -0.4296903025666861,
+          "ci_high": 0.7303782843229837
+        },
+        {
+          "group": 15,
+          "mean": 1.6171244210862237,
+          "n_users": 3,
+          "ci_low": 0.9644059541245822,
+          "ci_high": 2.7008376225512465
+        },
+        {
+          "group": 16,
+          "mean": -0.5103563075912089,
+          "n_users": 2,
+          "ci_low": -0.733600374967899,
+          "ci_high": -0.2871122402145187
+        }
+      ]
+    },
+    "preference": {
+      "all_available": [
+        {
+          "group": 1,
+          "mean": 0.03972647250133859,
+          "n_users": 1457,
+          "ci_low": 0.026555321562660432,
+          "ci_high": 0.05310393084991028
+        },
+        {
+          "group": 2,
+          "mean": -0.002070168770632813,
+          "n_users": 1253,
+          "ci_low": -0.01675351309434443,
+          "ci_high": 0.0119471209578033
+        },
+        {
+          "group": 3,
+          "mean": 0.0028201479250993798,
+          "n_users": 879,
+          "ci_low": -0.01349308709828355,
+          "ci_high": 0.01968392214408986
+        },
+        {
+          "group": 4,
+          "mean": -0.0039063509823842775,
+          "n_users": 518,
+          "ci_low": -0.024232614318076873,
+          "ci_high": 0.016901731616680307
+        },
+        {
+          "group": 5,
+          "mean": -0.0017828761150900784,
+          "n_users": 313,
+          "ci_low": -0.025577728921042157,
+          "ci_high": 0.021493872623427546
+        },
+        {
+          "group": 6,
+          "mean": -0.0068053559897887465,
+          "n_users": 202,
+          "ci_low": -0.033490431817992126,
+          "ci_high": 0.022052173295400847
+        },
+        {
+          "group": 7,
+          "mean": 0.017596203000891198,
+          "n_users": 140,
+          "ci_low": -0.01784402131527988,
+          "ci_high": 0.057010151014000254
+        },
+        {
+          "group": 8,
+          "mean": 0.01926176045219485,
+          "n_users": 97,
+          "ci_low": -0.017374181787362816,
+          "ci_high": 0.057333030596880684
+        },
+        {
+          "group": 9,
+          "mean": 0.069122371849913,
+          "n_users": 62,
+          "ci_low": 0.007105285470375526,
+          "ci_high": 0.14414068705002578
+        },
+        {
+          "group": 10,
+          "mean": 0.025817639962376817,
+          "n_users": 44,
+          "ci_low": -0.04345312399588716,
+          "ci_high": 0.11053474714247727
+        },
+        {
+          "group": 11,
+          "mean": 0.10563243820883889,
+          "n_users": 31,
+          "ci_low": 0.004779808417860198,
+          "ci_high": 0.23560574305905374
+        },
+        {
+          "group": 12,
+          "mean": 0.012118571000149955,
+          "n_users": 18,
+          "ci_low": -0.061735056792622575,
+          "ci_high": 0.1312688271158666
+        },
+        {
+          "group": 13,
+          "mean": -0.010607247284878857,
+          "n_users": 12,
+          "ci_low": -0.06848800185560053,
+          "ci_high": 0.056415472776492524
+        },
+        {
+          "group": 14,
+          "mean": -0.05092539039907461,
+          "n_users": 7,
+          "ci_low": -0.07640254482359746,
+          "ci_high": -0.02197802197802198
+        },
+        {
+          "group": 15,
+          "mean": -0.05,
+          "n_users": 3,
+          "ci_low": -0.1,
+          "ci_high": 0.0
+        },
+        {
+          "group": 16,
+          "mean": -0.025,
+          "n_users": 2,
+          "ci_low": -0.05,
+          "ci_high": 0.0
+        }
+      ],
+      "fixed_K16": [
+        {
+          "group": 1,
+          "mean": 0.11863339532844178,
+          "n_users": 105,
+          "ci_low": 0.061188794006131475,
+          "ci_high": 0.17692288826032193
+        },
+        {
+          "group": 2,
+          "mean": 0.010371571793653217,
+          "n_users": 105,
+          "ci_low": -0.02335113782621859,
+          "ci_high": 0.05097844455930407
+        },
+        {
+          "group": 3,
+          "mean": -0.018897046924523705,
+          "n_users": 100,
+          "ci_low": -0.0460341605000177,
+          "ci_high": 0.014758941845048635
+        },
+        {
+          "group": 4,
+          "mean": 0.04631240323547356,
+          "n_users": 96,
+          "ci_low": 0.0019012126111988099,
+          "ci_high": 0.09476460733482746
+        },
+        {
+          "group": 5,
+          "mean": -0.001016258983817823,
+          "n_users": 93,
+          "ci_low": -0.02542782270970002,
+          "ci_high": 0.027372539398384965
+        },
+        {
+          "group": 6,
+          "mean": -0.01133706486269461,
+          "n_users": 88,
+          "ci_low": -0.04284669261127316,
+          "ci_high": 0.02995907844266625
+        },
+        {
+          "group": 7,
+          "mean": 0.02446758212095511,
+          "n_users": 76,
+          "ci_low": -0.02520526901294937,
+          "ci_high": 0.08547816619185722
+        },
+        {
+          "group": 8,
+          "mean": 0.007579646793490227,
+          "n_users": 63,
+          "ci_low": -0.02615178926264545,
+          "ci_high": 0.053324313679383326
+        },
+        {
+          "group": 9,
+          "mean": 0.10794249892266673,
+          "n_users": 45,
+          "ci_low": 0.023256220846419175,
+          "ci_high": 0.20560571168103575
+        },
+        {
+          "group": 10,
+          "mean": 0.052569840351795245,
+          "n_users": 35,
+          "ci_low": -0.03058251971503851,
+          "ci_high": 0.16430862240307728
+        },
+        {
+          "group": 11,
+          "mean": 0.11180962020435706,
+          "n_users": 25,
+          "ci_low": 0.0007685680547522675,
+          "ci_high": 0.23980726335068425
+        },
+        {
+          "group": 12,
+          "mean": 0.035177205835100575,
+          "n_users": 15,
+          "ci_low": -0.04398850089968511,
+          "ci_high": 0.16765893098129941
+        },
+        {
+          "group": 13,
+          "mean": 0.0014154704944178648,
+          "n_users": 11,
+          "ci_low": -0.056163047478836964,
+          "ci_high": 0.07361389706784444
+        },
+        {
+          "group": 14,
+          "mean": -0.05092539039907461,
+          "n_users": 7,
+          "ci_low": -0.07640254482359746,
+          "ci_high": -0.02197802197802198
+        },
+        {
+          "group": 15,
+          "mean": -0.05,
+          "n_users": 3,
+          "ci_low": -0.1,
+          "ci_high": 0.0
+        },
+        {
+          "group": 16,
+          "mean": -0.025,
+          "n_users": 2,
+          "ci_low": -0.05,
+          "ci_high": 0.0
+        }
+      ]
+    },
+    "influence": [
+      {
+        "group": 1,
+        "mean": 0.012051520773598745,
+        "n_users": 1457,
+        "ci_low": 0.007658584254768261,
+        "ci_high": 0.01677975601869366
+      },
+      {
+        "group": 2,
+        "mean": -0.000314061999742817,
+        "n_users": 1253,
+        "ci_low": -0.0005191106301519363,
+        "ci_high": -0.0001151353081008655
+      },
+      {
+        "group": 3,
+        "mean": 3.5401164985787614e-05,
+        "n_users": 879,
+        "ci_low": -0.0001724055862237766,
+        "ci_high": 0.0002494862003323414
+      },
+      {
+        "group": 4,
+        "mean": -1.535943643614543e-05,
+        "n_users": 518,
+        "ci_low": -0.00023084755448750572,
+        "ci_high": 0.0002236599029018569
+      },
+      {
+        "group": 5,
+        "mean": 8.029586608204372e-05,
+        "n_users": 313,
+        "ci_low": -0.00020724621394983936,
+        "ci_high": 0.0003835032461485801
+      },
+      {
+        "group": 6,
+        "mean": 5.740785136893702e-05,
+        "n_users": 202,
+        "ci_low": -0.00018414709715278908,
+        "ci_high": 0.00029516676301972783
+      },
+      {
+        "group": 7,
+        "mean": 9.299092724308036e-05,
+        "n_users": 140,
+        "ci_low": -0.00019687670171936622,
+        "ci_high": 0.00034722181363981594
+      },
+      {
+        "group": 8,
+        "mean": 0.00014286240872946504,
+        "n_users": 97,
+        "ci_low": -4.5022268704303576e-05,
+        "ci_high": 0.0003413512601736222
+      },
+      {
+        "group": 9,
+        "mean": 6.711657891893134e-06,
+        "n_users": 62,
+        "ci_low": -0.0002081991036573759,
+        "ci_high": 0.0002159461576698346
+      },
+      {
+        "group": 10,
+        "mean": -3.6051779082327114e-06,
+        "n_users": 44,
+        "ci_low": -0.0002664457667957653,
+        "ci_high": 0.0002540042906096486
+      },
+      {
+        "group": 11,
+        "mean": 5.498291343771003e-05,
+        "n_users": 31,
+        "ci_low": -0.0001754499763570806,
+        "ci_high": 0.00030584945473619674
+      },
+      {
+        "group": 12,
+        "mean": -0.00010632711743551587,
+        "n_users": 18,
+        "ci_low": -0.00023836862473260785,
+        "ci_high": 1.9564704289511826e-05
+      },
+      {
+        "group": 13,
+        "mean": 7.910198635525175e-05,
+        "n_users": 12,
+        "ci_low": -0.00021746555964152018,
+        "ci_high": 0.00034978654649522574
+      },
+      {
+        "group": 14,
+        "mean": 0.00013678414481026785,
+        "n_users": 7,
+        "ci_low": -0.00013360977172851562,
+        "ci_high": 0.0004387038094656807
+      },
+      {
+        "group": 15,
+        "mean": 2.9246012369791664e-05,
+        "n_users": 3,
+        "ci_low": -0.00012969970703125,
+        "ci_high": 0.00031280517578125
+      },
+      {
+        "group": 16,
+        "mean": -2.86102294921875e-05,
+        "n_users": 2,
+        "ci_low": -7.62939453125e-05,
+        "ci_high": 1.9073486328125e-05
+      }
+    ],
+    "coverage": [
+      {
+        "group": 1,
+        "mean": 42.71444464678365,
+        "q25": 0.0,
+        "median": 31.11371692313361,
+        "q75": 93.30581952093485,
+        "n_users": 1355
+      },
+      {
+        "group": 2,
+        "mean": 69.05884255814748,
+        "q25": 34.03227384924493,
+        "median": 99.99999999999999,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 3,
+        "mean": 83.8823794911948,
+        "q25": 84.9557375628663,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 4,
+        "mean": 91.00150699167686,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 5,
+        "mean": 94.52511125722067,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 6,
+        "mean": 96.51673125468604,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 7,
+        "mean": 97.99838552326965,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 8,
+        "mean": 98.92648586567145,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 9,
+        "mean": 99.4426890120006,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 10,
+        "mean": 99.67574588567821,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 11,
+        "mean": 99.81507754607834,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 12,
+        "mean": 99.88708644561548,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 13,
+        "mean": 99.96618171284088,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 14,
+        "mean": 99.98212356395496,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 15,
+        "mean": 100.0,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      },
+      {
+        "group": 16,
+        "mean": 100.0,
+        "q25": 100.0,
+        "median": 100.0,
+        "q75": 100.0,
+        "n_users": 1355
+      }
+    ]
+  },
+  "five_figure_method": {
+    "x": "recent-first 30-day consecutive-gap temporal group",
+    "alignment": "mean excess_cosine_z within user/group, then equal mean across users",
+    "preference": "mean original semantic-cluster excess match within user/group; original per-user 1/K chance retained",
+    "influence": "mean original single-item deletion margin effect within user/group; NOT joint group ablation",
+    "coverage": "sum positive original excess cosine z per group; cumulative recent groups / all positive signal in observed history",
+    "confidence_interval": "95% user bootstrap for alignment/preference/influence; coverage shading is user IQR",
+    "cohorts": "original test history and max100 items; fixed_K16 means at least16 original items, not16 groups",
+    "main_min_users": 100,
+    "supplement": "same influence estimates, all n>=1",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "physical_gpu": 0,
+    "bootstrap_repetitions": 2000,
+    "position_source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon-all-beauty/run_20260927_033236/amazon-all-beauty/alignment_per_position.csv",
+    "position_source_sha256": "89c5c0c89d29eb69e1671c55eddb49e33d86d0d605b8b826bffe78d7af9c6130",
+    "influence_source_sha256": "1d479dc6c8f433f834d08b8d10e1cb4f9533c9c54c607fd7f7fc6fba3bb1d626",
+    "timestamp_verification": {
+      "raw_rows": 701528,
+      "filtered_rows": 11359,
+      "filtered_users": 1603,
+      "verified_user_sequences": 1457,
+      "verified_distinct_item_ids": 3933,
+      "raw_arrow_files": [
+        "/workspace/P78123011/cache/McAuley-Lab___amazon-reviews-2023/raw_review_All_Beauty/0.0.0/16b76e0823d73bb8cff1e9c5e3e37dbc46ae3daee380417ae141f5e67d3ea8e8/amazon-reviews-2023-full.arrow"
+      ]
+    },
+    "training_repeated": false
+  }
+}

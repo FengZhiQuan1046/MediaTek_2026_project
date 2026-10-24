@@ -1,0 +1,294 @@
+{
+  "dataset": "movielens-1m",
+  "run_id": "20261024_043603",
+  "group": "long",
+  "length_basis": "filtered_full_sequence",
+  "status": "final_best_model",
+  "periodic_test_history": [
+    {
+      "stage": "all_dl",
+      "epoch": 1,
+      "global_step": 1000,
+      "scores": {
+        "recall@5": 0.10087867522811761,
+        "recall@10": 0.15511997296383914,
+        "ndcg@5": 0.0650184213957916,
+        "ndcg@10": 0.08258172703881604,
+        "hit@5": 0.10087867522811761,
+        "hit@10": 0.15511997296383914
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 1,
+      "global_step": 2000,
+      "scores": {
+        "recall@5": 0.12183169989861439,
+        "recall@10": 0.18604258195336262,
+        "ndcg@5": 0.07948749657695496,
+        "ndcg@10": 0.10022695035539489,
+        "hit@5": 0.12183169989861439,
+        "hit@10": 0.18604258195336262
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 1,
+      "global_step": 3000,
+      "scores": {
+        "recall@5": 0.12825278810408922,
+        "recall@10": 0.20260223048327136,
+        "ndcg@5": 0.08519186092454037,
+        "ndcg@10": 0.10902798453657164,
+        "hit@5": 0.12825278810408922,
+        "hit@10": 0.20260223048327136
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 2,
+      "global_step": 4907,
+      "scores": {
+        "recall@5": 0.13991213247718823,
+        "recall@10": 0.21662723893207164,
+        "ndcg@5": 0.09190005021842637,
+        "ndcg@10": 0.11662564136557094,
+        "hit@5": 0.13991213247718823,
+        "hit@10": 0.21662723893207164
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 2,
+      "global_step": 5907,
+      "scores": {
+        "recall@5": 0.14362960459614735,
+        "recall@10": 0.21882392700236566,
+        "ndcg@5": 0.09486392497736212,
+        "ndcg@10": 0.11899827141901426,
+        "hit@5": 0.14362960459614735,
+        "hit@10": 0.21882392700236566
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 2,
+      "global_step": 6907,
+      "scores": {
+        "recall@5": 0.14447448462318352,
+        "recall@10": 0.2252450152078405,
+        "ndcg@5": 0.09703050861999311,
+        "ndcg@10": 0.12287582407757505,
+        "hit@5": 0.14447448462318352,
+        "hit@10": 0.2252450152078405
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 3,
+      "global_step": 8814,
+      "scores": {
+        "recall@5": 0.14667117269347751,
+        "recall@10": 0.2294694153430213,
+        "ndcg@5": 0.0988410628142611,
+        "ndcg@10": 0.12546350296790834,
+        "hit@5": 0.14667117269347751,
+        "hit@10": 0.2294694153430213
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 3,
+      "global_step": 9814,
+      "scores": {
+        "recall@5": 0.1524163568773234,
+        "recall@10": 0.23132815140250085,
+        "ndcg@5": 0.10339764086190145,
+        "ndcg@10": 0.12872777609160554,
+        "hit@5": 0.1524163568773234,
+        "hit@10": 0.23132815140250085
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 3,
+      "global_step": 10814,
+      "scores": {
+        "recall@5": 0.15410611693139575,
+        "recall@10": 0.23082122338627914,
+        "ndcg@5": 0.1014365795585739,
+        "ndcg@10": 0.12609946506612676,
+        "hit@5": 0.15410611693139575,
+        "hit@10": 0.23082122338627914
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 4,
+      "global_step": 12721,
+      "scores": {
+        "recall@5": 0.15292328489354512,
+        "recall@10": 0.23436971949983101,
+        "ndcg@5": 0.10180338941111396,
+        "ndcg@10": 0.12795140233826025,
+        "hit@5": 0.15292328489354512,
+        "hit@10": 0.23436971949983101
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 4,
+      "global_step": 13721,
+      "scores": {
+        "recall@5": 0.15765461304494763,
+        "recall@10": 0.23301791145657316,
+        "ndcg@5": 0.10423670736656966,
+        "ndcg@10": 0.12837963670147995,
+        "hit@5": 0.15765461304494763,
+        "hit@10": 0.23301791145657316
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    },
+    {
+      "stage": "all_dl",
+      "epoch": 4,
+      "global_step": 14721,
+      "scores": {
+        "recall@5": 0.15478202095302468,
+        "recall@10": 0.23301791145657316,
+        "ndcg@5": 0.10360716661699604,
+        "ndcg@10": 0.1287969685715905,
+        "hit@5": 0.15478202095302468,
+        "hit@10": 0.23301791145657316
+      },
+      "evaluated_users": 5918,
+      "total_users": 5918
+    }
+  ],
+  "length_rule": "length > threshold",
+  "length_threshold": 10,
+  "config": {
+    "dataset": "movielens-1m",
+    "data_path": "/workspace/P78123011/cache/raw/dated_analysis/movielens-1m",
+    "cache_dir": "/workspace/P78123011/cache",
+    "refresh_data_cache": false,
+    "max_events": null,
+    "max_transitions": 500000,
+    "min_rating": 4.0,
+    "specialist_epochs": 4,
+    "joint_epochs": 0,
+    "batch_size": 128,
+    "eval_batch_size": 64,
+    "validate_every_steps": 1000,
+    "monitor_metric": "ndcg@10",
+    "early_stopping_patience": 6,
+    "lr_patience": 2,
+    "candidates": 64,
+    "dim": 128,
+    "lora_rank": 16,
+    "lora_alpha": 32.0,
+    "lora_dropout": 0.05,
+    "enable_lora": 1,
+    "short_window": 79,
+    "preference_count": 32,
+    "preference_temperature": 0.2,
+    "preference_score_weight": 0.2,
+    "use_graph_embeddings": true,
+    "use_coordinator": true,
+    "max_history": 0,
+    "reverse_history_input": false,
+    "specialist_lr": 0.0001,
+    "joint_lr": 5e-05,
+    "rl_coef": 0.0,
+    "rl_topk": 10,
+    "preference_coef": 0.2,
+    "preference_transition_coef": 0.1,
+    "preference_balance_coef": 0.01,
+    "preference_separation_coef": 0.01,
+    "preference_sharpness_coef": 0.05,
+    "future_horizon": 3,
+    "future_decay": 0.5,
+    "hard_negative_pool_multiplier": 12,
+    "hard_negative_fraction": 0.75,
+    "hard_negative_warmup_epochs": 2,
+    "use_in_batch_negatives": true,
+    "preference_contrastive_coef": 0.05,
+    "agent_diversity_coef": 0.02,
+    "full_catalog_supervised": false,
+    "popularity_alpha": 0.0,
+    "transition_beta": 0.0,
+    "seed": 25252,
+    "device": "cuda:0",
+    "skip_mamba": false,
+    "graph_device": "cuda:0",
+    "mamba_encode_batch_size": 32,
+    "mamba_max_tokens": 32,
+    "mamba_model_id": "state-spaces/mamba-130m-hf",
+    "item_prompt_prefix": "Preference-aware product representation: ",
+    "validation_user_limit": 0,
+    "periodic_test_user_limit": 0,
+    "generate_reasons": false,
+    "save_model_weights": false,
+    "reason_count": 20,
+    "reason_max_new_tokens": 40,
+    "item_vector_artifact": null,
+    "resume_checkpoint": null,
+    "eval_length_basis": "filtered_full_sequence",
+    "eval_length_threshold": 10,
+    "experiment_note": "HF cached inputs; existing ver5 preprocessing/splits; Yelp order=source-row index; Steam/MovieLens chronological; short window=round_half_up(2*plotted mean_interactions_per_group); full preference history; weights disabled",
+    "target_recall_at_10": 0.15,
+    "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/movielens-1m",
+    "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/movielens-1m/group_window_aligned_20261024_013517_P32",
+    "score_file": "/workspace/P78123011/MediaTek_2026_project/ver5/outputs_mamba_rl/movielens-1m/group_window_aligned_20261024_013517_P32/movielens-1m_scores.json",
+    "history_influence_output": null,
+    "history_influence_user_limit": 0,
+    "history_influence_negatives": 64,
+    "use_short": 1,
+    "use_preference": 1
+  },
+  "valid": {
+    "ndcg@5": 0.11332026884031055,
+    "ndcg@10": 0.1404517749874187,
+    "recall@5": 0.17269347752619127,
+    "recall@10": 0.2568435282189929,
+    "hit@5": 0.17269347752619127,
+    "hit@10": 0.2568435282189929
+  },
+  "valid_users": {
+    "total_users": 5918,
+    "evaluated_users": 5918
+  },
+  "test": {
+    "ndcg@5": 0.1069038776765078,
+    "ndcg@10": 0.1327620453288334,
+    "recall@5": 0.15782358905035485,
+    "recall@10": 0.2379182156133829,
+    "hit@5": 0.15782358905035485,
+    "hit@10": 0.2379182156133829
+  },
+  "test_users": {
+    "total_users": 5918,
+    "evaluated_users": 5918
+  }
+}

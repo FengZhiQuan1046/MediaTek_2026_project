@@ -22,6 +22,7 @@ import torch
 from torch.nn import functional as F
 from tqdm.auto import tqdm
 
+from src.dataset_windows import default_short_window, window_argument
 from src.data import MIN_INTERACTIONS, edge_index
 from src.data_mamba_rl import load_recommendation_data
 from src.model import MAMBA_MODEL_ID, load_or_encode_text
@@ -1046,7 +1047,8 @@ def parse_args():
             "0 preserves trainable full-rank updates."
         ),
     )
-    parser.add_argument("--short-window", type=int, default=10)
+    parser.add_argument("--short-window", type=window_argument, default=None,
+                        help="Short-agent window; auto uses rounded 2 * mean interactions per temporal group for Steam/MovieLens1M/Yelp19/Yelp23 (otherwise 10).")
     parser.add_argument("--preference-count", type=int, default=32)
     parser.add_argument("--preference-temperature", type=float, default=0.2)
     parser.add_argument("--preference-score-weight", type=float, default=0.2)
@@ -1149,6 +1151,8 @@ def parse_args():
     for agent in ("short", "preference"):
         parser.add_argument(f"--use-{agent}", type=int, choices=(0, 1), default=1)
     args = parser.parse_args()
+    if args.short_window is None:
+        args.short_window = default_short_window(args.dataset)
     if not (args.use_short or args.use_preference or args.use_graph_embeddings):
         parser.error("All agents disabled requires USE_GCN=1")
     if args.eval_length_threshold is not None and args.eval_length_threshold < 1:
