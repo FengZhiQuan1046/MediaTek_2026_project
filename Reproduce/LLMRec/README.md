@@ -24,3 +24,15 @@ Rather than modifying the model into DDP, `run.sh` runs two subsets concurrently
 one per GPU. This is suitable for two 24 GB RTX 4090 cards. Each run writes only
 `config.json`, `metrics.json`, and `train_{time}.log` under
 `outputs/{subset}/llmrec_{time}_r{repeat}/`.
+
+## Shared Yelp runs
+
+Use `bash ../run_llm_yelp.sh LLMRec 0 RUN_ID`. This downloads the HF Yelp19/23
+releases under workspace `cache/`, reuses the ver5 preprocessing and cache identity,
+and emits SIGMA-compatible evaluation JSONL plus data hashes. The upstream model
+is vendored and pinned in `upstream_source.json`. The metadata/zero-image/training-edge
+proxy limitation described above also applies to these Yelp runs.
+
+## Four-dataset rerun (2026-10-24)
+
+`bash ../run_llm_yelp.sh LLMRec 0 RUN_ID` now runs Yelp19, Yelp23, MovieLens 1M, then Steam on GPU 0 only, with at most 8 epochs per dataset. Every epoch evaluates both valid and test and persists both in metrics.json/history and evaluations.jsonl. Best-model selection uses validation only. The original ver5 filtering and split loaders are called directly. HF raw files and normalized data stay under workspace cache; source revisions and file hashes are recorded.

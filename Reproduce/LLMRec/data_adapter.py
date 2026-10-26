@@ -16,7 +16,7 @@ import torch
 
 ROOT = Path(__file__).resolve().parent
 MEDIATEK_ROOT = ROOT.parents[1]
-VER4_ROOT = MEDIATEK_ROOT / "ver4"
+VER4_ROOT = MEDIATEK_ROOT / "ver5"
 if str(VER4_ROOT) not in sys.path:
     sys.path.insert(0, str(VER4_ROOT))
 

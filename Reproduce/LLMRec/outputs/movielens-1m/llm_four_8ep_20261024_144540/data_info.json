@@ -1,0 +1,24 @@
+{
+  "artifact": "/workspace/P78123011/cache/mamba_multi_agent_data/movielens-1m_162f354fee48.pkl",
+  "cache_sha256": "dd5d48f64b2e494c6b68ef9f38bfff6d6e35a89068373e2d9e07f1c2189eb9c3",
+  "bytes": 1775411,
+  "num_users": 6034,
+  "num_items": 3125,
+  "validation_users": 6034,
+  "test_users": 6034,
+  "train_interactions": 562308,
+  "data_protocol": "ver5 loaders and build_data without changes",
+  "filtering": {
+    "dataset": "movielens-1m",
+    "data_path": "/workspace/P78123011/cache/hf_datasets/movielens-1m",
+    "max_events": null,
+    "min_rating": 4.0,
+    "min_interactions": 5,
+    "schema_version": 2
+  },
+  "loader_files": {
+    "ver5/src/data.py": "2723b9f04e2b4c8aeccb9a2cd84bda6992227b6f6634234e9f0f060808394304",
+    "ver5/src/data_mamba_rl.py": "396650bd5c2939e885c289c561fe1a4bee6ee26f98a60b1de429dd8061297ccd",
+    "ver5/src/train_yelp_steam.py": "cad15457e1fd109f2b7f5b708a719e827e2955e4cd7f7ed4bee0db79a1b6e9f9"
+  }
+}

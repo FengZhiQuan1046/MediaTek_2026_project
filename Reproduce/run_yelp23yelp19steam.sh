@@ -5,7 +5,7 @@ set -euo pipefail
 REPRO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$REPRO_ROOT/.." && pwd)"
 WORKSPACE_ROOT="$(cd "$REPO_ROOT/.." && pwd)"
-MODEL="${1:?Specify Mamba4Rec or ReSID}"
+MODEL="${1:?Specify Mamba4Rec, ReSID, SASRec, BERT4Rec or SIGMA}"
 GPU_ID="${2:?Specify GPU index}"
 RUN_ID="${3:-hf_$(TZ=Asia/Taipei date '+%Y%m%d_%H%M%S')}"
 case "$MODEL" in Mamba4Rec|ReSID|SASRec|BERT4Rec|SIGMA) ;; *) exit 2 ;; esac
@@ -21,6 +21,7 @@ export TMPDIR="$CACHE_DIR/tmp" MPLCONFIGDIR="$CACHE_DIR/matplotlib"
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-8}" TOKENIZERS_PARALLELISM=false
 mkdir -p "$TMPDIR" "$MPLCONFIGDIR"
 cd "$REPRO_ROOT/$MODEL"
+LEARNING_RATE="${LEARNING_RATE:-1e-3}"
 failed=0
 for dataset in ${DATASET_ORDER:-steam yelp23 yelp19}; do
   case "$dataset" in
@@ -37,21 +38,21 @@ for dataset in ${DATASET_ORDER:-steam yelp23 yelp19}; do
     --seed 25252 --maxlen 100 --batch-size "${BATCH_SIZE:-128}"
     --eval-batch-size "${EVAL_BATCH_SIZE:-64}" --amp)
   if [[ "$MODEL" == Mamba4Rec ]]; then
-    args+=(--no-use-large-mamba --epochs "${EPOCHS:-15}" --learning-rate 1e-3
+    args+=(--no-use-large-mamba --epochs "${EPOCHS:-15}" --learning-rate "$LEARNING_RATE"
       --hidden-size 64 --num-layers 1 --early-stopping-patience 10)
   elif [[ "$MODEL" == ReSID ]]; then
     args+=(--famae-epochs "${FAMAE_EPOCHS:-8}" --epochs "${EPOCHS:-25}"
-      --learning-rate 1e-3 --hidden-size 128 --num-heads 4
+      --learning-rate "$LEARNING_RATE" --hidden-size 128 --num-heads 4
       --early-stopping-patience 8)
   elif [[ "$MODEL" == SIGMA ]]; then
-    args+=(--no-use-large-mamba --epochs "${EPOCHS:-20}" --learning-rate 1e-3
+    args+=(--no-use-large-mamba --epochs "${EPOCHS:-20}" --learning-rate "$LEARNING_RATE"
       --hidden-size 64 --num-layers 1 --early-stopping-patience 10
       --maxlen "${SIGMA_MAXLEN:-0}")
   elif [[ "$MODEL" == SASRec ]]; then
-    args+=(--epochs "${EPOCHS:-7}" --learning-rate 1e-3 --hidden-units 128
+    args+=(--epochs "${EPOCHS:-7}" --learning-rate "$LEARNING_RATE" --hidden-units 128
       --num-blocks 2 --num-heads 1 --dropout-rate 0.2 --early-stopping-patience 20)
   else
-    args+=(--epochs "${EPOCHS:-50}" --learning-rate 1e-3 --hidden-units 128
+    args+=(--epochs "${EPOCHS:-50}" --learning-rate "$LEARNING_RATE" --hidden-units 128
       --num-blocks 2 --num-heads 2 --dropout-rate 0.2 --mask-prob 0.2
       --loss-chunk-size 128 --early-stopping-patience 20)
   fi

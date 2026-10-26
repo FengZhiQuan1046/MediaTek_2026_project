@@ -16,17 +16,20 @@ import torch
 from torch.nn import functional as F
 from tqdm.auto import tqdm
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from data_adapter import LLMRecData, load_data, normalized_graph
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", required=True)
+    parser.add_argument("--data-path")
+    parser.add_argument("--refresh-data-cache", action="store_true")
     parser.add_argument("--cache-dir", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--max-events", type=int)
     parser.add_argument("--min-rating", type=float, default=4.0)
-    parser.add_argument("--epochs", type=int, default=1000)
+    parser.add_argument("--epochs", type=lambda value: min(8, int(value)), default=8)
     parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--embed-size", type=int, default=64)
     parser.add_argument("--feature-dim", type=int, default=64)
@@ -48,7 +51,7 @@ def logger_for(path):
 
 
 def import_upstream_model(args):
-    upstream = Path(__file__).resolve().parents[3] / "LLMRec"
+    upstream = Path(__file__).resolve().parent / "upstream"
     sys.path.insert(0, str(upstream))
     original = sys.argv
     sys.argv = [original[0], "--embed_size", str(args.embed_size),
@@ -121,7 +124,10 @@ def main():
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     logger = logger_for(output / f"train_{run_id}.log")
     logger.info("EXPERIMENT_CONFIG %s", json.dumps(vars(args), sort_keys=True))
-    raw, cache = load_data(args, logger)
+    from shared_yelp import load_shared, EvaluationWriter
+    raw, cache = load_shared(args, logger) if args.data_path else load_data(args, logger)
+    writer = EvaluationWriter(output, args.dataset)
+    (output / "config.json").write_text(json.dumps(vars(args), indent=2))
     data = LLMRecData(raw, args.batch_size, args.feature_dim, args.seed)
     logger.info("dataset=%s users=%d items=%d train_interactions=%d cache=%s",
                 args.dataset, data.n_users, data.n_items, data.n_train, cache)
@@ -166,16 +172,27 @@ def main():
             optimizer.zero_grad(); loss.backward(); optimizer.step()
             total += float(loss.detach())
         valid = evaluate(model, graphs, data, "valid", args.batch_size * 2)
+        valid["total_users"] = len(data.val_set)
+        writer.write("VALIDATION", valid, "recommender", epoch, epoch * steps)
         score = valid["recall@10"]
-        record = {"epoch": epoch, "loss": total / steps, "valid": valid}
+        test = evaluate(model, graphs, data, "test", args.batch_size * 2)
+        test["total_users"] = len(data.test_set)
+        writer.write("TEST", test, "recommender", epoch, epoch * steps)
+        record = {"epoch": epoch, "loss": total / steps, "valid": valid, "test": test}
         history.append(record); logger.info("epoch=%d loss=%.6f valid=%s", epoch, record["loss"], json.dumps(valid))
         if score > best_score:
             best_score, best_epoch, stale = score, epoch, 0
-            best_test = evaluate(model, graphs, data, "test", args.batch_size * 2)
+            best_test = test
         else:
             stale += 1
             if stale > args.early_stopping_patience:
                 logger.info("EARLY_STOP epoch=%d best_epoch=%d", epoch, best_epoch); break
+        (output / "metrics.json").write_text(json.dumps({"dataset": args.dataset,
+            "status": "running", "epochs_completed": epoch, "best_epoch": best_epoch,
+            "monitor_metric": "recall@10", "test": best_test, "history": history}, indent=2))
+        logger.info("epoch=%d test=%s", epoch, json.dumps(test))
+    best_test["total_users"] = len(data.test_set)
+    writer.write("FINAL TEST", best_test, "best_validation_model", best_epoch, best_epoch * steps)
     result = {"dataset": args.dataset, "best_epoch": best_epoch, "monitor_metric": "recall@10",
               "best_score": best_score, "test": best_test, "num_users": data.n_users,
               "evaluation_users": len(data.test_set), "num_items": data.n_items,

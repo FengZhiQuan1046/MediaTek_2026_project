@@ -1,0 +1,15 @@
+{
+  "run_id": "llm_four_8ep_20261024_144540",
+  "datasets": [
+    "yelp19",
+    "yelp23",
+    "movielens-1m",
+    "steam"
+  ],
+  "physical_gpu": 0,
+  "max_total_epochs_per_dataset": 8,
+  "llmrec_epochs": 8,
+  "llmsrec_teacher_epochs": 2,
+  "llmsrec_epochs": 6,
+  "evaluation": "valid and test every epoch; select by valid only"
+}

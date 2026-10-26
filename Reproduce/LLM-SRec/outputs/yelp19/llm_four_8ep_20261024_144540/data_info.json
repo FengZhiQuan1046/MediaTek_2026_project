@@ -1,0 +1,24 @@
+{
+  "artifact": "/workspace/P78123011/cache/mamba_multi_agent_data/yelp19_85e6b4b9b764.pkl",
+  "cache_sha256": "8438c2c4c3cc8979f0c450a67f79179043be2578016d6392e3d4aca9c1bf4756",
+  "bytes": 9435259,
+  "num_users": 27032,
+  "num_items": 20081,
+  "validation_users": 27032,
+  "test_users": 27032,
+  "train_interactions": 814304,
+  "data_protocol": "ver5 loaders and build_data without changes",
+  "filtering": {
+    "dataset": "yelp19",
+    "data_path": "/workspace/P78123011/cache/normalized/yelp19_unique.jsonl",
+    "max_events": null,
+    "min_rating": 4.0,
+    "min_interactions": 5,
+    "schema_version": 2
+  },
+  "loader_files": {
+    "ver5/src/data.py": "2723b9f04e2b4c8aeccb9a2cd84bda6992227b6f6634234e9f0f060808394304",
+    "ver5/src/data_mamba_rl.py": "396650bd5c2939e885c289c561fe1a4bee6ee26f98a60b1de429dd8061297ccd",
+    "ver5/src/train_yelp_steam.py": "cad15457e1fd109f2b7f5b708a719e827e2955e4cd7f7ed4bee0db79a1b6e9f9"
+  }
+}

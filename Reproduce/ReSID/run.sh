@@ -25,7 +25,7 @@ OUTPUT_ROOT="${OUTPUT_ROOT:-$PROJECT_ROOT/outputs}"
 
 # ReSID defaults. Both learned stages use about eight epochs as requested.
 FAMAE_EPOCHS="${FAMAE_EPOCHS:-8}"
-EPOCHS="${EPOCHS:-25}"
+EPOCHS="${EPOCHS:-20}"
 BATCH_SIZE="${BATCH_SIZE:-128}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-64}"
 FAMAE_LEARNING_RATE="${FAMAE_LEARNING_RATE:-1e-3}"

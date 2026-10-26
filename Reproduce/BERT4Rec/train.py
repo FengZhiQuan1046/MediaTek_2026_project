@@ -198,7 +198,7 @@ def parse_args():
     parser.add_argument("--num-blocks", type=int, default=2)
     parser.add_argument("--num-heads", type=int, default=2)
     parser.add_argument("--dropout-rate", type=float, default=0.2)
-    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--epochs", type=lambda value: min(20, int(value)), default=20)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--eval-batch-size", type=int, default=64)
     parser.add_argument("--learning-rate", type=float, default=1e-3)

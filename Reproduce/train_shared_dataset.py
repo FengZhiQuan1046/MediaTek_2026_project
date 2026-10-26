@@ -73,7 +73,7 @@ def main():
         metrics['total_users']=len(data.valid_target if split=='valid' else data.test_target)
         writer.write('VALIDATION' if split=='valid' else 'FINAL TEST',metrics,
                      'recommender' if split=='valid' else 'best_validation_model',epoch,step)
-        if split == 'valid' and options.reproduction in {'BERT4Rec', 'SIGMA', 'ReSID', 'Mamba4Rec'}:
+        if split == 'valid' and options.reproduction in {'BERT4Rec', 'SIGMA', 'ReSID', 'Mamba4Rec', 'SASRec'}:
             test_metrics = original_eval(model, data, 'test', *eval_args, **eval_kwargs)
             test_metrics['total_users'] = len(data.test_target)
             writer.write('TEST', test_metrics, 'recommender', epoch, step)
@@ -91,7 +91,7 @@ def main():
     trainer.evaluate=evaluate
     sys.argv=[sys.argv[0],*remaining]
     trainer.main()
-    if options.reproduction in {'BERT4Rec', 'SIGMA', 'ReSID', 'Mamba4Rec'}:
+    if options.reproduction in {'BERT4Rec', 'SIGMA', 'ReSID', 'Mamba4Rec', 'SASRec'}:
         metrics_path = writer.output / 'metrics.json'
         report = json.loads(metrics_path.read_text())
         report['epoch_evaluations'] = [json.loads(p.read_text()) for p in sorted(writer.output.glob('epoch_*_metrics.json'))]

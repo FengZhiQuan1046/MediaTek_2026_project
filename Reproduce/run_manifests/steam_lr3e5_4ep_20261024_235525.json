@@ -1,0 +1,39 @@
+{
+  "run_id": "steam_lr3e5_4ep_20261024_235525",
+  "dataset": "steam",
+  "models": [
+    "SIGMA",
+    "Mamba4Rec",
+    "BERT4Rec",
+    "SASRec"
+  ],
+  "learning_rate": 3e-05,
+  "epochs": 4,
+  "physical_gpu": 0,
+  "valid_and_test_each_epoch": true,
+  "selection": "best validation NDCG@10",
+  "data_protocol": "original ver5 shared cache steam_e4cf210a33ca.pkl",
+  "outputs": {
+    "SIGMA": "/workspace/P78123011/MediaTek_2026_project/Reproduce/SIGMA/outputs/steam/steam_lr3e5_4ep_20261024_235525",
+    "Mamba4Rec": "/workspace/P78123011/MediaTek_2026_project/Reproduce/Mamba4Rec/outputs/steam/steam_lr3e5_4ep_20261024_235525",
+    "BERT4Rec": "/workspace/P78123011/MediaTek_2026_project/Reproduce/BERT4Rec/outputs/steam/steam_lr3e5_4ep_20261024_235525",
+    "SASRec": "/workspace/P78123011/MediaTek_2026_project/Reproduce/SASRec/outputs/steam/steam_lr3e5_4ep_20261024_235525"
+  },
+  "tmux": {
+    "SIGMA": "sigma_steam_lr3e5_gpu0",
+    "Mamba4Rec": "mamba4rec_steam_lr3e5_gpu0",
+    "BERT4Rec": "bert4rec_steam_lr3e5_gpu0",
+    "SASRec": "sasrec_steam_lr3e5_gpu0"
+  },
+  "mamba_dependency": {
+    "name": "mambapy",
+    "version": "1.2.0",
+    "path": "/workspace/P78123011/cache/baseline_dependencies/mambapy_1_2_0",
+    "models": [
+      "SIGMA",
+      "Mamba4Rec"
+    ],
+    "prior_backend_preserved": true
+  },
+  "failed_startup_logs_archived": "/workspace/P78123011/cache/training_runs/steam_lr3e5_4ep_20261024_235525/failed_launches"
+}
