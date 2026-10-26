@@ -679,6 +679,10 @@ def main():
     parser.add_argument("--max-users", type=int, default=2000)
     parser.add_argument("--max-lag", type=int, default=100)
     parser.add_argument("--short-window", type=int, default=10)
+    parser.add_argument("--mamba-gate", type=float, default=None,
+                        help="Fixed selective Mamba gate used by the matching training run.")
+    parser.add_argument("--mamba-decay", type=float, default=None,
+                        help="Fixed recurrent state retention used by the matching training run.")
     parser.add_argument("--reverse-history-input", action="store_true")
     parser.add_argument("--random-matches", type=int, default=20)
     parser.add_argument("--reference-items", type=int, default=20000)
@@ -694,6 +698,10 @@ def main():
         parser.error("sizes must be positive; max-users and bootstrap must be nonnegative")
     if args.short_window >= args.max_lag:
         parser.error("short-window must be smaller than max-lag")
+    if args.mamba_gate is not None and not 0.0 <= args.mamba_gate <= 1.0:
+        parser.error("--mamba-gate must be in [0, 1]")
+    if args.mamba_decay is not None and not 0.0 <= args.mamba_decay <= 1.0:
+        parser.error("--mamba-decay must be in [0, 1]")
     datasets = [part.strip() for part in args.datasets.split(",") if part.strip()]
     if not datasets:
         parser.error("at least one dataset is required")

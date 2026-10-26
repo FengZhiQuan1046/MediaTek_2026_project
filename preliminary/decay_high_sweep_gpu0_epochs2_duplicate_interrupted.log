@@ -1,0 +1,168 @@
+========== GPU0 Amazon: gate=0.5 recurrent_decay=1.0 ==========
+========== preliminary subset: amazon-all-beauty (training) ==========
+amazon-all-beauty: retrain single full-history Mamba+LoRA(rank=16) + LightGCN (no coordinator/short/preference agents); full validation/test once per epoch
+2026-10-26 14:30:03,110 | INFO | run_id=20261026_143003 dataset=amazon-all-beauty device=cuda:0
+2026-10-26 14:30:03,111 | INFO | CUDA_SCOPE requested_physical=0 visible_count=1 main_logical=cuda:0 graph_logical=cuda:0
+2026-10-26 14:30:03,111 | INFO | MODEL recommender=MultiAgentMambaRecommender semantic_encoder=MambaTextEncoder semantic_model_id=state-spaces/mamba-130m-hf graph_backbone=LightGCN adaptation=multi_lora
+2026-10-26 14:30:03,111 | INFO | ABLATION USE_LONG=1 USE_SHORT=0 USE_PREFERENCE=0 USE_GCN=1
+2026-10-26 14:30:03,111 | INFO | AGENT_HISTORY mode=full_history effective_max_history=100 long=100 short=0 preference=0
+2026-10-26 14:30:03,111 | INFO | EXPERIMENT_NOTE preliminary: chronological prefixes and targets; single full-history Mamba+LoRA+LightGCN; no saved weights
+2026-10-26 14:30:03,111 | INFO | EXPERIMENT_CONFIG {"agent_diversity_coef": 0.02, "batch_size": 128, "cache_dir": "/workspace/P78123011/cache", "candidates": 64, "coordinator_epochs": 0, "coordinator_lr": 0.0001, "data_path": null, "dataset": "amazon-all-beauty", "device": "cuda:0", "dim": 128, "early_stopping_patience": 6, "enable_lora": 1, "eval_batch_size": 64, "eval_length_basis": "untruncated_train_history", "eval_length_threshold": null, "experiment_note": "preliminary: chronological prefixes and targets; single full-history Mamba+LoRA+LightGCN; no saved weights", "full_catalog_supervised": false, "future_decay": 0.5, "future_horizon": 3, "generate_reasons": false, "graph_device": "cuda:0", "hard_negative_fraction": 0.75, "hard_negative_pool_multiplier": 12, "hard_negative_warmup_epochs": 2, "history_influence_negatives": 64, "history_influence_output": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/training/amazon-all-beauty/history_item_influence.csv", "history_influence_user_limit": 2000, "item_prompt_prefix": "Preference-aware product representation: ", "item_vector_artifact": null, "joint_epochs": 2, "joint_lr": 5e-05, "lora_alpha": 32.0, "lora_dropout": 0.05, "lora_rank": 16, "lr_patience": 2, "mamba_decay": 1.0, "mamba_encode_batch_size": 32, "mamba_gate": 0.5, "mamba_max_tokens": 32, "mamba_model_id": "state-spaces/mamba-130m-hf", "max_events": null, "max_history": 100, "max_transitions": 500000, "min_rating": 4.0, "monitor_metric": "ndcg@10", "output_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100", "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/training/amazon-all-beauty/single_mamba_lora_lightgcn_20261026_143002", "periodic_test_user_limit": 0, "popularity_alpha": -0.25, "preference_balance_coef": 0.01, "preference_coef": 0.2, "preference_contrastive_coef": 0.05, "preference_count": 32, "preference_hidden": 128, "preference_score_weight": 0.2, "preference_separation_coef": 0.01, "preference_sharpness_coef": 0.05, "preference_temperature": 0.2, "preference_transition_coef": 0.1, "reason_count": 20, "reason_max_new_tokens": 40, "refresh_data_cache": false, "resume_checkpoint": null, "reverse_history_input": false, "save_model_weights": false, "score_file": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/training/amazon-all-beauty/single_mamba_lora_lightgcn_20261026_143002/amazon-all-beauty_scores.json", "seed": 25252, "short_window": 10, "skip_mamba": false, "specialist_epochs": 0, "specialist_lr": 0.0001, "target_recall_at_10": 0.15, "transition_beta": 4.0, "use_graph_embeddings": true, "use_in_batch_negatives": true, "use_long": 1, "use_preference": 0, "use_short": 0, "validate_every_steps": 2147483647, "validation_user_limit": 0}
+2026-10-26 14:30:03,113 | INFO | INTERACTION_CACHE hit path=/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl
+2026-10-26 14:30:03,113 | INFO | HISTORY_INPUT_ORDER chronological
+2026-10-26 14:30:03,113 | INFO | users=1603 items=4090 train_interactions=8445
+2026-10-26 14:30:03,241 | INFO | CATALOG_PRIORS popularity_alpha=-0.250000 transition_beta=4.000000 source=train_histories_only enabled=True
+Loading cached Mamba item vectors:   0%|          | 0/1 [00:00<?, ?artifact/s]Loading cached Mamba item vectors: 100%|██████████| 1/1 [00:00<00:00, 201.60artifact/s]
+2026-10-26 14:30:03,255 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/amazon-all-beauty_4090_47e41e57cc9e_prompt_tok32.pt fingerprint=47e41e57cc9e
+2026-10-26 14:30:03,255 | INFO | SEMANTIC_BACKBONE model_id=state-spaces/mamba-130m-hf hidden_size=768 frozen=True usage=shared_cached_item_vectors
+Building bipartite graph edges:   0%|          | 0/1603 [00:00<?, ?user/s]Building bipartite graph edges: 100%|██████████| 1603/1603 [00:00<00:00, 1151278.99user/s]
+2026-10-26 14:30:03,259 | INFO | GRAPH_EMBEDDINGS enabled=True source=train_histories_only main_device=cuda:0 graph_device=cuda:0
+2026-10-26 14:30:03,284 | INFO | ADAPTATION_MODE mode=multi_lora enable_lora=1
+2026-10-26 14:30:03,284 | INFO | ADAPTER_ROUTES {'long': ('candidate_lora', 'output_lora')}
+2026-10-26 14:30:03,284 | INFO | MAMBA_GATE mode=fixed value=0.5
+2026-10-26 14:30:03,284 | INFO | MAMBA_DECAY mode=fixed value=1.0
+2026-10-26 14:30:03,285 | INFO | agent_parameters={'long': 8193, 'short': 8193, 'preference': 78786, 'coordinator': 0, 'shared_projection': 98304, 'graph': 728704}
+2026-10-26 14:30:03,285 | INFO | PREDICTION_PATH graph_only=False active_agents=1 coordinator=False
+2026-10-26 14:30:03,289 | INFO | training_transitions=6842
+2026-10-26 14:30:03,289 | INFO | schedule specialist_epochs=0 coordinator_epochs=0 joint_ranking_epochs=2 validate_every_steps=2147483647 validation_users=0 periodic_test_users=0 monitor=ndcg@10 early_stopping_patience=6
+2026-10-26 14:30:03,289 | INFO | SKIP_STAGE stage=specialists epochs=0 use_coordinator=False
+2026-10-26 14:30:03,289 | INFO | SKIP_STAGE stage=coordinator epochs=0 use_coordinator=False
+2026-10-26 14:30:03,838 | INFO | TRAINING_BRANCHES stage=joint long=True short=False preference=False gcn=True preference_auxiliary=False preference_contrastive=False diversity_pairs=0 trainable_parameters=835201
+joint 1/2:   0%|          | 0/54 [00:00<?, ?step/s]
+GCN item embeddings (initial pass):   0%|          | 0/3 [00:00<?, ?layer/s][AGCN item embeddings (initial pass): 100%|██████████| 3/3 [00:00<00:00, 38.37layer/s]
+joint 1/2:   0%|          | 0/54 [00:00<?, ?step/s, loss=4.1155, step=1]joint 1/2:   2%|▏         | 1/54 [00:00<00:23,  2.30step/s, loss=4.1155, step=1]joint 1/2:   2%|▏         | 1/54 [00:00<00:23,  2.30step/s, loss=4.1199, step=2]joint 1/2:   2%|▏         | 1/54 [00:00<00:23,  2.30step/s, loss=4.1218, step=3]joint 1/2:   2%|▏         | 1/54 [00:00<00:23,  2.30step/s, loss=4.1237, step=4]joint 1/2:   7%|▋         | 4/54 [00:00<00:05,  8.72step/s, loss=4.1237, step=4]joint 1/2:   7%|▋         | 4/54 [00:00<00:05,  8.72step/s, loss=4.1272, step=5]joint 1/2:   7%|▋         | 4/54 [00:00<00:05,  8.72step/s, loss=4.1181, step=6]joint 1/2:   7%|▋         | 4/54 [00:00<00:05,  8.72step/s, loss=4.1051, step=7]joint 1/2:  13%|█▎        | 7/54 [00:00<00:03, 13.08step/s, loss=4.1051, step=7]joint 1/2:  13%|█▎        | 7/54 [00:00<00:03, 13.08step/s, loss=4.1232, step=8]joint 1/2:  13%|█▎        | 7/54 [00:00<00:03, 13.08step/s, loss=4.1241, step=9]joint 1/2:  13%|█▎        | 7/54 [00:00<00:03, 13.08step/s, loss=4.1212, step=10]joint 1/2:  19%|█▊        | 10/54 [00:00<00:02, 15.69step/s, loss=4.1212, step=10]joint 1/2:  19%|█▊        | 10/54 [00:00<00:02, 15.69step/s, loss=4.1330, step=11]joint 1/2:  19%|█▊        | 10/54 [00:00<00:02, 15.69step/s, loss=4.0926, step=12]joint 1/2:  19%|█▊        | 10/54 [00:00<00:02, 15.69step/s, loss=4.1210, step=13]joint 1/2:  24%|██▍       | 13/54 [00:00<00:02, 17.62step/s, loss=4.1210, step=13]joint 1/2:  24%|██▍       | 13/54 [00:01<00:02, 17.62step/s, loss=4.1315, step=14]joint 1/2:  24%|██▍       | 13/54 [00:01<00:02, 17.62step/s, loss=4.1143, step=15]joint 1/2:  24%|██▍       | 13/54 [00:01<00:02, 17.62step/s, loss=4.1300, step=16]joint 1/2:  30%|██▉       | 16/54 [00:01<00:01, 19.51step/s, loss=4.1300, step=16]joint 1/2:  30%|██▉       | 16/54 [00:01<00:01, 19.51step/s, loss=4.1161, step=17]joint 1/2:  30%|██▉       | 16/54 [00:01<00:01, 19.51step/s, loss=4.1395, step=18]joint 1/2:  30%|██▉       | 16/54 [00:01<00:01, 19.51step/s, loss=4.1133, step=19]joint 1/2:  35%|███▌      | 19/54 [00:01<00:01, 19.61step/s, loss=4.1133, step=19]joint 1/2:  35%|███▌      | 19/54 [00:01<00:01, 19.61step/s, loss=4.1344, step=20]joint 1/2:  35%|███▌      | 19/54 [00:01<00:01, 19.61step/s, loss=4.1129, step=21]joint 1/2:  35%|███▌      | 19/54 [00:01<00:01, 19.61step/s, loss=4.1161, step=22]joint 1/2:  41%|████      | 22/54 [00:01<00:01, 20.91step/s, loss=4.1161, step=22]joint 1/2:  41%|████      | 22/54 [00:01<00:01, 20.91step/s, loss=4.1182, step=23]joint 1/2:  41%|████      | 22/54 [00:01<00:01, 20.91step/s, loss=4.0778, step=24]joint 1/2:  41%|████      | 22/54 [00:01<00:01, 20.91step/s, loss=4.1244, step=25]joint 1/2:  46%|████▋     | 25/54 [00:01<00:01, 21.46step/s, loss=4.1244, step=25]joint 1/2:  46%|████▋     | 25/54 [00:01<00:01, 21.46step/s, loss=4.1149, step=26]joint 1/2:  46%|████▋     | 25/54 [00:01<00:01, 21.46step/s, loss=4.1125, step=27]joint 1/2:  46%|████▋     | 25/54 [00:01<00:01, 21.46step/s, loss=4.1103, step=28]joint 1/2:  52%|█████▏    | 28/54 [00:01<00:01, 22.55step/s, loss=4.1103, step=28]joint 1/2:  52%|█████▏    | 28/54 [00:01<00:01, 22.55step/s, loss=4.1295, step=29]joint 1/2:  52%|█████▏    | 28/54 [00:01<00:01, 22.55step/s, loss=4.1232, step=30]joint 1/2:  52%|█████▏    | 28/54 [00:01<00:01, 22.55step/s, loss=4.1288, step=31]joint 1/2:  57%|█████▋    | 31/54 [00:01<00:01, 22.21step/s, loss=4.1288, step=31]joint 1/2:  57%|█████▋    | 31/54 [00:01<00:01, 22.21step/s, loss=4.1032, step=32]joint 1/2:  57%|█████▋    | 31/54 [00:01<00:01, 22.21step/s, loss=4.1215, step=33]joint 1/2:  57%|█████▋    | 31/54 [00:01<00:01, 22.21step/s, loss=4.1111, step=34]joint 1/2:  63%|██████▎   | 34/54 [00:01<00:00, 22.16step/s, loss=4.1111, step=34]joint 1/2:  63%|██████▎   | 34/54 [00:01<00:00, 22.16step/s, loss=4.1212, step=35]joint 1/2:  63%|██████▎   | 34/54 [00:01<00:00, 22.16step/s, loss=4.1145, step=36]joint 1/2:  63%|██████▎   | 34/54 [00:02<00:00, 22.16step/s, loss=4.1251, step=37]joint 1/2:  69%|██████▊   | 37/54 [00:02<00:00, 22.00step/s, loss=4.1251, step=37]joint 1/2:  69%|██████▊   | 37/54 [00:02<00:00, 22.00step/s, loss=4.1255, step=38]joint 1/2:  69%|██████▊   | 37/54 [00:02<00:00, 22.00step/s, loss=4.1150, step=39]joint 1/2:  69%|██████▊   | 37/54 [00:02<00:00, 22.00step/s, loss=4.1168, step=40]joint 1/2:  74%|███████▍  | 40/54 [00:02<00:00, 21.38step/s, loss=4.1168, step=40]joint 1/2:  74%|███████▍  | 40/54 [00:02<00:00, 21.38step/s, loss=4.1334, step=41]joint 1/2:  74%|███████▍  | 40/54 [00:02<00:00, 21.38step/s, loss=4.1048, step=42]joint 1/2:  74%|███████▍  | 40/54 [00:02<00:00, 21.38step/s, loss=4.1027, step=43]joint 1/2:  80%|███████▉  | 43/54 [00:02<00:00, 21.20step/s, loss=4.1027, step=43]joint 1/2:  80%|███████▉  | 43/54 [00:02<00:00, 21.20step/s, loss=4.1235, step=44]joint 1/2:  80%|███████▉  | 43/54 [00:02<00:00, 21.20step/s, loss=4.0945, step=45]joint 1/2:  80%|███████▉  | 43/54 [00:02<00:00, 21.20step/s, loss=4.0810, step=46]joint 1/2:  85%|████████▌ | 46/54 [00:02<00:00, 22.36step/s, loss=4.0810, step=46]joint 1/2:  85%|████████▌ | 46/54 [00:02<00:00, 22.36step/s, loss=4.1199, step=47]joint 1/2:  85%|████████▌ | 46/54 [00:02<00:00, 22.36step/s, loss=4.0971, step=48]joint 1/2:  85%|████████▌ | 46/54 [00:02<00:00, 22.36step/s, loss=4.1066, step=49]joint 1/2:  91%|█████████ | 49/54 [00:02<00:00, 22.13step/s, loss=4.1066, step=49]joint 1/2:  91%|█████████ | 49/54 [00:02<00:00, 22.13step/s, loss=4.1124, step=50]joint 1/2:  91%|█████████ | 49/54 [00:02<00:00, 22.13step/s, loss=4.1085, step=51]joint 1/2:  91%|█████████ | 49/54 [00:02<00:00, 22.13step/s, loss=4.0976, step=52]joint 1/2:  96%|█████████▋| 52/54 [00:02<00:00, 23.42step/s, loss=4.0976, step=52]joint 1/2:  96%|█████████▋| 52/54 [00:02<00:00, 23.42step/s, loss=4.1227, step=53]joint 1/2:  96%|█████████▋| 52/54 [00:02<00:00, 23.42step/s, loss=4.0718, step=54]
+full-catalog valid:   0%|          | 0/23 [00:00<?, ?batch/s][A
+full-catalog valid:  52%|█████▏    | 12/23 [00:00<00:00, 114.52batch/s][Afull-catalog valid: 100%|██████████| 23/23 [00:00<00:00, 115.32batch/s]
+2026-10-26 14:30:06,797 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=1 | step=54 | users=1457/1457
+NDCG  | @5 0.091101 | @10 0.093089
+Recall| @5 0.095402 | @10 0.101579
+Hit   | @5 0.095402 | @10 0.101579
+================================
+
+full-catalog test:   0%|          | 0/23 [00:00<?, ?batch/s][A
+full-catalog test:  57%|█████▋    | 13/23 [00:00<00:00, 116.96batch/s][Afull-catalog test: 100%|██████████| 23/23 [00:00<00:00, 119.23batch/s]
+2026-10-26 14:30:06,991 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=1 | step=54 | users=1457/1457
+NDCG  | @5 0.104796 | @10 0.106332
+Recall| @5 0.109128 | @10 0.113933
+Hit   | @5 0.109128 | @10 0.113933
+================================
+2026-10-26 14:30:06,991 | INFO | VALID_STEP step=54 stage=joint epoch=1 ndcg@10=0.093089 recall@10=0.101579 improved=True
+2026-10-26 14:30:06,994 | INFO | BEST_MODEL_IN_MEMORY step=54 stage=joint ndcg@10=0.093089
+2026-10-26 14:30:06,994 | INFO | LEARNING_RATE step=54 stage=joint lr=5e-05
+joint 1/2: 100%|██████████| 54/54 [00:03<00:00, 17.15step/s, loss=4.0718, step=54]
+2026-10-26 14:30:06,994 | INFO | stage=joint epoch=1 loss=4.115264 steps=54 transitions/s=2483.04
+joint 2/2:   0%|          | 0/54 [00:00<?, ?step/s]joint 2/2:   0%|          | 0/54 [00:00<?, ?step/s, loss=4.1406, step=55]joint 2/2:   0%|          | 0/54 [00:00<?, ?step/s, loss=4.1426, step=56]joint 2/2:   0%|          | 0/54 [00:00<?, ?step/s, loss=4.1386, step=57]joint 2/2:   6%|▌         | 3/54 [00:00<00:02, 21.58step/s, loss=4.1386, step=57]joint 2/2:   6%|▌         | 3/54 [00:00<00:02, 21.58step/s, loss=4.1565, step=58]joint 2/2:   6%|▌         | 3/54 [00:00<00:02, 21.58step/s, loss=4.1325, step=59]joint 2/2:   6%|▌         | 3/54 [00:00<00:02, 21.58step/s, loss=4.1406, step=60]joint 2/2:  11%|█         | 6/54 [00:00<00:01, 24.28step/s, loss=4.1406, step=60]joint 2/2:  11%|█         | 6/54 [00:00<00:01, 24.28step/s, loss=4.1336, step=61]joint 2/2:  11%|█         | 6/54 [00:00<00:01, 24.28step/s, loss=4.1168, step=62]joint 2/2:  11%|█         | 6/54 [00:00<00:01, 24.28step/s, loss=4.1400, step=63]joint 2/2:  17%|█▋        | 9/54 [00:00<00:01, 23.40step/s, loss=4.1400, step=63]joint 2/2:  17%|█▋        | 9/54 [00:00<00:01, 23.40step/s, loss=4.1307, step=64]joint 2/2:  17%|█▋        | 9/54 [00:00<00:01, 23.40step/s, loss=4.1487, step=65]joint 2/2:  17%|█▋        | 9/54 [00:00<00:01, 23.40step/s, loss=4.1486, step=66]joint 2/2:  22%|██▏       | 12/54 [00:00<00:01, 23.87step/s, loss=4.1486, step=66]joint 2/2:  22%|██▏       | 12/54 [00:00<00:01, 23.87step/s, loss=4.1408, step=67]joint 2/2:  22%|██▏       | 12/54 [00:00<00:01, 23.87step/s, loss=4.1439, step=68]joint 2/2:  22%|██▏       | 12/54 [00:00<00:01, 23.87step/s, loss=4.1317, step=69]joint 2/2:  28%|██▊       | 15/54 [00:00<00:01, 21.92step/s, loss=4.1317, step=69]joint 2/2:  28%|██▊       | 15/54 [00:00<00:01, 21.92step/s, loss=4.1418, step=70]joint 2/2:  28%|██▊       | 15/54 [00:00<00:01, 21.92step/s, loss=4.1307, step=71]joint 2/2:  28%|██▊       | 15/54 [00:00<00:01, 21.92step/s, loss=4.1235, step=72]joint 2/2:  33%|███▎      | 18/54 [00:00<00:01, 20.78step/s, loss=4.1235, step=72]joint 2/2:  33%|███▎      | 18/54 [00:00<00:01, 20.78step/s, loss=4.1145, step=73]joint 2/2:  33%|███▎      | 18/54 [00:00<00:01, 20.78step/s, loss=4.1378, step=74]joint 2/2:  33%|███▎      | 18/54 [00:00<00:01, 20.78step/s, loss=4.1445, step=75]joint 2/2:  39%|███▉      | 21/54 [00:00<00:01, 20.41step/s, loss=4.1445, step=75]joint 2/2:  39%|███▉      | 21/54 [00:01<00:01, 20.41step/s, loss=4.1300, step=76]joint 2/2:  39%|███▉      | 21/54 [00:01<00:01, 20.41step/s, loss=4.1459, step=77]joint 2/2:  39%|███▉      | 21/54 [00:01<00:01, 20.41step/s, loss=4.1352, step=78]joint 2/2:  44%|████▍     | 24/54 [00:01<00:01, 20.69step/s, loss=4.1352, step=78]joint 2/2:  44%|████▍     | 24/54 [00:01<00:01, 20.69step/s, loss=4.1286, step=79]joint 2/2:  44%|████▍     | 24/54 [00:01<00:01, 20.69step/s, loss=4.1312, step=80]joint 2/2:  44%|████▍     | 24/54 [00:01<00:01, 20.69step/s, loss=4.1343, step=81]joint 2/2:  50%|█████     | 27/54 [00:01<00:01, 21.10step/s, loss=4.1343, step=81]joint 2/2:  50%|█████     | 27/54 [00:01<00:01, 21.10step/s, loss=4.1378, step=82]joint 2/2:  50%|█████     | 27/54 [00:01<00:01, 21.10step/s, loss=4.1464, step=83]joint 2/2:  50%|█████     | 27/54 [00:01<00:01, 21.10step/s, loss=4.1173, step=84]joint 2/2:  56%|█████▌    | 30/54 [00:01<00:01, 22.50step/s, loss=4.1173, step=84]joint 2/2:  56%|█████▌    | 30/54 [00:01<00:01, 22.50step/s, loss=4.1351, step=85]joint 2/2:  56%|█████▌    | 30/54 [00:01<00:01, 22.50step/s, loss=4.1332, step=86]joint 2/2:  56%|█████▌    | 30/54 [00:01<00:01, 22.50step/s, loss=4.1378, step=87]joint 2/2:  61%|██████    | 33/54 [00:01<00:00, 22.97step/s, loss=4.1378, step=87]joint 2/2:  61%|██████    | 33/54 [00:01<00:00, 22.97step/s, loss=4.1437, step=88]joint 2/2:  61%|██████    | 33/54 [00:01<00:00, 22.97step/s, loss=4.1468, step=89]joint 2/2:  61%|██████    | 33/54 [00:01<00:00, 22.97step/s, loss=4.1305, step=90]joint 2/2:  67%|██████▋   | 36/54 [00:01<00:00, 24.24step/s, loss=4.1305, step=90]joint 2/2:  67%|██████▋   | 36/54 [00:01<00:00, 24.24step/s, loss=4.1135, step=91]joint 2/2:  67%|██████▋   | 36/54 [00:01<00:00, 24.24step/s, loss=4.1290, step=92]joint 2/2:  67%|██████▋   | 36/54 [00:01<00:00, 24.24step/s, loss=4.1221, step=93]joint 2/2:  72%|███████▏  | 39/54 [00:01<00:00, 24.79step/s, loss=4.1221, step=93]joint 2/2:  72%|███████▏  | 39/54 [00:01<00:00, 24.79step/s, loss=4.1343, step=94]joint 2/2:  72%|███████▏  | 39/54 [00:01<00:00, 24.79step/s, loss=4.1354, step=95]joint 2/2:  72%|███████▏  | 39/54 [00:01<00:00, 24.79step/s, loss=4.1498, step=96]joint 2/2:  78%|███████▊  | 42/54 [00:01<00:00, 25.29step/s, loss=4.1498, step=96]joint 2/2:  78%|███████▊  | 42/54 [00:01<00:00, 25.29step/s, loss=4.1373, step=97]joint 2/2:  78%|███████▊  | 42/54 [00:01<00:00, 25.29step/s, loss=4.1210, step=98]joint 2/2:  78%|███████▊  | 42/54 [00:01<00:00, 25.29step/s, loss=4.1236, step=99]joint 2/2:  83%|████████▎ | 45/54 [00:01<00:00, 25.07step/s, loss=4.1236, step=99]joint 2/2:  83%|████████▎ | 45/54 [00:01<00:00, 25.07step/s, loss=4.1215, step=100]joint 2/2:  83%|████████▎ | 45/54 [00:02<00:00, 25.07step/s, loss=4.1417, step=101]joint 2/2:  83%|████████▎ | 45/54 [00:02<00:00, 25.07step/s, loss=4.1245, step=102]joint 2/2:  89%|████████▉ | 48/54 [00:02<00:00, 25.18step/s, loss=4.1245, step=102]joint 2/2:  89%|████████▉ | 48/54 [00:02<00:00, 25.18step/s, loss=4.1367, step=103]joint 2/2:  89%|████████▉ | 48/54 [00:02<00:00, 25.18step/s, loss=4.1146, step=104]joint 2/2:  89%|████████▉ | 48/54 [00:02<00:00, 25.18step/s, loss=4.1436, step=105]joint 2/2:  94%|█████████▍| 51/54 [00:02<00:00, 25.14step/s, loss=4.1436, step=105]joint 2/2:  94%|█████████▍| 51/54 [00:02<00:00, 25.14step/s, loss=4.1428, step=106]joint 2/2:  94%|█████████▍| 51/54 [00:02<00:00, 25.14step/s, loss=4.1493, step=107]joint 2/2:  94%|█████████▍| 51/54 [00:02<00:00, 25.14step/s, loss=4.1438, step=108]
+full-catalog valid:   0%|          | 0/23 [00:00<?, ?batch/s][A
+full-catalog valid:  57%|█████▋    | 13/23 [00:00<00:00, 115.68batch/s][Afull-catalog valid: 100%|██████████| 23/23 [00:00<00:00, 118.79batch/s]
+2026-10-26 14:30:09,492 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=2 | step=108 | users=1457/1457
+NDCG  | @5 0.091131 | @10 0.092669
+Recall| @5 0.095402 | @10 0.100206
+Hit   | @5 0.095402 | @10 0.100206
+================================
+
+full-catalog test:   0%|          | 0/23 [00:00<?, ?batch/s][A
+full-catalog test:  57%|█████▋    | 13/23 [00:00<00:00, 117.52batch/s][Afull-catalog test: 100%|██████████| 23/23 [00:00<00:00, 119.62batch/s]
+2026-10-26 14:30:09,685 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=2 | step=108 | users=1457/1457
+NDCG  | @5 0.105110 | @10 0.106012
+Recall| @5 0.110501 | @10 0.113246
+Hit   | @5 0.110501 | @10 0.113246
+================================
+2026-10-26 14:30:09,685 | INFO | VALID_STEP step=108 stage=joint epoch=2 ndcg@10=0.092669 recall@10=0.100206 improved=False
+2026-10-26 14:30:09,685 | INFO | LEARNING_RATE step=108 stage=joint lr=5e-05
+joint 2/2: 100%|██████████| 54/54 [00:02<00:00, 12.83step/s, loss=4.1438, step=108]joint 2/2: 100%|██████████| 54/54 [00:02<00:00, 20.10step/s, loss=4.1438, step=108]
+2026-10-26 14:30:09,686 | INFO | stage=joint epoch=2 loss=4.135138 steps=54 transitions/s=2976.36
+full-catalog valid:   0%|          | 0/23 [00:00<?, ?batch/s]full-catalog valid:  57%|█████▋    | 13/23 [00:00<00:00, 116.72batch/s]full-catalog valid: 100%|██████████| 23/23 [00:00<00:00, 115.93batch/s]
+2026-10-26 14:30:09,886 | INFO | 
+========== FINAL CURRENT VALIDATION ==========
+stage=final | epoch=0 | step=108 | users=1457/1457
+NDCG  | @5 0.091131 | @10 0.092669
+Recall| @5 0.095402 | @10 0.100206
+Hit   | @5 0.095402 | @10 0.100206
+================================
+2026-10-26 14:30:09,886 | INFO | VALID_STEP step=108 stage=final epoch=0 ndcg@10=0.092669 recall@10=0.100206 improved=False
+2026-10-26 14:30:09,888 | INFO | RESTORE_BEST step=54 stage=joint ndcg@10=0.093089
+full-catalog valid:   0%|          | 0/23 [00:00<?, ?batch/s]full-catalog valid:  52%|█████▏    | 12/23 [00:00<00:00, 110.78batch/s]full-catalog valid: 100%|██████████| 23/23 [00:00<00:00, 108.05batch/s]
+full-catalog test:   0%|          | 0/23 [00:00<?, ?batch/s]full-catalog test:  48%|████▊     | 11/23 [00:00<00:00, 109.20batch/s]full-catalog test: 100%|██████████| 23/23 [00:00<00:00, 110.64batch/s]full-catalog test: 100%|██████████| 23/23 [00:00<00:00, 110.36batch/s]
+history-item influence test:   0%|          | 0/23 [00:00<?, ?user-batch/s]history-item influence test:  17%|█▋        | 4/23 [00:00<00:00, 38.46user-batch/s]history-item influence test:  35%|███▍      | 8/23 [00:00<00:00, 39.11user-batch/s]history-item influence test:  52%|█████▏    | 12/23 [00:00<00:00, 38.68user-batch/s]history-item influence test:  70%|██████▉   | 16/23 [00:00<00:00, 38.67user-batch/s]history-item influence test:  87%|████████▋ | 20/23 [00:00<00:00, 38.20user-batch/s]history-item influence test: 100%|██████████| 23/23 [00:00<00:00, 39.51user-batch/s]
+2026-10-26 14:30:11,066 | INFO | HISTORY_ITEM_INFLUENCE path=/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/training/amazon-all-beauty/history_item_influence.csv rows=9647 users_limit=2000 negatives=64
+2026-10-26 14:30:11,066 | INFO | 
+========== BEST CHECKPOINT VALIDATION ==========
+stage=joint | epoch=0 | step=54 | users=1457/1457
+NDCG  | @5 0.091101 | @10 0.093089
+Recall| @5 0.095402 | @10 0.101579
+Hit   | @5 0.095402 | @10 0.101579
+================================
+2026-10-26 14:30:11,066 | INFO | 
+========== FINAL FULL TEST ==========
+stage=joint | epoch=0 | step=54 | users=1457/1457
+NDCG  | @5 0.104796 | @10 0.106332
+Recall| @5 0.109128 | @10 0.113933
+Hit   | @5 0.109128 | @10 0.113933
+================================
+2026-10-26 14:30:11,066 | INFO | VALID_BEST {"evaluated_users": 1457, "hit@10": 0.10157858613589568, "hit@5": 0.09540150995195608, "long_agent_weight": 1.0, "long_preference_state_cosine": 0.0, "long_short_state_cosine": 0.0, "ndcg@10": 0.09308865353434398, "ndcg@5": 0.09110091873121819, "preference_change_probability": 0.0, "preference_current_entropy": 5.89461797000118e-06, "preference_next_entropy": 5.89461797000118e-06, "preference_ranking_weight": 0.0, "recall@10": 0.10157858613589568, "recall@5": 0.09540150995195608, "scores_per_second": 27950687.020563193, "short_agent_weight": 0.0, "short_preference_state_cosine": 0.0, "total_users": 1457, "users_per_second": 6833.908806983666}
+2026-10-26 14:30:11,066 | INFO | TEST_FINAL {"evaluated_users": 1457, "hit@10": 0.11393273850377487, "hit@5": 0.1091283459162663, "long_agent_weight": 1.0, "long_preference_state_cosine": 0.0, "long_short_state_cosine": 0.0, "ndcg@10": 0.10633242056643055, "ndcg@5": 0.10479645411609867, "preference_change_probability": 0.0, "preference_current_entropy": 5.89461797000118e-06, "preference_next_entropy": 5.89461797000118e-06, "preference_ranking_weight": 0.0, "recall@10": 0.11393273850377487, "recall@5": 0.1091283459162663, "scores_per_second": 28558850.942492317, "short_agent_weight": 0.0, "short_preference_state_cosine": 0.0, "total_users": 1457, "users_per_second": 6982.60414241866}
+2026-10-26 14:30:11,066 | INFO | TARGET_RESULT metric=recall@10 target=>0.150000 actual=0.113933 achieved=False
+2026-10-26 14:30:11,350 | INFO | scores=/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/training/amazon-all-beauty/single_mamba_lora_lightgcn_20261026_143002/amazon-all-beauty_scores.json
+2026-10-26 14:30:11,351 | INFO | outputs=/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/training/amazon-all-beauty/single_mamba_lora_lightgcn_20261026_143002
+========== preliminary subset: amazon-all-beauty (statistics and figures) ==========
+Output: /workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/analysis/amazon-all-beauty/run_20261026_143012
+amazon-all-beauty: 1457 sampled / 1457 eligible users; 4090 items
+  valid: 1457 users, 8191 positions, 162 old-history readouts
+  test: 1457 users, 9647 positions, 194 old-history readouts
+========== preliminary subset: amazon:Baby_Products (training) ==========
+Traceback (most recent call last):
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary/prepare_missing.py", line 16, in <module>
+    from experiment import safe_name, ver4_cache_path  # noqa: E402
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary/experiment.py", line 25, in <module>
+    from sklearn.cluster import MiniBatchKMeans
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/sklearn/__init__.py", line 73, in <module>
+    from .base import clone  # noqa: E402
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/sklearn/base.py", line 19, in <module>
+    from .utils._metadata_requests import _MetadataRequester, _routing_enabled
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/sklearn/utils/__init__.py", line 9, in <module>
+    from ._chunking import gen_batches, gen_even_slices
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from ._param_validation import Interval, validate_params
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/sklearn/utils/_param_validation.py", line 17, in <module>
+    from .validation import _is_arraylike_not_scalar
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/sklearn/utils/validation.py", line 21, in <module>
+    from ..utils._array_api import _asarray_with_order, _is_numpy_namespace, get_namespace
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/sklearn/utils/_array_api.py", line 20, in <module>
+    from .fixes import parse_version
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/sklearn/utils/fixes.py", line 20, in <module>
+    import pandas as pd
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/__init__.py", line 49, in <module>
+    from pandas.core.api import (
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/core/api.py", line 28, in <module>
+    from pandas.core.arrays import Categorical
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/core/arrays/__init__.py", line 1, in <module>
+    from pandas.core.arrays.arrow import ArrowExtensionArray
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/core/arrays/arrow/__init__.py", line 5, in <module>
+    from pandas.core.arrays.arrow.array import ArrowExtensionArray
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/core/arrays/arrow/array.py", line 67, in <module>
+    from pandas.core.arrays.string_ import StringDtype
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/core/arrays/string_.py", line 65, in <module>
+    from pandas.core.arrays.numpy_ import NumpyExtensionArray
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/core/arrays/numpy_.py", line 28, in <module>
+    from pandas.core.arrays._mixins import NDArrayBackedExtensionArray
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/core/arrays/_mixins.py", line 92, in <module>
+    class NDArrayBackedExtensionArray(NDArrayBacked, ExtensionArray):
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/core/arrays/_mixins.py", line 229, in NDArrayBackedExtensionArray
+    def _concat_same_type(
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/util/_decorators.py", line 387, in decorator
+    [
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/site-packages/pandas/util/_decorators.py", line 390, in <listcomp>
+    else dedent(component.__doc__ or "")
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/textwrap.py", line 469, in dedent
+    text = re.sub(r'(?m)^' + margin, '', text)
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/re.py", line 209, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+KeyboardInterrupt

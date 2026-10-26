@@ -1,0 +1,118 @@
+{
+  "Amazon decay=0.5": "pending",
+  "Additional decay=0.5": "pending",
+  "Amazon decay=0.7": "pending",
+  "Additional decay=0.7": "pending",
+  "Amazon decay=1.0": "pending",
+  "Additional decay=1.0": "pending"
+}
+{
+  "Amazon decay=0.5": "pending",
+  "Additional decay=0.5": "pending",
+  "Amazon decay=0.7": "pending",
+  "Additional decay=0.7": "pending",
+  "Amazon decay=1.0": "pending",
+  "Additional decay=1.0": "ready"
+}
+{
+  "Amazon decay=0.5": "pending",
+  "Additional decay=0.5": "pending",
+  "Amazon decay=0.7": "pending",
+  "Additional decay=0.7": "ready",
+  "Amazon decay=1.0": "pending",
+  "Additional decay=1.0": "ready"
+}
+{
+  "Amazon decay=0.5": "pending",
+  "Additional decay=0.5": "ready",
+  "Amazon decay=0.7": "pending",
+  "Additional decay=0.7": "ready",
+  "Amazon decay=1.0": "pending",
+  "Additional decay=1.0": "ready"
+}
+Traceback (most recent call last):
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/render_decay_high_when_ready.py", line 79, in <module>
+    assert (combined / "all_eight_decay_item_period_grid.pdf").exists()
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/render_decay_high_when_ready.py", line 64, in main
+    time.sleep(60)
+KeyboardInterrupt
+{
+  "Amazon decay=0.5": "pending",
+  "Additional decay=0.5": "ready",
+  "Amazon decay=0.7": "pending",
+  "Additional decay=0.7": "ready",
+  "Amazon decay=1.0": "pending",
+  "Additional decay=1.0": "ready"
+}
+Traceback (most recent call last):
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/render_decay_high_when_ready.py", line 85, in <module>
+    assert (gate_decay / "all_eight_gate_decay_item_period_grid.pdf").exists()
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/render_decay_high_when_ready.py", line 64, in main
+    time.sleep(60)
+KeyboardInterrupt
+{
+  "Amazon decay=0.5": "pending",
+  "Additional decay=0.5": "ready",
+  "Amazon decay=0.7": "pending",
+  "Additional decay=0.7": "ready",
+  "Amazon decay=1.0": "pending",
+  "Additional decay=1.0": "ready"
+}
+{
+  "Amazon decay=0.5": "pending",
+  "Additional decay=0.5": "ready",
+  "Amazon decay=0.7": "pending",
+  "Additional decay=0.7": "ready",
+  "Amazon decay=1.0": "ready",
+  "Additional decay=1.0": "ready"
+}
+{
+  "Amazon decay=0.5": "pending",
+  "Additional decay=0.5": "ready",
+  "Amazon decay=0.7": "ready",
+  "Additional decay=0.7": "ready",
+  "Amazon decay=1.0": "ready",
+  "Additional decay=1.0": "ready"
+}
+{
+  "Amazon decay=0.5": "ready",
+  "Additional decay=0.5": "ready",
+  "Amazon decay=0.7": "ready",
+  "Additional decay=0.7": "ready",
+  "Amazon decay=1.0": "ready",
+  "Additional decay=1.0": "ready"
+}
+All_Beauty loading 1 raw Arrow shards
+All_Beauty counting raw user/item degrees for 701528 rows
+All_Beauty verified user counts and complete cached sequences for 1457 users
+Collected All Beauty: 3 decay value(s), 1457 influence users
+Baby_Products loading 5 raw Arrow shards
+Baby_Products counting raw user/item degrees for 6028884 rows
+Baby_Products verified user counts and complete cached sequences for 2000 users
+Collected Baby Products: 3 decay value(s), 2000 influence users
+Sports_and_Outdoors loading 14 raw Arrow shards
+Sports_and_Outdoors counting raw user/item degrees for 19595170 rows
+Sports_and_Outdoors verified user counts and complete cached sequences for 2000 users
+Collected Sports & Outdoors: 3 decay value(s), 2000 influence users
+Toys_and_Games loading 11 raw Arrow shards
+Toys_and_Games counting raw user/item degrees for 16260406 rows
+Toys_and_Games verified user counts and complete cached sequences for 2000 users
+Collected Toys & Games: 3 decay value(s), 2000 influence users
+WARNING: Times New Roman is unavailable; using Liberation Serif preview. Supply --font-path /path/to/times.ttf for final submission.
+Saved /workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/amazon_decay_grid/amazon_decay_item_period_grid.pdf
+Traceback (most recent call last):
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/plot_additional_decay_grid.py", line 222, in <module>
+    main()
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/plot_additional_decay_grid.py", line 210, in main
+    data, sources = collect(args)
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/plot_additional_decay_grid.py", line 99, in collect
+    raise ValueError(f"Incomplete decay output: {root}")
+ValueError: Incomplete decay output: /workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay030
+Traceback (most recent call last):
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/render_decay_high_when_ready.py", line 91, in <module>
+    raise SystemExit(main())
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/render_decay_high_when_ready.py", line 67, in main
+    subprocess.run((sys.executable, str(HERE / script)), cwd=PROJECT, check=True)
+  File "/workspace/P78123011/miniconda3/envs/py31014/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '('/workspace/P78123011/miniconda3/envs/py31014/bin/python', '/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/plot_additional_decay_grid.py')' returned non-zero exit status 1.

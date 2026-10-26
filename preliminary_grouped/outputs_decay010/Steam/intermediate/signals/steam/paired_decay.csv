@@ -1,0 +1,5 @@
+dataset,split,cohort,metric,mean,ci_low,ci_high,n_users,status
+steam,valid,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.5360148223317338,0.3580569182397523,0.7234995806826214,286,estimated
+steam,valid,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.07349213286713288,0.030876311188811192,0.11954381555944052,286,estimated
+steam,test,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.30070355081308275,0.16074054382734598,0.45631155269809226,317,estimated
+steam,test,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.08625788643533122,0.04729347397476341,0.13024990141955833,317,estimated

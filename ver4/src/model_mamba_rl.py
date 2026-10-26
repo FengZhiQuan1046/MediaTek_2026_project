@@ -59,13 +59,30 @@ class SelectiveMambaAgent(nn.Module):
     def __init__(
         self, dim: int, rank: int, alpha: float, dropout: float,
         initial_timescale: float, enable_lora: bool,
+        fixed_gate: float | None = None,
+        fixed_decay: float | None = None,
     ):
         super().__init__()
+        if fixed_gate is not None and not 0.0 <= fixed_gate <= 1.0:
+            raise ValueError("fixed_gate must be in [0, 1]")
+        if fixed_decay is not None and not 0.0 <= fixed_decay <= 1.0:
+            raise ValueError("fixed_decay must be in [0, 1]")
         self.candidate_lora = adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
-        self.delta_lora = adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
-        self.gate_lora = adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
+        self.delta_lora = (
+            adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
+            if fixed_decay is None else None
+        )
+        self.gate_lora = (
+            adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
+            if fixed_gate is None else None
+        )
         self.output_lora = adaptation_update(dim, dim, rank, alpha, dropout, enable_lora)
-        self.delta_bias = nn.Parameter(torch.full((dim,), math.log(math.expm1(initial_timescale))))
+        self.fixed_gate = fixed_gate
+        self.fixed_decay = fixed_decay
+        self.delta_bias = (
+            nn.Parameter(torch.full((dim,), math.log(math.expm1(initial_timescale))))
+            if fixed_decay is None else None
+        )
         self.log_temperature = nn.Parameter(torch.tensor(0.0))
 
     def encode(self, sequence: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
@@ -74,13 +91,19 @@ class SelectiveMambaAgent(nn.Module):
         output = state
         for index in range(width):
             inputs = sequence[:, index]
-            delta = F.softplus(self.delta_bias + self.delta_lora(inputs)).clamp(max=12.0)
-            decay = torch.exp(-delta)
+            if self.fixed_decay is None:
+                delta = F.softplus(self.delta_bias + self.delta_lora(inputs)).clamp(max=12.0)
+                decay = torch.exp(-delta)
+            else:
+                decay = self.fixed_decay
             proposal = torch.tanh(inputs + self.candidate_lora(inputs))
             updated = decay * state + (1.0 - decay) * proposal
             active = (index < lengths).unsqueeze(1)
             state = torch.where(active, updated, state)
-            gate = torch.sigmoid(self.gate_lora(inputs))
+            gate = (
+                torch.sigmoid(self.gate_lora(inputs))
+                if self.gate_lora is not None else self.fixed_gate
+            )
             current = gate * state + (1.0 - gate) * inputs
             output = torch.where(active, current, output)
         return F.normalize(output + self.output_lora(output), dim=-1)
@@ -202,6 +225,8 @@ class MultiAgentMambaRecommender(nn.Module):
         use_long: bool = True,
         use_short: bool = True,
         use_preference: bool = True,
+        mamba_gate: float | None = None,
+        mamba_decay: float | None = None,
     ):
         super().__init__()
         if not (use_long or use_short or use_preference or use_graph_embeddings):
@@ -226,10 +251,12 @@ class MultiAgentMambaRecommender(nn.Module):
         self.long_agent = SelectiveMambaAgent(
             dim, lora_rank, lora_alpha, lora_dropout,
             initial_timescale=0.08, enable_lora=enable_lora,
+            fixed_gate=mamba_gate, fixed_decay=mamba_decay,
         )
         self.short_agent = SelectiveMambaAgent(
             dim, lora_rank, lora_alpha, lora_dropout,
             initial_timescale=0.5, enable_lora=enable_lora,
+            fixed_gate=mamba_gate, fixed_decay=mamba_decay,
         )
         self.preference_agent = PreferenceTransitionAgent(
             dim, preference_count, preference_hidden, preference_temperature,
@@ -253,8 +280,10 @@ class MultiAgentMambaRecommender(nn.Module):
     def adapter_routes(self) -> dict[str, tuple[str, ...]]:
         """Expose the disjoint adapter bank selected by each agent forward path."""
         routes = {
-            "long": ("candidate_lora", "delta_lora", "gate_lora", "output_lora"),
-            "short": ("candidate_lora", "delta_lora", "gate_lora", "output_lora"),
+            "long": tuple(name for name in ("candidate_lora", "delta_lora", "gate_lora", "output_lora")
+                          if getattr(self.long_agent, name) is not None),
+            "short": tuple(name for name in ("candidate_lora", "delta_lora", "gate_lora", "output_lora")
+                           if getattr(self.short_agent, name) is not None),
             "preference": ("transition_lora", "state_lora"),
             "coordinator": ("state_lora", "mix_lora", "score_lora"),
         }

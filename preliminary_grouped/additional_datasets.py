@@ -146,9 +146,13 @@ def recover(job,selected,data):
     return histories,{'source':job['filtered_timestamps'],'verified_users':len(histories),'verified_items':len(item_mapping),'true_timestamps':True}
 
 
-def train(job,job_file,output,epochs):
+def train(job,job_file,output,epochs,mamba_gate,mamba_decay=None):
     influence=output/'intermediate/training'/job['dataset'].replace(':','_')/'history_item_influence.csv'
-    if influence.exists() and (output/'intermediate/training/training_complete.json').exists():
+    complete=output/'intermediate/training/training_complete.json'
+    if influence.exists() and complete.exists():
+        previous=json.loads(complete.read_text())
+        if previous.get('mamba_gate')!=mamba_gate or previous.get('mamba_decay')!=mamba_decay:
+            raise RuntimeError(f'Existing training uses different gate/decay: {complete}')
         print('REUSE trained-model influence',influence,flush=True);return
     prep=load_module('prepare_original',REPO/'preliminary/prepare_missing.py')
     prep.SUBSET_SETTINGS[job['dataset']]={'max_transitions':500000,'candidates':64,'popularity_alpha':0.0,'transition_beta':0.0}
@@ -165,10 +169,14 @@ def train(job,job_file,output,epochs):
     sys.argv=['prepare','--cache-dir',str(CACHE),'--output-dir',str(output/'intermediate/training'),
         '--datasets',job['dataset'],'--gpu-ids',gpu,'--python-bin',str(PYTHON),
         '--mamba-model-id','state-spaces/mamba-130m-hf','--lora-rank','16','--epochs',str(epochs),
-        '--max-history','100','--influence-user-limit','2000','--validation-user-limit','0','--seed','25252']
+        '--max-history','100','--influence-user-limit','2000','--validation-user-limit','0',
+        '--seed','25252','--mamba-gate',str(mamba_gate),
+        *(['--mamba-decay',str(mamba_decay)] if mamba_decay is not None else [])]
     try:prep.main()
     finally:subprocess.run=original_run;sys.argv=old
-    save(output/'intermediate/training/training_complete.json',{'status':'complete','epochs':epochs,'model_weights_saved':False})
+    save(output/'intermediate/training/training_complete.json',{
+        'status':'complete','epochs':epochs,'mamba_gate':mamba_gate,
+        'mamba_decay':mamba_decay,'model_weights_saved':False})
 
 
 def compact(reports,destination):
@@ -176,7 +184,7 @@ def compact(reports,destination):
     import matplotlib.pyplot as plt
     style=load_module('aggregate_style',REPO/'preliminary/aggregated/plot_aggregated.py')
     style.style(None)
-    fig,axes=plt.subplots(1,3,figsize=(7.15,2.55))
+    fig,axes=plt.subplots(1,3,figsize=(7.15,2.25))
     for ax,(metric,title,ylabel) in zip(axes,[('alignment','(a) Semantic alignment','Excess cosine (z)'),('influence','(b) Item influence','Margin change'),('coverage','(c) Signal coverage','Signal covered (%)')]):
         style.decorate(ax,title,ylabel,'Time period',metric!='coverage')
         for name,stats in reports.items():
@@ -196,7 +204,7 @@ def compact(reports,destination):
     fig.legend(handles,labels,loc='upper center',bbox_to_anchor=(.5,.998),
                ncol=min(4,len(reports)),frameon=False,columnspacing=1.6,handlelength=2.5)
     fig.subplots_adjust(left=.085,right=.985,top=.78,bottom=.21,wspace=.20)
-    style.save(fig,destination,'figure0_acd_row',['png','pdf','svg'],400);plt.close(fig)
+    style.save(fig,destination,'figure0_abc_row',['png','pdf','svg'],400);plt.close(fig)
 
 
 def analyze(job,output,args):
@@ -207,7 +215,8 @@ def analyze(job,output,args):
     settings=SimpleNamespace(cache_dir=str(CACHE),training_output_dir=str(output/'intermediate/training'),
         max_users=2000,max_lag=100,short_window=10,random_matches=20,reference_items=20000,
         normalization_pairs=100000,cluster_items=10000,clusters=32,bootstrap=2000,
-        seed=25252,reverse_history_input=False)
+        seed=25252,reverse_history_input=False,mamba_gate=args.mamba_gate,
+        mamba_decay=args.mamba_decay)
     exp.ver4_cache_path=lambda *a:Path(job['cache_path'])
     exp.bootstrap_mean=lambda values,repetitions,seed: bootstrap_tuple(grouped,values,repetitions,seed)
     intermediate=output/'intermediate/signals';intermediate.mkdir(parents=True,exist_ok=True)
@@ -236,8 +245,11 @@ def analyze(job,output,args):
         'mean_interactions_per_group':gl.summarize(truncated,users)['mean_interactions_per_group'],
         'group_length_summary':gl.summarize(truncated,users),'full_observed_history_reference':gl.summarize(full,users),
         'provenance':job['provenance'],'cache_sha256':job['cache_sha256'],'timestamp_verification':verification,
+        'mamba_gate':args.mamba_gate,
+        'mamba_decay':args.mamba_decay,
         'reusable_intermediates':{'training_influence':diagnostic['model_item_influence_source'],'signals':str(signal_dir),
-          'timestamps':str(timestamp_file),'time_group_map':str(group_map),'model_weights_saved':False}}
+          'timestamps':str(timestamp_file),'time_group_map':str(group_map),'model_weights_saved':False,
+          'supports':['preliminary_statistics','preliminary_grouped_statistics']}}
     base=output/'intermediate/group_lengths.json';save(base,report)
     source={'category':job['name'],'dataset':job['dataset'],'source':str(intermediate),'base_report':str(base)}
     gl.recover=lambda source,cache,selected,data:({u:timestamps[u] for u in selected},verification)
@@ -248,7 +260,9 @@ def analyze(job,output,args):
     compact({job['name']:statistics},output)
     final=output/(job['name']+'.json');saved=json.loads(final.read_text())
     saved['mean_groups_per_user']=saved['group_length_summary']['groups_per_user']['mean'];save(final,saved)
-    save(output/'status.json',{'status':'complete','gpu':args.gpu,'dataset':job['name'],'max_training_epochs':args.epochs,
+    save(output/'status.json',{'status':'complete','gpu':args.gpu,'dataset':job['name'],
+        'mamba_gate':args.mamba_gate,'mamba_decay':args.mamba_decay,
+        'max_training_epochs':args.epochs,
         'mean_groups_per_user':saved['mean_groups_per_user'],'mean_interactions_per_group':saved['mean_interactions_per_group']})
 
 
@@ -262,13 +276,24 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('dataset',choices=list(STYLES));p.add_argument('--output',type=Path,required=True)
     p.add_argument('--gpu',type=int,required=True);p.add_argument('--epochs',type=int,default=3)
+    p.add_argument('--mamba-gate',type=float,required=True)
+    p.add_argument('--mamba-decay',type=float)
     args=p.parse_args();args.output.mkdir(parents=True,exist_ok=True)
-    save(args.output/'status.json',{'status':'preparing','gpu':args.gpu,'dataset':args.dataset})
+    if not 0.0 <= args.mamba_gate <= 1.0:p.error('--mamba-gate must be in [0, 1]')
+    if args.mamba_decay is not None and not 0.0 <= args.mamba_decay <= 1.0:
+        p.error('--mamba-decay must be in [0, 1]')
+    save(args.output/'status.json',{'status':'preparing','gpu':args.gpu,'dataset':args.dataset,
+                                    'mamba_gate':args.mamba_gate,'mamba_decay':args.mamba_decay})
     try:
         job=prepare(args.dataset,args.output)
-        save(args.output/'status.json',{'status':'training','gpu':args.gpu,'dataset':args.dataset,'epochs':args.epochs})
-        train(job,args.output/'intermediate/job.json',args.output,args.epochs)
-        save(args.output/'status.json',{'status':'analyzing','gpu':args.gpu,'dataset':args.dataset})
+        save(args.output/'status.json',{'status':'training','gpu':args.gpu,'dataset':args.dataset,
+                                        'epochs':args.epochs,'mamba_gate':args.mamba_gate,
+                                        'mamba_decay':args.mamba_decay})
+        train(job,args.output/'intermediate/job.json',args.output,args.epochs,
+              args.mamba_gate,args.mamba_decay)
+        save(args.output/'status.json',{'status':'analyzing','gpu':args.gpu,
+                                        'dataset':args.dataset,'mamba_gate':args.mamba_gate,
+                                        'mamba_decay':args.mamba_decay})
         analyze(job,args.output,args)
     except Exception as error:
         save(args.output/'status.json',{'status':'failed','dataset':args.dataset,'error':repr(error)})

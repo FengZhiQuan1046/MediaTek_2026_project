@@ -1,0 +1,71 @@
+{
+  "figure_status": "measured_baseline",
+  "datasets": [
+    {
+      "label": "All Beauty",
+      "dataset_id": "amazon-all-beauty"
+    },
+    {
+      "label": "Baby Products",
+      "dataset_id": "amazon:Baby_Products"
+    },
+    {
+      "label": "Sports & Outdoors",
+      "dataset_id": "amazon-sports-and-outdoors"
+    },
+    {
+      "label": "Toys & Games",
+      "dataset_id": "amazon-toys-and-games"
+    },
+    {
+      "label": "Steam",
+      "dataset_id": "steam"
+    },
+    {
+      "label": "MovieLens 1M",
+      "dataset_id": "movielens-1m"
+    },
+    {
+      "label": "Yelp19",
+      "dataset_id": "yelp19-dated-matched"
+    },
+    {
+      "label": "Yelp23",
+      "dataset_id": "yelp23-dated-matched"
+    }
+  ],
+  "sources": [
+    {
+      "path": "/workspace/P78123011/MediaTek_2026_project/preliminary/aggregated/sources.json",
+      "sha256": "3160c3a69fd7db8c3b97c75056aa67e9d09da95fe08b1f11fabc61547c5494eb"
+    },
+    {
+      "path": "/workspace/P78123011/MediaTek_2026_project/preliminary/aggregated/plotted_data.csv",
+      "sha256": "dce1aeaaea8c5b568fbddc2514a56d6383c53811fc88e86a157f5fc885c31dc3"
+    },
+    {
+      "path": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/item_level/sources.json",
+      "sha256": "e02177624491ccfc1ff66b173727cac3ca3d1d19617da3dee7a5a7ad0a987b3c"
+    },
+    {
+      "path": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/item_level/alignment_summary.csv",
+      "sha256": "f2d525c877d6a77ad18c4bd49c19aaff5133ee7c8e347c64aaa39f7ec817c88c"
+    },
+    {
+      "path": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/item_level/model_item_influence_summary.csv",
+      "sha256": "fb108cb84fa55fa9b6ae77c082c0baea65e24ee0c65ae93c10cf52de9a547805"
+    },
+    {
+      "path": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/item_level/information_coverage.csv",
+      "sha256": "59668b4f52eae2f3ea81c17c8c145066e9385b23c960a2f3600541dd7c90e61f"
+    }
+  ],
+  "split": "test",
+  "min_users_for_influence_and_alignment": 100,
+  "metrics": [
+    "alignment_summary.csv",
+    "model_item_influence_summary.csv",
+    "information_coverage.csv"
+  ],
+  "no_training_or_metric_recomputation": true
+}

@@ -39,7 +39,7 @@ for filename,rows in tables.items():
 style.DATASETS=datasets
 style.style(None)
 plt=style.plt
-fig,axes=plt.subplots(1,4,figsize=(8.80,2.50))
+fig,axes=plt.subplots(1,4,figsize=(8.80,2.20))
 specs=[('alignment','(a) Semantic','Excess cosine (z)','Lag bin'),('influence','(b) Influence','Margin change','Lag'),('coverage','(c) Coverage','Signal (%)','Recent items'),('preference','(d) Preference match','Excess match (pp)','Lag bin')]
 for ax,(kind,title,ylabel,xlabel) in zip(axes,specs):
  style.decorate(ax,title,ylabel,xlabel,kind!='coverage')
@@ -55,9 +55,6 @@ for ax,(kind,title,ylabel,xlabel) in zip(axes,specs):
 handles=[style.Line2D([],[],color=c,marker=m,linestyle=ls,lw=1.6,markersize=4,markerfacecolor='white',markeredgewidth=.65,label=label) for _,_,label,c,m,ls in datasets]
 fig.legend(handles=handles,loc='upper center',bbox_to_anchor=(.5,.998),ncol=4,frameon=False,columnspacing=1.6,handlelength=2.5)
 fig.subplots_adjust(left=.075,right=.955,top=.77,bottom=.21,wspace=.28)
-pos=axes[3].get_position();axes[3].set_position([pos.x0+.029,pos.y0,pos.width,pos.height])
-left=axes[2].get_position().x1;right=axes[3].get_position().x0
-fig.add_artist(style.Line2D([left+.30*(right-left)]*2,[.15,.82],transform=fig.transFigure,color='#4B5563',lw=1.55))
 style.save(fig,OUT,'figure0_abcd_row',['png','pdf','svg'],400);plt.close(fig)
 (OUT/'sources.json').write_text(json.dumps({'sources':provenance,'bootstrap':2000,'seed':25252,'min_users':100,'preference_metric':'history_normalized_cluster_match','aggregation':'Original item lag bins for alignment/preference; individual item lag for influence; recent item count for coverage'},indent=2))
 import shutil

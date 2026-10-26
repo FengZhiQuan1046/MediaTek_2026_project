@@ -1,0 +1,90 @@
+2026-10-26 17:16:05,437 | INFO | run_id=20261026_171605 dataset=amazon:Baby_Products device=cuda:0
+2026-10-26 17:16:05,437 | INFO | CUDA_SCOPE requested_physical=0 visible_count=1 main_logical=cuda:0 graph_logical=cuda:0
+2026-10-26 17:16:05,437 | INFO | MODEL recommender=MultiAgentMambaRecommender semantic_encoder=MambaTextEncoder semantic_model_id=state-spaces/mamba-130m-hf graph_backbone=LightGCN adaptation=multi_lora
+2026-10-26 17:16:05,437 | INFO | ABLATION USE_LONG=1 USE_SHORT=0 USE_PREFERENCE=0 USE_GCN=1
+2026-10-26 17:16:05,437 | INFO | AGENT_HISTORY mode=full_history effective_max_history=100 long=100 short=0 preference=0
+2026-10-26 17:16:05,437 | INFO | EXPERIMENT_NOTE preliminary: chronological prefixes and targets; single full-history Mamba+LoRA+LightGCN; no saved weights
+2026-10-26 17:16:05,437 | INFO | EXPERIMENT_CONFIG {"agent_diversity_coef": 0.02, "batch_size": 128, "cache_dir": "/workspace/P78123011/cache", "candidates": 192, "coordinator_epochs": 0, "coordinator_lr": 0.0001, "data_path": null, "dataset": "amazon:Baby_Products", "device": "cuda:0", "dim": 128, "early_stopping_patience": 6, "enable_lora": 1, "eval_batch_size": 64, "eval_length_basis": "untruncated_train_history", "eval_length_threshold": null, "experiment_note": "preliminary: chronological prefixes and targets; single full-history Mamba+LoRA+LightGCN; no saved weights", "full_catalog_supervised": false, "future_decay": 0.5, "future_horizon": 3, "generate_reasons": false, "graph_device": "cuda:0", "hard_negative_fraction": 0.75, "hard_negative_pool_multiplier": 12, "hard_negative_warmup_epochs": 2, "history_influence_negatives": 64, "history_influence_output": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay070/training/amazon_Baby_Products/history_item_influence.csv", "history_influence_user_limit": 2000, "item_prompt_prefix": "Preference-aware product representation: ", "item_vector_artifact": null, "joint_epochs": 2, "joint_lr": 5e-05, "lora_alpha": 32.0, "lora_dropout": 0.05, "lora_rank": 16, "lr_patience": 2, "mamba_decay": 0.7, "mamba_encode_batch_size": 32, "mamba_gate": 0.5, "mamba_max_tokens": 32, "mamba_model_id": "state-spaces/mamba-130m-hf", "max_events": null, "max_history": 100, "max_transitions": 1500000, "min_rating": 4.0, "monitor_metric": "ndcg@10", "output_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay070", "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay070/training/amazon_Baby_Products/single_mamba_lora_lightgcn_20261026_171604", "periodic_test_user_limit": 0, "popularity_alpha": 0.3, "preference_balance_coef": 0.01, "preference_coef": 0.2, "preference_contrastive_coef": 0.05, "preference_count": 32, "preference_hidden": 128, "preference_score_weight": 0.2, "preference_separation_coef": 0.01, "preference_sharpness_coef": 0.05, "preference_temperature": 0.2, "preference_transition_coef": 0.1, "reason_count": 20, "reason_max_new_tokens": 40, "refresh_data_cache": false, "resume_checkpoint": null, "reverse_history_input": false, "save_model_weights": false, "score_file": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay070/training/amazon_Baby_Products/single_mamba_lora_lightgcn_20261026_171604/amazon_Baby_Products_scores.json", "seed": 25252, "short_window": 10, "skip_mamba": false, "specialist_epochs": 0, "specialist_lr": 0.0001, "target_recall_at_10": 0.15, "transition_beta": 0.5, "use_graph_embeddings": true, "use_in_batch_negatives": true, "use_long": 1, "use_preference": 0, "use_short": 0, "validate_every_steps": 2147483647, "validation_user_limit": 0}
+2026-10-26 17:16:05,692 | INFO | INTERACTION_CACHE hit path=/workspace/P78123011/cache/mamba_multi_agent_data/amazon_Baby_Products_e6e228b87df8.pkl
+2026-10-26 17:16:05,693 | INFO | HISTORY_INPUT_ORDER chronological
+2026-10-26 17:16:05,695 | INFO | users=184834 items=77324 train_interactions=1121805
+2026-10-26 17:16:09,444 | INFO | CATALOG_PRIORS popularity_alpha=0.300000 transition_beta=0.500000 source=train_histories_only enabled=True
+2026-10-26 17:16:10,021 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/amazon_Baby_Products_77324_1b6c35e33122_prompt_tok32.pt fingerprint=1b6c35e33122
+2026-10-26 17:16:10,021 | INFO | SEMANTIC_BACKBONE model_id=state-spaces/mamba-130m-hf hidden_size=768 frozen=True usage=shared_cached_item_vectors
+2026-10-26 17:16:10,402 | INFO | GRAPH_EMBEDDINGS enabled=True source=train_histories_only main_device=cuda:0 graph_device=cuda:0
+2026-10-26 17:16:10,716 | INFO | ADAPTATION_MODE mode=multi_lora enable_lora=1
+2026-10-26 17:16:10,717 | INFO | ADAPTER_ROUTES {'long': ('candidate_lora', 'output_lora')}
+2026-10-26 17:16:10,717 | INFO | MAMBA_GATE mode=fixed value=0.5
+2026-10-26 17:16:10,717 | INFO | MAMBA_DECAY mode=fixed value=0.7
+2026-10-26 17:16:10,717 | INFO | agent_parameters={'long': 8193, 'short': 8193, 'preference': 78786, 'coordinator': 0, 'shared_projection': 98304, 'graph': 33556224}
+2026-10-26 17:16:10,717 | INFO | PREDICTION_PATH graph_only=False active_agents=1 coordinator=False
+2026-10-26 17:16:12,209 | INFO | training_transitions=936971
+2026-10-26 17:16:12,210 | INFO | schedule specialist_epochs=0 coordinator_epochs=0 joint_ranking_epochs=2 validate_every_steps=2147483647 validation_users=0 periodic_test_users=0 monitor=ndcg@10 early_stopping_patience=6
+2026-10-26 17:16:12,210 | INFO | SKIP_STAGE stage=specialists epochs=0 use_coordinator=False
+2026-10-26 17:16:12,210 | INFO | SKIP_STAGE stage=coordinator epochs=0 use_coordinator=False
+2026-10-26 17:16:12,727 | INFO | TRAINING_BRANCHES stage=joint long=True short=False preference=False gcn=True preference_auxiliary=False preference_contrastive=False diversity_pairs=0 trainable_parameters=33662721
+2026-10-26 17:26:48,892 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=1 | step=7321 | users=184584/184584
+NDCG  | @5 0.020731 | @10 0.024557
+Recall| @5 0.028448 | @10 0.040345
+Hit   | @5 0.028448 | @10 0.040345
+================================
+2026-10-26 17:27:21,541 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=1 | step=7321 | users=184584/184584
+NDCG  | @5 0.022599 | @10 0.026297
+Recall| @5 0.030338 | @10 0.041835
+Hit   | @5 0.030338 | @10 0.041835
+================================
+2026-10-26 17:27:21,541 | INFO | VALID_STEP step=7321 stage=joint epoch=1 ndcg@10=0.024557 recall@10=0.040345 improved=True
+2026-10-26 17:27:21,611 | INFO | BEST_MODEL_IN_MEMORY step=7321 stage=joint ndcg@10=0.024557
+2026-10-26 17:27:21,611 | INFO | LEARNING_RATE step=7321 stage=joint lr=5e-05
+2026-10-26 17:27:21,612 | INFO | stage=joint epoch=1 loss=4.997087 steps=7321 transitions/s=1555.53
+2026-10-26 17:37:56,434 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=2 | step=14642 | users=184584/184584
+NDCG  | @5 0.027376 | @10 0.031543
+Recall| @5 0.036325 | @10 0.049327
+Hit   | @5 0.036325 | @10 0.049327
+================================
+2026-10-26 17:38:28,908 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=2 | step=14642 | users=184584/184584
+NDCG  | @5 0.033124 | @10 0.036984
+Recall| @5 0.042171 | @10 0.054192
+Hit   | @5 0.042171 | @10 0.054192
+================================
+2026-10-26 17:38:28,908 | INFO | VALID_STEP step=14642 stage=joint epoch=2 ndcg@10=0.031543 recall@10=0.049327 improved=True
+2026-10-26 17:38:28,987 | INFO | BEST_MODEL_IN_MEMORY step=14642 stage=joint ndcg@10=0.031543
+2026-10-26 17:38:28,987 | INFO | LEARNING_RATE step=14642 stage=joint lr=5e-05
+2026-10-26 17:38:28,987 | INFO | stage=joint epoch=2 loss=5.097574 steps=7321 transitions/s=1559.09
+2026-10-26 17:39:02,039 | INFO | 
+========== FINAL CURRENT VALIDATION ==========
+stage=final | epoch=0 | step=14642 | users=184584/184584
+NDCG  | @5 0.027373 | @10 0.031543
+Recall| @5 0.036320 | @10 0.049327
+Hit   | @5 0.036320 | @10 0.049327
+================================
+2026-10-26 17:39:02,039 | INFO | VALID_STEP step=14642 stage=final epoch=0 ndcg@10=0.031543 recall@10=0.049327 improved=False
+2026-10-26 17:39:02,080 | INFO | RESTORE_BEST step=14642 stage=joint ndcg@10=0.031543
+2026-10-26 17:40:08,707 | INFO | HISTORY_ITEM_INFLUENCE path=/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay070/training/amazon_Baby_Products/history_item_influence.csv rows=14437 users_limit=2000 negatives=64
+2026-10-26 17:40:08,707 | INFO | 
+========== BEST CHECKPOINT VALIDATION ==========
+stage=joint | epoch=0 | step=14642 | users=184584/184584
+NDCG  | @5 0.027373 | @10 0.031543
+Recall| @5 0.036320 | @10 0.049327
+Hit   | @5 0.036320 | @10 0.049327
+================================
+2026-10-26 17:40:08,707 | INFO | 
+========== FINAL FULL TEST ==========
+stage=joint | epoch=0 | step=14642 | users=184584/184584
+NDCG  | @5 0.033124 | @10 0.036984
+Recall| @5 0.042171 | @10 0.054192
+Hit   | @5 0.042171 | @10 0.054192
+================================
+2026-10-26 17:40:08,707 | INFO | VALID_BEST {"evaluated_users": 184584, "hit@10": 0.04932713561305422, "hit@5": 0.03631950764963377, "long_agent_weight": 1.0, "long_preference_state_cosine": 0.0, "long_short_state_cosine": 0.0, "ndcg@10": 0.03154263309629051, "ndcg@5": 0.02737345306042685, "preference_change_probability": 0.0, "preference_current_entropy": 5.894617970625404e-06, "preference_next_entropy": 5.894617970625404e-06, "preference_ranking_weight": 0.0, "recall@10": 0.04932713561305422, "recall@5": 0.03631950764963377, "scores_per_second": 436218134.3099417, "short_agent_weight": 0.0, "short_preference_state_cosine": 0.0, "total_users": 184584, "users_per_second": 5641.432599321578}
+2026-10-26 17:40:08,707 | INFO | TEST_FINAL {"evaluated_users": 184584, "hit@10": 0.054192129328652534, "hit@5": 0.042170502318727515, "long_agent_weight": 1.0, "long_preference_state_cosine": 0.0, "long_short_state_cosine": 0.0, "ndcg@10": 0.03698391604877797, "ndcg@5": 0.03312439168768075, "preference_change_probability": 0.0, "preference_current_entropy": 5.894617970625404e-06, "preference_next_entropy": 5.894617970625404e-06, "preference_ranking_weight": 0.0, "recall@10": 0.054192129328652534, "recall@5": 0.042170502318727515, "scores_per_second": 437474061.1857071, "short_agent_weight": 0.0, "short_preference_state_cosine": 0.0, "total_users": 184584, "users_per_second": 5657.674993348858}
+2026-10-26 17:40:08,707 | INFO | TARGET_RESULT metric=recall@10 target=>0.150000 actual=0.054192 achieved=False
+2026-10-26 17:40:08,946 | INFO | scores=/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay070/training/amazon_Baby_Products/single_mamba_lora_lightgcn_20261026_171604/amazon_Baby_Products_scores.json
+2026-10-26 17:40:08,946 | INFO | outputs=/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay070/training/amazon_Baby_Products/single_mamba_lora_lightgcn_20261026_171604

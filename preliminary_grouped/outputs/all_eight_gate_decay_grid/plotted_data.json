@@ -1,0 +1,99 @@
+{
+  "figure_status": "all_measured",
+  "rows": [
+    {
+      "parameter": "gate",
+      "display_value": 0.9,
+      "measured_source_value": 0.9,
+      "source_tag": "090"
+    },
+    {
+      "parameter": "decay",
+      "display_value": 1.0,
+      "measured_source_value": 1.0,
+      "source_tag": "100"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/amazon_gate_grid/plotted_data.json",
+      "sha256": "4559ffb3eda1f03cae71ea925a9a4cbce6c3433b049fbf5f25447832c9d25dc0"
+    },
+    {
+      "path": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_gate_grid/plotted_data.json",
+      "sha256": "d85998fc2d3a4504591bd0ccb536e401b2192ebaba7a2d3d5db8737e992eb0d1"
+    }
+  ],
+  "measured_decay_sources": [
+    {
+      "subset": "All_Beauty",
+      "decay": 1.0,
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/analysis/amazon-all-beauty/run_20261026_140640",
+      "influence_sha256": "f57e03adac84db54c03661e7ccbe598ee47534f2156df06618c6db2ae4da994a",
+      "alignment_sha256": "89c5c0c89d29eb69e1671c55eddb49e33d86d0d605b8b826bffe78d7af9c6130",
+      "coverage_sha256": "ef7bf105624eaa399657501f1f72bd4e74e3b97dc86f4d049aba92b2fc415a52"
+    },
+    {
+      "subset": "Baby_Products",
+      "decay": 1.0,
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/analysis/amazon_Baby_Products/run_20261026_145557",
+      "influence_sha256": "f14a7a8f371d1b3840e41ba74576dda22c211deb492c39dce07270bb6c1a91c1",
+      "alignment_sha256": "592b103ea5e62623c5747eb84af547ca09b7fc8cd3178e11e82f78d31c594541",
+      "coverage_sha256": "b2b0e05e3a9a77d72f98e08e6420e0a66d016cdab9bef84efaa5a9d59f98b420"
+    },
+    {
+      "subset": "Sports_and_Outdoors",
+      "decay": 1.0,
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/analysis/amazon-sports-and-outdoors/run_20261026_155524",
+      "influence_sha256": "c13ecedf2ea2e8b7918996104bb20f7d69780689e68f5b00e7a07856257b0bf5",
+      "alignment_sha256": "a98c26ba78a0dcd5428472761bb1d161fc9541d9de3266faa89d5f2de593c01e",
+      "coverage_sha256": "56a6e5da6e9561e9be1c0769ca554c283bf131d71b448417c69c9986f9139bfa"
+    },
+    {
+      "subset": "Toys_and_Games",
+      "decay": 1.0,
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay100/analysis/amazon-toys-and-games/run_20261026_171510",
+      "influence_sha256": "5597ab65fe4c06e439b20d15ac949c8fd97dcdd1eda6c30331808d6ecb47868e",
+      "alignment_sha256": "198027321e3a4adb2e2917e5190c971e09898a19e531c963949cb407e29dc798",
+      "coverage_sha256": "e58e4b70bd1a662d0c22aea7a18dd96cdb7daff8dcfd497b2f09aebfc8680c51"
+    },
+    {
+      "dataset": "Steam",
+      "decay": 1.0,
+      "report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/Steam/Steam.json",
+      "item_influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/Steam/intermediate/training/steam/history_item_influence.csv",
+      "influence_sha256": "6921b3a5a8a7c4e8857a02ba6134d64eec878b1327dd77bf8121162e3cd4b927",
+      "item_coverage": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/Steam/intermediate/signals/information_coverage.csv",
+      "coverage_sha256": "2dbe82a8b356a7ff60c3da9d5e3536b8c71c1f15d7ddde084f893eb32afe1436"
+    },
+    {
+      "dataset": "MovieLens1M",
+      "decay": 1.0,
+      "report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/MovieLens1M/MovieLens1M.json",
+      "item_influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/MovieLens1M/intermediate/training/movielens-1m/history_item_influence.csv",
+      "influence_sha256": "71f06639afc74d4f590f33e812bfad60746a0c1bcc0c8aa15b8f4986257be6c9",
+      "item_coverage": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/MovieLens1M/intermediate/signals/information_coverage.csv",
+      "coverage_sha256": "c1a57652bdb9d52cc7807eae41e6f70652d3b04d2c1d39a9088f3610debac07e"
+    },
+    {
+      "dataset": "Yelp19",
+      "decay": 1.0,
+      "report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/Yelp19/Yelp19.json",
+      "item_influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/Yelp19/intermediate/training/yelp19-dated-matched/history_item_influence.csv",
+      "influence_sha256": "618b2543022f471409b16a4e49f3b046c9b087f67a9a48cf09c47d34513341a7",
+      "item_coverage": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/Yelp19/intermediate/signals/information_coverage.csv",
+      "coverage_sha256": "9d6f0a4069e9e5a0a962a1e37e62efec868a19d0de4369a72dfaf789ad08e9e2"
+    },
+    {
+      "dataset": "Yelp23",
+      "decay": 1.0,
+      "report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/Yelp23/Yelp23.json",
+      "item_influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/Yelp23/intermediate/training/yelp23-dated-matched/history_item_influence.csv",
+      "influence_sha256": "28973d57471195b42bd9b4e7b474034cbbaa69e81a110cb708de563fa017f0c1",
+      "item_coverage": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay100/Yelp23/intermediate/signals/information_coverage.csv",
+      "coverage_sha256": "394a5ab9955711b0aa729804154616dbd1389b855eff89be6fc666a536eaa12b"
+    }
+  ],
+  "dataset_count": 8,
+  "min_users_for_influence": 100
+}

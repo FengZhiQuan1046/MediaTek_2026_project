@@ -1,0 +1,25 @@
+{
+  "name": "Yelp23",
+  "dataset": "yelp23-dated-matched",
+  "cache_path": "/workspace/P78123011/cache/grouped_preliminary/Yelp23/interaction_data.pkl",
+  "filtered_timestamps": "/workspace/P78123011/cache/grouped_preliminary/Yelp23/filtered_timestamps.parquet",
+  "cache_sha256": "ace4fad8b405be29b8947450c19a23a76fe3b7f46a42b533d511c4df44b93659",
+  "provenance": {
+    "label": "Yelp23",
+    "original_datasets_unchanged": true,
+    "source": "/workspace/P78123011/cache/normalized/yelp23_unique.jsonl",
+    "dated_mirror": "/workspace/P78123011/cache/raw/dated_analysis/yelp_recent/review.parquet",
+    "requested_positive_rows": 957516,
+    "uniquely_dated_rows": 926634,
+    "ambiguous_rows_excluded": 30882,
+    "missing_rows_excluded": 0,
+    "uniquely_dated_fraction": 0.9677477974258394,
+    "scope": "Original MAPLE positive user-item-rating rows with an unambiguous true date in the HF mirror; NOT the full original MAPLE population",
+    "dated_mirror_release": "Yelp Open Dataset recent mirror",
+    "timestamp_order": "chronological; old source-row-index split is not reused",
+    "filtered_interactions": 923682,
+    "filtered_users": 34436,
+    "min_timestamp_ms": 1109901996000,
+    "max_timestamp_ms": 1642621693000
+  }
+}

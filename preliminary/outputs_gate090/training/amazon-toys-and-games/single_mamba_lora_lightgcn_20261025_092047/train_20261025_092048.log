@@ -1,0 +1,107 @@
+2026-10-25 09:20:48,755 | INFO | run_id=20261025_092048 dataset=amazon-toys-and-games device=cuda:0
+2026-10-25 09:20:48,756 | INFO | CUDA_SCOPE requested_physical=0 visible_count=1 main_logical=cuda:0 graph_logical=cuda:0
+2026-10-25 09:20:48,756 | INFO | MODEL recommender=MultiAgentMambaRecommender semantic_encoder=MambaTextEncoder semantic_model_id=state-spaces/mamba-130m-hf graph_backbone=LightGCN adaptation=multi_lora
+2026-10-25 09:20:48,756 | INFO | ABLATION USE_LONG=1 USE_SHORT=0 USE_PREFERENCE=0 USE_GCN=1
+2026-10-25 09:20:48,756 | INFO | AGENT_HISTORY mode=full_history effective_max_history=100 long=100 short=0 preference=0
+2026-10-25 09:20:48,756 | INFO | EXPERIMENT_NOTE preliminary: chronological prefixes and targets; single full-history Mamba+LoRA+LightGCN; no saved weights
+2026-10-25 09:20:48,756 | INFO | EXPERIMENT_CONFIG {"agent_diversity_coef": 0.02, "batch_size": 128, "cache_dir": "/workspace/P78123011/cache", "candidates": 192, "coordinator_epochs": 0, "coordinator_lr": 0.0001, "data_path": null, "dataset": "amazon-toys-and-games", "device": "cuda:0", "dim": 128, "early_stopping_patience": 6, "enable_lora": 1, "eval_batch_size": 64, "eval_length_basis": "untruncated_train_history", "eval_length_threshold": null, "experiment_note": "preliminary: chronological prefixes and targets; single full-history Mamba+LoRA+LightGCN; no saved weights", "full_catalog_supervised": false, "future_decay": 0.5, "future_horizon": 3, "generate_reasons": false, "graph_device": "cuda:0", "hard_negative_fraction": 0.75, "hard_negative_pool_multiplier": 12, "hard_negative_warmup_epochs": 2, "history_influence_negatives": 64, "history_influence_output": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_gate090/training/amazon-toys-and-games/history_item_influence.csv", "history_influence_user_limit": 2000, "item_prompt_prefix": "Preference-aware product representation: ", "item_vector_artifact": null, "joint_epochs": 3, "joint_lr": 5e-05, "lora_alpha": 32.0, "lora_dropout": 0.05, "lora_rank": 16, "lr_patience": 2, "mamba_encode_batch_size": 32, "mamba_gate": 0.9, "mamba_max_tokens": 32, "mamba_model_id": "state-spaces/mamba-130m-hf", "max_events": null, "max_history": 100, "max_transitions": 1500000, "min_rating": 4.0, "monitor_metric": "ndcg@10", "output_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_gate090", "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_gate090/training/amazon-toys-and-games/single_mamba_lora_lightgcn_20261025_092047", "periodic_test_user_limit": 0, "popularity_alpha": 0.3, "preference_balance_coef": 0.01, "preference_coef": 0.2, "preference_contrastive_coef": 0.05, "preference_count": 32, "preference_hidden": 128, "preference_score_weight": 0.2, "preference_separation_coef": 0.01, "preference_sharpness_coef": 0.05, "preference_temperature": 0.2, "preference_transition_coef": 0.1, "reason_count": 20, "reason_max_new_tokens": 40, "refresh_data_cache": false, "resume_checkpoint": null, "reverse_history_input": false, "save_model_weights": false, "score_file": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_gate090/training/amazon-toys-and-games/single_mamba_lora_lightgcn_20261025_092047/amazon-toys-and-games_scores.json", "seed": 25252, "short_window": 10, "skip_mamba": false, "specialist_epochs": 0, "specialist_lr": 0.0001, "target_recall_at_10": 0.15, "transition_beta": 0.5, "use_graph_embeddings": true, "use_in_batch_negatives": true, "use_long": 1, "use_preference": 0, "use_short": 0, "validate_every_steps": 2147483647, "validation_user_limit": 0}
+2026-10-25 09:20:49,672 | INFO | INTERACTION_CACHE hit path=/workspace/P78123011/cache/mamba_multi_agent_data/amazon-toys-and-games_2cc47abc910b.pkl
+2026-10-25 09:20:49,672 | INFO | HISTORY_INPUT_ORDER chronological
+2026-10-25 09:20:49,680 | INFO | users=568262 items=333160 train_interactions=3734374
+2026-10-25 09:21:02,248 | INFO | CATALOG_PRIORS popularity_alpha=0.300000 transition_beta=0.500000 source=train_histories_only enabled=True
+2026-10-25 09:21:04,408 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/amazon-toys-and-games_333160_4d0b5392ebd5_prompt_tok32.pt fingerprint=4d0b5392ebd5
+2026-10-25 09:21:04,408 | INFO | SEMANTIC_BACKBONE model_id=state-spaces/mamba-130m-hf hidden_size=768 frozen=True usage=shared_cached_item_vectors
+2026-10-25 09:21:05,683 | INFO | GRAPH_EMBEDDINGS enabled=True source=train_histories_only main_device=cuda:0 graph_device=cuda:0
+2026-10-25 09:21:06,742 | INFO | ADAPTATION_MODE mode=multi_lora enable_lora=1
+2026-10-25 09:21:06,743 | INFO | ADAPTER_ROUTES {'long': ('candidate_lora', 'delta_lora', 'output_lora')}
+2026-10-25 09:21:06,743 | INFO | MAMBA_GATE mode=fixed value=0.9
+2026-10-25 09:21:06,743 | INFO | agent_parameters={'long': 12417, 'short': 12417, 'preference': 78786, 'coordinator': 0, 'shared_projection': 98304, 'graph': 115382016}
+2026-10-25 09:21:06,743 | INFO | PREDICTION_PATH graph_only=False active_agents=1 coordinator=False
+2026-10-25 09:21:11,133 | INFO | training_transitions=1500000
+2026-10-25 09:21:11,134 | INFO | schedule specialist_epochs=0 coordinator_epochs=0 joint_ranking_epochs=3 validate_every_steps=2147483647 validation_users=0 periodic_test_users=0 monitor=ndcg@10 early_stopping_patience=6
+2026-10-25 09:21:11,134 | INFO | SKIP_STAGE stage=specialists epochs=0 use_coordinator=False
+2026-10-25 09:21:11,134 | INFO | SKIP_STAGE stage=coordinator epochs=0 use_coordinator=False
+2026-10-25 09:21:12,642 | INFO | TRAINING_BRANCHES stage=joint long=True short=False preference=False gcn=True preference_auxiliary=False preference_contrastive=False diversity_pairs=0 trainable_parameters=115492737
+2026-10-25 09:59:42,825 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=1 | step=11719 | users=564666/564666
+NDCG  | @5 0.027745 | @10 0.031108
+Recall| @5 0.036551 | @10 0.046987
+Hit   | @5 0.036551 | @10 0.046987
+================================
+2026-10-25 10:02:02,616 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=1 | step=11719 | users=564666/564666
+NDCG  | @5 0.025893 | @10 0.028863
+Recall| @5 0.033609 | @10 0.042820
+Hit   | @5 0.033609 | @10 0.042820
+================================
+2026-10-25 10:02:02,616 | INFO | VALID_STEP step=11719 stage=joint epoch=1 ndcg@10=0.031108 recall@10=0.046987 improved=True
+2026-10-25 10:02:02,842 | INFO | BEST_MODEL_IN_MEMORY step=11719 stage=joint ndcg@10=0.031108
+2026-10-25 10:02:02,842 | INFO | LEARNING_RATE step=11719 stage=joint lr=5e-05
+2026-10-25 10:02:02,842 | INFO | stage=joint epoch=1 loss=4.924950 steps=11719 transitions/s=692.57
+2026-10-25 10:40:33,598 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=2 | step=23438 | users=564666/564666
+NDCG  | @5 0.036673 | @10 0.041034
+Recall| @5 0.047949 | @10 0.061488
+Hit   | @5 0.047949 | @10 0.061488
+================================
+2026-10-25 10:42:53,919 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=2 | step=23438 | users=564666/564666
+NDCG  | @5 0.036146 | @10 0.039912
+Recall| @5 0.046125 | @10 0.057799
+Hit   | @5 0.046125 | @10 0.057799
+================================
+2026-10-25 10:42:53,919 | INFO | VALID_STEP step=23438 stage=joint epoch=2 ndcg@10=0.041034 recall@10=0.061488 improved=True
+2026-10-25 10:42:54,169 | INFO | BEST_MODEL_IN_MEMORY step=23438 stage=joint ndcg@10=0.041034
+2026-10-25 10:42:54,169 | INFO | LEARNING_RATE step=23438 stage=joint lr=5e-05
+2026-10-25 10:42:54,169 | INFO | stage=joint epoch=2 loss=4.805714 steps=11719 transitions/s=692.95
+2026-10-25 11:21:23,765 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=3 | step=35157 | users=564666/564666
+NDCG  | @5 0.039963 | @10 0.044508
+Recall| @5 0.051958 | @10 0.066059
+Hit   | @5 0.051958 | @10 0.066059
+================================
+2026-10-25 11:23:43,539 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=3 | step=35157 | users=564666/564666
+NDCG  | @5 0.042735 | @10 0.046598
+Recall| @5 0.053207 | @10 0.065177
+Hit   | @5 0.053207 | @10 0.065177
+================================
+2026-10-25 11:23:43,540 | INFO | VALID_STEP step=35157 stage=joint epoch=3 ndcg@10=0.044508 recall@10=0.066059 improved=True
+2026-10-25 11:23:43,797 | INFO | BEST_MODEL_IN_MEMORY step=35157 stage=joint ndcg@10=0.044508
+2026-10-25 11:23:43,797 | INFO | LEARNING_RATE step=35157 stage=joint lr=5e-05
+2026-10-25 11:23:43,797 | INFO | stage=joint epoch=3 loss=4.421815 steps=11719 transitions/s=692.75
+2026-10-25 11:26:03,846 | INFO | 
+========== FINAL CURRENT VALIDATION ==========
+stage=final | epoch=0 | step=35157 | users=564666/564666
+NDCG  | @5 0.039963 | @10 0.044508
+Recall| @5 0.051958 | @10 0.066059
+Hit   | @5 0.051958 | @10 0.066059
+================================
+2026-10-25 11:26:03,847 | INFO | VALID_STEP step=35157 stage=final epoch=0 ndcg@10=0.044508 recall@10=0.066059 improved=False
+2026-10-25 11:26:03,987 | INFO | RESTORE_BEST step=35157 stage=joint ndcg@10=0.044508
+2026-10-25 11:30:44,842 | INFO | HISTORY_ITEM_INFLUENCE path=/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_gate090/training/amazon-toys-and-games/history_item_influence.csv rows=15246 users_limit=2000 negatives=64
+2026-10-25 11:30:44,842 | INFO | 
+========== BEST CHECKPOINT VALIDATION ==========
+stage=joint | epoch=0 | step=35157 | users=564666/564666
+NDCG  | @5 0.039963 | @10 0.044508
+Recall| @5 0.051958 | @10 0.066059
+Hit   | @5 0.051958 | @10 0.066059
+================================
+2026-10-25 11:30:44,842 | INFO | 
+========== FINAL FULL TEST ==========
+stage=joint | epoch=0 | step=35157 | users=564666/564666
+NDCG  | @5 0.042735 | @10 0.046598
+Recall| @5 0.053207 | @10 0.065177
+Hit   | @5 0.053207 | @10 0.065177
+================================
+2026-10-25 11:30:44,842 | INFO | VALID_BEST {"evaluated_users": 564666, "hit@10": 0.06605851954960985, "hit@5": 0.051958148710919375, "long_agent_weight": 1.0, "long_preference_state_cosine": 0.0, "long_short_state_cosine": 0.0, "ndcg@10": 0.044508119475432255, "ndcg@5": 0.039963457899104556, "preference_change_probability": 0.0, "preference_current_entropy": 5.894617970635068e-06, "preference_next_entropy": 5.894617970635068e-06, "preference_ranking_weight": 0.0, "recall@10": 0.06605851954960985, "recall@5": 0.051958148710919375, "scores_per_second": 1348397590.8254588, "short_agent_weight": 0.0, "short_preference_state_cosine": 0.0, "total_users": 564666, "users_per_second": 4047.2973671072723}
+2026-10-25 11:30:44,842 | INFO | TEST_FINAL {"evaluated_users": 564666, "hit@10": 0.06517658226278898, "hit@5": 0.05320667438804532, "long_agent_weight": 1.0, "long_preference_state_cosine": 0.0, "long_short_state_cosine": 0.0, "ndcg@10": 0.04659761389065966, "ndcg@5": 0.04273517569111563, "preference_change_probability": 0.0, "preference_current_entropy": 5.894617970635068e-06, "preference_next_entropy": 5.894617970635068e-06, "preference_ranking_weight": 0.0, "recall@10": 0.06517658226278898, "recall@5": 0.05320667438804532, "scores_per_second": 1348959097.1886642, "short_agent_weight": 0.0, "short_preference_state_cosine": 0.0, "total_users": 564666, "users_per_second": 4048.9827626025462}
+2026-10-25 11:30:44,842 | INFO | TARGET_RESULT metric=recall@10 target=>0.150000 actual=0.065177 achieved=False
+2026-10-25 11:30:45,117 | INFO | scores=/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_gate090/training/amazon-toys-and-games/single_mamba_lora_lightgcn_20261025_092047/amazon-toys-and-games_scores.json
+2026-10-25 11:30:45,117 | INFO | outputs=/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_gate090/training/amazon-toys-and-games/single_mamba_lora_lightgcn_20261025_092047

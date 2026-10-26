@@ -53,6 +53,8 @@ def main():
     parser.add_argument("--influence-user-limit", type=int, required=True)
     parser.add_argument("--validation-user-limit", type=int, required=True)
     parser.add_argument("--seed", type=int, required=True)
+    parser.add_argument("--mamba-gate", type=float, default=None)
+    parser.add_argument("--mamba-decay", type=float, default=None)
     parser.add_argument("--reverse-history-input", action="store_true")
     args = parser.parse_args()
     if args.lora_rank < 1:
@@ -61,6 +63,10 @@ def main():
         parser.error("--epochs must be positive and --max-history must be at least 2")
     if args.influence_user_limit < 0:
         parser.error("--influence-user-limit cannot be negative")
+    if args.mamba_gate is not None and not 0.0 <= args.mamba_gate <= 1.0:
+        parser.error("--mamba-gate must be in [0, 1]")
+    if args.mamba_decay is not None and not 0.0 <= args.mamba_decay <= 1.0:
+        parser.error("--mamba-decay must be in [0, 1]")
     inherited_visible = os.environ.get("CUDA_VISIBLE_DEVICES")
     if inherited_visible != args.gpu_ids:
         raise RuntimeError(
@@ -126,6 +132,8 @@ def main():
             "--coordinator-epochs", "0",
             "--joint-epochs", str(args.epochs),
             "--seed", str(args.seed),
+            *(["--mamba-gate", str(args.mamba_gate)] if args.mamba_gate is not None else []),
+            *(["--mamba-decay", str(args.mamba_decay)] if args.mamba_decay is not None else []),
             *(["--reverse-history-input"] if args.reverse_history_input else []),
             "--validation-user-limit", str(args.validation_user_limit),
             "--periodic-test-user-limit", "0",
@@ -158,6 +166,8 @@ def main():
                       "preference_agent": False,
                   },
                   "training_epochs": args.epochs,
+                  "mamba_gate": args.mamba_gate,
+                  "mamba_decay": args.mamba_decay,
                   "history_input_order": "reversed" if args.reverse_history_input else "chronological",
                   "history_item_influence": str(influence_file),
                   "model_weights_saved": False,

@@ -1,0 +1,5 @@
+dataset,split,cohort,metric,mean,ci_low,ci_high,n_users,status
+movielens-1m,valid,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.4804632794087203,0.41682025573795806,0.5410026040069656,1791,estimated
+movielens-1m,valid,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.05852177554438861,0.04122330402010051,0.07610395728643217,1791,estimated
+movielens-1m,test,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.44768127647717276,0.3854405928736912,0.512780972782928,1825,estimated
+movielens-1m,test,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.06416095890410958,0.04768347602739726,0.08051352739726024,1825,estimated

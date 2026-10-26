@@ -1,0 +1,207 @@
+{
+  "scope": "Test observed history: training interactions plus the observed validation item; test target excluded",
+  "cohort": "Amazon all-available test users in the original grouped figures; additional datasets' sampled preliminary test users",
+  "period_rule": "Sort observed interactions by time; start a new period only when the gap between consecutive timestamps exceeds 30 days",
+  "history_variants": {
+    "plotted_capped_100": "most recent 100 observed items, grouped after truncation",
+    "full_observed_history": "all observed items before the test target"
+  },
+  "datasets": {
+    "All_Beauty": {
+      "dataset_id": "amazon-all-beauty",
+      "users": 1457,
+      "plotted_capped_100": {
+        "min_sequence_length": 2,
+        "max_sequence_length": 100,
+        "mean_sequence_length": 6.621139327385038,
+        "min_period_count": 1,
+        "max_period_count": 16,
+        "mean_period_count": 3.457789979409746
+      },
+      "full_observed_history": {
+        "min_sequence_length": 2,
+        "max_sequence_length": 118,
+        "mean_sequence_length": 6.633493479752917,
+        "min_period_count": 1,
+        "max_period_count": 16,
+        "mean_period_count": 3.4625943719972545
+      },
+      "sources": {
+        "period_report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/amazon_group_lengths/All_Beauty.json",
+        "alignment_positions": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon-all-beauty/run_20260927_033236/amazon-all-beauty/alignment_per_position.csv",
+        "interaction_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-all-beauty_90e3e920169a.pkl"
+      }
+    },
+    "Baby_Products": {
+      "dataset_id": "amazon:Baby_Products",
+      "users": 2000,
+      "plotted_capped_100": {
+        "min_sequence_length": 2,
+        "max_sequence_length": 100,
+        "mean_sequence_length": 6.8775,
+        "min_period_count": 1,
+        "max_period_count": 28,
+        "mean_period_count": 3.188
+      },
+      "full_observed_history": {
+        "min_sequence_length": 2,
+        "max_sequence_length": 120,
+        "mean_sequence_length": 6.8875,
+        "min_period_count": 1,
+        "max_period_count": 28,
+        "mean_period_count": 3.1895
+      },
+      "sources": {
+        "period_report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/amazon_group_lengths/Baby_Products.json",
+        "alignment_positions": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon_Baby_Products/run_20260927_033250/amazon_Baby_Products/alignment_per_position.csv",
+        "interaction_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon_Baby_Products_e6e228b87df8.pkl"
+      }
+    },
+    "Sports_and_Outdoors": {
+      "dataset_id": "amazon-sports-and-outdoors",
+      "users": 2000,
+      "plotted_capped_100": {
+        "min_sequence_length": 2,
+        "max_sequence_length": 100,
+        "mean_sequence_length": 6.9125,
+        "min_period_count": 1,
+        "max_period_count": 30,
+        "mean_period_count": 3.8315
+      },
+      "full_observed_history": {
+        "min_sequence_length": 2,
+        "max_sequence_length": 111,
+        "mean_sequence_length": 6.919,
+        "min_period_count": 1,
+        "max_period_count": 30,
+        "mean_period_count": 3.8335
+      },
+      "sources": {
+        "period_report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/amazon_group_lengths/Sports_and_Outdoors.json",
+        "alignment_positions": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon-sports-and-outdoors/run_20260927_033317/amazon-sports-and-outdoors/alignment_per_position.csv",
+        "interaction_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-sports-and-outdoors_fcc157f72b81.pkl"
+      }
+    },
+    "Toys_and_Games": {
+      "dataset_id": "amazon-toys-and-games",
+      "users": 2000,
+      "plotted_capped_100": {
+        "min_sequence_length": 2,
+        "max_sequence_length": 100,
+        "mean_sequence_length": 7.6865,
+        "min_period_count": 1,
+        "max_period_count": 29,
+        "mean_period_count": 3.584
+      },
+      "full_observed_history": {
+        "min_sequence_length": 2,
+        "max_sequence_length": 130,
+        "mean_sequence_length": 7.716,
+        "min_period_count": 1,
+        "max_period_count": 29,
+        "mean_period_count": 3.585
+      },
+      "sources": {
+        "period_report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/amazon_group_lengths/Toys_and_Games.json",
+        "alignment_positions": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs/analysis/amazon-toys-and-games/run_20260927_033342/amazon-toys-and-games/alignment_per_position.csv",
+        "interaction_cache": "/workspace/P78123011/cache/mamba_multi_agent_data/amazon-toys-and-games_2cc47abc910b.pkl"
+      }
+    },
+    "Steam": {
+      "dataset_id": "Steam",
+      "users": 2000,
+      "plotted_capped_100": {
+        "min_sequence_length": 3,
+        "max_sequence_length": 100,
+        "mean_sequence_length": 11.2175,
+        "min_period_count": 1,
+        "max_period_count": 27,
+        "mean_period_count": 4.9825
+      },
+      "full_observed_history": {
+        "min_sequence_length": 3,
+        "max_sequence_length": 472,
+        "mean_sequence_length": 11.969,
+        "min_period_count": 1,
+        "max_period_count": 30,
+        "mean_period_count": 5.057
+      },
+      "sources": {
+        "per_user_counts": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Steam/intermediate/per_user_group_counts.csv.gz",
+        "group_count_report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Steam/group_count_summary.json"
+      }
+    },
+    "MovieLens1M": {
+      "dataset_id": "MovieLens1M",
+      "users": 2000,
+      "plotted_capped_100": {
+        "min_sequence_length": 4,
+        "max_sequence_length": 100,
+        "mean_sequence_length": 60.318,
+        "min_period_count": 1,
+        "max_period_count": 13,
+        "mean_period_count": 1.528
+      },
+      "full_observed_history": {
+        "min_sequence_length": 4,
+        "max_sequence_length": 1416,
+        "mean_sequence_length": 96.113,
+        "min_period_count": 1,
+        "max_period_count": 14,
+        "mean_period_count": 1.569
+      },
+      "sources": {
+        "per_user_counts": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/MovieLens1M/intermediate/per_user_group_counts.csv.gz",
+        "group_count_report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/MovieLens1M/group_count_summary.json"
+      }
+    },
+    "Yelp19": {
+      "dataset_id": "Yelp19",
+      "users": 2000,
+      "plotted_capped_100": {
+        "min_sequence_length": 3,
+        "max_sequence_length": 100,
+        "mean_sequence_length": 25.4645,
+        "min_period_count": 1,
+        "max_period_count": 35,
+        "mean_period_count": 7.7105
+      },
+      "full_observed_history": {
+        "min_sequence_length": 3,
+        "max_sequence_length": 313,
+        "mean_sequence_length": 26.736,
+        "min_period_count": 1,
+        "max_period_count": 38,
+        "mean_period_count": 7.8235
+      },
+      "sources": {
+        "per_user_counts": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp19/intermediate/per_user_group_counts.csv.gz",
+        "group_count_report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp19/group_count_summary.json"
+      }
+    },
+    "Yelp23": {
+      "dataset_id": "Yelp23",
+      "users": 2000,
+      "plotted_capped_100": {
+        "min_sequence_length": 4,
+        "max_sequence_length": 100,
+        "mean_sequence_length": 24.4795,
+        "min_period_count": 1,
+        "max_period_count": 40,
+        "mean_period_count": 8.535
+      },
+      "full_observed_history": {
+        "min_sequence_length": 4,
+        "max_sequence_length": 343,
+        "mean_sequence_length": 25.3405,
+        "min_period_count": 1,
+        "max_period_count": 52,
+        "mean_period_count": 8.6445
+      },
+      "sources": {
+        "per_user_counts": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp23/intermediate/per_user_group_counts.csv.gz",
+        "group_count_report": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs/additional_dated_20261023/Yelp23/group_count_summary.json"
+      }
+    }
+  }
+}

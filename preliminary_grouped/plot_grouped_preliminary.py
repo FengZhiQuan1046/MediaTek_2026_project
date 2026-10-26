@@ -1,4 +1,4 @@
-"""Five preliminary figures aggregated by 30-day temporal periods on GPU0."""
+"""Five preliminary figures aggregated by 30-day temporal periods on one isolated GPU."""
 from __future__ import annotations
 import argparse
 from collections import defaultdict
@@ -131,7 +131,7 @@ def calculate(source, args, root):
         'confidence_interval':'95% user bootstrap for alignment/preference/influence; coverage shading is user IQR',
         'cohorts':'original test history and max100 items; fixed_K16 means at least16 original items, not16 groups',
         'main_min_users':args.min_users,'supplement':'same influence estimates, all n>=1',
-        'gpu':torch.cuda.get_device_name(0),'physical_gpu':getattr(args,'physical_gpu',0),'bootstrap_repetitions':args.bootstrap,
+        'gpu':torch.cuda.get_device_name(0),'physical_gpu':args.physical_gpu,'bootstrap_repetitions':args.bootstrap,
         'position_source':str(positions_path),'position_source_sha256':hashlib.sha256(positions_path.read_bytes()).hexdigest(),
         'influence_source_sha256':hashlib.sha256(Path(diagnostic['model_item_influence_source']).read_bytes()).hexdigest(),
         'timestamp_verification':verification,'training_repeated':False}
@@ -201,6 +201,9 @@ def main():
     p.add_argument('--bootstrap',type=int,default=2000)
     p.add_argument('--min-users',type=int,default=100)
     p.add_argument('--seed',type=int,default=25252)
+    p.add_argument('--sources',type=Path,default=root.parent/'preliminary/aggregated/sources.json',
+                   help='sources.json from the matching preliminary run')
+    p.add_argument('--physical-gpu',type=int,default=1)
     args=p.parse_args();args.device='cuda:0'
     if not torch.cuda.is_available() or torch.cuda.device_count()!=1:
         raise RuntimeError('Launch with CUDA_VISIBLE_DEVICES=0; exactly one visible GPU required')
@@ -209,12 +212,12 @@ def main():
     pa.set_cpu_count(4)
     sys.path.insert(0,str(root.parent/'ver4'))
     args.output.mkdir(parents=True,exist_ok=True)
-    sources=json.loads((root.parent/'preliminary/aggregated/sources.json').read_text())['sources']
+    sources=json.loads(args.sources.read_text())['sources']
     reports={}
     for source,category in zip(sources,['All_Beauty','Baby_Products','Sports_and_Outdoors','Toys_and_Games']):
         reports[category]=calculate(dict(source,category=category),args,root)
     plot(reports,args)
-    (args.output/'run_status.json').write_text(json.dumps({'status':'complete','physical_gpu':0,
+    (args.output/'run_status.json').write_text(json.dumps({'status':'complete','physical_gpu':args.physical_gpu,
         'figures':5,'formats':['png','pdf','svg'],'subsets':list(reports),'bootstrap':args.bootstrap},indent=2))
     (args.output/'README.md').write_text('# Five preliminary figures by temporal group\n\n'
         'Figures 1–4 plus the all-group influence supplement are provided as PNG/PDF/SVG. Each subset JSON contains group-length statistics and all five figure estimates. plotted_data.csv includes all computed groups, including those hidden by the main n≥100 filter.\n\n'

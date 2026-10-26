@@ -1,0 +1,769 @@
+{
+  "dataset": "yelp23-dated-matched",
+  "subset": "Yelp23",
+  "split": "test",
+  "grouping": {
+    "gap_days": 30,
+    "rule": "new period iff consecutive gap >30 days",
+    "history_cap": 100
+  },
+  "mean_groups_per_user": 8.535,
+  "mean_interactions_per_group": 2.86813122437024,
+  "group_length_summary": {
+    "users": 2000,
+    "groups": 17070,
+    "dated_interactions": 48959,
+    "missing_timestamp_interactions": 0,
+    "mean_interactions_per_group": 2.86813122437024,
+    "mean_group_span_days": 11.007729717909912,
+    "group_length_interactions": {
+      "count": 17070,
+      "mean": 2.86813122437024,
+      "median": 1.0,
+      "p25": 1.0,
+      "p75": 3.0,
+      "min": 1.0,
+      "max": 97.0
+    },
+    "group_span_days": {
+      "count": 17070,
+      "mean": 11.007729717909912,
+      "median": 0.0,
+      "p25": 0.0,
+      "p75": 13.066064814814816,
+      "min": 0.0,
+      "max": 465.3584143518519
+    },
+    "groups_per_user": {
+      "count": 2000,
+      "mean": 8.535,
+      "median": 7.0,
+      "p25": 5.0,
+      "p75": 11.0,
+      "min": 1.0,
+      "max": 40.0
+    },
+    "user_weighted_mean_interactions_per_group": 3.616155764139027,
+    "by_group_from_most_recent": [
+      {
+        "group": 1,
+        "contributing_users": 2000,
+        "mean_interactions": 2.768,
+        "median_interactions": 1.0,
+        "mean_span_days": 8.30809353587963
+      },
+      {
+        "group": 2,
+        "contributing_users": 1943,
+        "mean_interactions": 2.715388574369532,
+        "median_interactions": 1.0,
+        "mean_span_days": 9.363123397619182
+      },
+      {
+        "group": 3,
+        "contributing_users": 1853,
+        "mean_interactions": 2.7512142471667564,
+        "median_interactions": 1.0,
+        "mean_span_days": 10.225853064849794
+      },
+      {
+        "group": 4,
+        "contributing_users": 1707,
+        "mean_interactions": 2.992384299941418,
+        "median_interactions": 2.0,
+        "mean_span_days": 10.721453092115254
+      },
+      {
+        "group": 5,
+        "contributing_users": 1529,
+        "mean_interactions": 2.7972531066056248,
+        "median_interactions": 1.0,
+        "mean_span_days": 9.927893912143013
+      },
+      {
+        "group": 6,
+        "contributing_users": 1332,
+        "mean_interactions": 2.855105105105105,
+        "median_interactions": 1.0,
+        "mean_span_days": 10.51148287176065
+      },
+      {
+        "group": 7,
+        "contributing_users": 1130,
+        "mean_interactions": 2.7716814159292036,
+        "median_interactions": 1.0,
+        "mean_span_days": 10.977573572189446
+      },
+      {
+        "group": 8,
+        "contributing_users": 955,
+        "mean_interactions": 2.7528795811518325,
+        "median_interactions": 1.0,
+        "mean_span_days": 11.111830848846228
+      },
+      {
+        "group": 9,
+        "contributing_users": 783,
+        "mean_interactions": 2.9195402298850577,
+        "median_interactions": 1.0,
+        "mean_span_days": 12.213060847405515
+      },
+      {
+        "group": 10,
+        "contributing_users": 636,
+        "mean_interactions": 3.3349056603773586,
+        "median_interactions": 2.0,
+        "mean_span_days": 14.598020069007688
+      },
+      {
+        "group": 11,
+        "contributing_users": 513,
+        "mean_interactions": 2.879142300194932,
+        "median_interactions": 2.0,
+        "mean_span_days": 11.77096793552812
+      },
+      {
+        "group": 12,
+        "contributing_users": 432,
+        "mean_interactions": 2.9143518518518516,
+        "median_interactions": 2.0,
+        "mean_span_days": 12.326392961248287
+      },
+      {
+        "group": 13,
+        "contributing_users": 344,
+        "mean_interactions": 2.8052325581395348,
+        "median_interactions": 2.0,
+        "mean_span_days": 11.16699629225883
+      },
+      {
+        "group": 14,
+        "contributing_users": 286,
+        "mean_interactions": 3.2097902097902096,
+        "median_interactions": 2.0,
+        "mean_span_days": 14.578408767158768
+      },
+      {
+        "group": 15,
+        "contributing_users": 253,
+        "mean_interactions": 2.794466403162055,
+        "median_interactions": 2.0,
+        "mean_span_days": 12.498315857853902
+      },
+      {
+        "group": 16,
+        "contributing_users": 209,
+        "mean_interactions": 3.148325358851675,
+        "median_interactions": 2.0,
+        "mean_span_days": 14.528623958887119
+      },
+      {
+        "group": 17,
+        "contributing_users": 175,
+        "mean_interactions": 2.8685714285714288,
+        "median_interactions": 2.0,
+        "mean_span_days": 14.6681958994709
+      },
+      {
+        "group": 18,
+        "contributing_users": 142,
+        "mean_interactions": 3.1690140845070425,
+        "median_interactions": 2.0,
+        "mean_span_days": 15.549107329160147
+      },
+      {
+        "group": 19,
+        "contributing_users": 121,
+        "mean_interactions": 3.024793388429752,
+        "median_interactions": 1.0,
+        "mean_span_days": 14.749562767829813
+      },
+      {
+        "group": 20,
+        "contributing_users": 102,
+        "mean_interactions": 2.656862745098039,
+        "median_interactions": 2.0,
+        "mean_span_days": 12.845028367828613
+      },
+      {
+        "group": 21,
+        "contributing_users": 89,
+        "mean_interactions": 3.044943820224719,
+        "median_interactions": 2.0,
+        "mean_span_days": 13.986446109030378
+      },
+      {
+        "group": 22,
+        "contributing_users": 77,
+        "mean_interactions": 2.844155844155844,
+        "median_interactions": 2.0,
+        "mean_span_days": 12.45018819143819
+      },
+      {
+        "group": 23,
+        "contributing_users": 67,
+        "mean_interactions": 2.955223880597015,
+        "median_interactions": 2.0,
+        "mean_span_days": 17.10760105721393
+      },
+      {
+        "group": 24,
+        "contributing_users": 59,
+        "mean_interactions": 3.2542372881355934,
+        "median_interactions": 3.0,
+        "mean_span_days": 17.30472359541745
+      },
+      {
+        "group": 25,
+        "contributing_users": 56,
+        "mean_interactions": 3.125,
+        "median_interactions": 2.0,
+        "mean_span_days": 19.775612599206347
+      },
+      {
+        "group": 26,
+        "contributing_users": 51,
+        "mean_interactions": 3.4313725490196076,
+        "median_interactions": 2.0,
+        "mean_span_days": 15.749733796296297
+      },
+      {
+        "group": 27,
+        "contributing_users": 45,
+        "mean_interactions": 3.5555555555555554,
+        "median_interactions": 2.0,
+        "mean_span_days": 21.437079218106994
+      },
+      {
+        "group": 28,
+        "contributing_users": 39,
+        "mean_interactions": 2.9743589743589745,
+        "median_interactions": 2.0,
+        "mean_span_days": 17.33442841880342
+      },
+      {
+        "group": 29,
+        "contributing_users": 37,
+        "mean_interactions": 4.594594594594595,
+        "median_interactions": 3.0,
+        "mean_span_days": 26.644308370870874
+      },
+      {
+        "group": 30,
+        "contributing_users": 28,
+        "mean_interactions": 4.321428571428571,
+        "median_interactions": 3.0,
+        "mean_span_days": 21.784909887566137
+      },
+      {
+        "group": 31,
+        "contributing_users": 20,
+        "mean_interactions": 3.35,
+        "median_interactions": 3.0,
+        "mean_span_days": 17.071435185185187
+      },
+      {
+        "group": 32,
+        "contributing_users": 15,
+        "mean_interactions": 5.8,
+        "median_interactions": 2.0,
+        "mean_span_days": 38.836274691358035
+      },
+      {
+        "group": 33,
+        "contributing_users": 11,
+        "mean_interactions": 4.818181818181818,
+        "median_interactions": 2.0,
+        "mean_span_days": 29.608693181818182
+      },
+      {
+        "group": 34,
+        "contributing_users": 11,
+        "mean_interactions": 3.3636363636363638,
+        "median_interactions": 2.0,
+        "mean_span_days": 14.665051557239059
+      },
+      {
+        "group": 35,
+        "contributing_users": 7,
+        "mean_interactions": 3.4285714285714284,
+        "median_interactions": 1.0,
+        "mean_span_days": 19.22734788359788
+      },
+      {
+        "group": 36,
+        "contributing_users": 5,
+        "mean_interactions": 3.4,
+        "median_interactions": 1.0,
+        "mean_span_days": 14.885599537037038
+      },
+      {
+        "group": 37,
+        "contributing_users": 2,
+        "mean_interactions": 2.0,
+        "median_interactions": 2.0,
+        "mean_span_days": 6.15740162037037
+      },
+      {
+        "group": 38,
+        "contributing_users": 2,
+        "mean_interactions": 3.5,
+        "median_interactions": 3.5,
+        "mean_span_days": 24.092766203703704
+      },
+      {
+        "group": 39,
+        "contributing_users": 2,
+        "mean_interactions": 6.0,
+        "median_interactions": 6.0,
+        "mean_span_days": 43.84538773148148
+      },
+      {
+        "group": 40,
+        "contributing_users": 2,
+        "mean_interactions": 7.5,
+        "median_interactions": 7.5,
+        "mean_span_days": 34.87096643518518
+      }
+    ]
+  },
+  "full_observed_history_reference": {
+    "users": 2000,
+    "groups": 17289,
+    "dated_interactions": 50681,
+    "missing_timestamp_interactions": 0,
+    "mean_interactions_per_group": 2.931401469142229,
+    "mean_group_span_days": 11.38499913038798,
+    "group_length_interactions": {
+      "count": 17289,
+      "mean": 2.931401469142229,
+      "median": 2.0,
+      "p25": 1.0,
+      "p75": 3.0,
+      "min": 1.0,
+      "max": 111.0
+    },
+    "group_span_days": {
+      "count": 17289,
+      "mean": 11.38499913038798,
+      "median": 0.0007291666666666667,
+      "p25": 0.0,
+      "p75": 13.553090277777779,
+      "min": 0.0,
+      "max": 494.972962962963
+    },
+    "groups_per_user": {
+      "count": 2000,
+      "mean": 8.6445,
+      "median": 7.0,
+      "p25": 5.0,
+      "p75": 11.0,
+      "min": 1.0,
+      "max": 52.0
+    },
+    "user_weighted_mean_interactions_per_group": 3.6376215789624924,
+    "by_group_from_most_recent": [
+      {
+        "group": 1,
+        "contributing_users": 2000,
+        "mean_interactions": 2.768,
+        "median_interactions": 1.0,
+        "mean_span_days": 8.30809353587963
+      },
+      {
+        "group": 2,
+        "contributing_users": 1943,
+        "mean_interactions": 2.746268656716418,
+        "median_interactions": 1.0,
+        "mean_span_days": 9.45560842220888
+      },
+      {
+        "group": 3,
+        "contributing_users": 1853,
+        "mean_interactions": 2.7512142471667564,
+        "median_interactions": 1.0,
+        "mean_span_days": 10.225853064849794
+      },
+      {
+        "group": 4,
+        "contributing_users": 1707,
+        "mean_interactions": 3.001171646162859,
+        "median_interactions": 2.0,
+        "mean_span_days": 10.762605027772354
+      },
+      {
+        "group": 5,
+        "contributing_users": 1530,
+        "mean_interactions": 2.7973856209150325,
+        "median_interactions": 1.0,
+        "mean_span_days": 9.93422452190753
+      },
+      {
+        "group": 6,
+        "contributing_users": 1332,
+        "mean_interactions": 2.858858858858859,
+        "median_interactions": 1.0,
+        "mean_span_days": 10.51409520631743
+      },
+      {
+        "group": 7,
+        "contributing_users": 1130,
+        "mean_interactions": 2.7716814159292036,
+        "median_interactions": 1.0,
+        "mean_span_days": 10.977573572189446
+      },
+      {
+        "group": 8,
+        "contributing_users": 955,
+        "mean_interactions": 2.816753926701571,
+        "median_interactions": 1.0,
+        "mean_span_days": 11.419632829164245
+      },
+      {
+        "group": 9,
+        "contributing_users": 785,
+        "mean_interactions": 2.965605095541401,
+        "median_interactions": 1.0,
+        "mean_span_days": 12.406153190610995
+      },
+      {
+        "group": 10,
+        "contributing_users": 638,
+        "mean_interactions": 3.3934169278996866,
+        "median_interactions": 2.0,
+        "mean_span_days": 14.789796165679785
+      },
+      {
+        "group": 11,
+        "contributing_users": 515,
+        "mean_interactions": 2.912621359223301,
+        "median_interactions": 2.0,
+        "mean_span_days": 12.099137720244517
+      },
+      {
+        "group": 12,
+        "contributing_users": 435,
+        "mean_interactions": 3.0344827586206895,
+        "median_interactions": 2.0,
+        "mean_span_days": 12.742281742230736
+      },
+      {
+        "group": 13,
+        "contributing_users": 347,
+        "mean_interactions": 2.8559077809798272,
+        "median_interactions": 2.0,
+        "mean_span_days": 11.360059204557585
+      },
+      {
+        "group": 14,
+        "contributing_users": 289,
+        "mean_interactions": 3.301038062283737,
+        "median_interactions": 2.0,
+        "mean_span_days": 15.201944844931438
+      },
+      {
+        "group": 15,
+        "contributing_users": 257,
+        "mean_interactions": 2.8988326848249026,
+        "median_interactions": 2.0,
+        "mean_span_days": 13.007689238362879
+      },
+      {
+        "group": 16,
+        "contributing_users": 215,
+        "mean_interactions": 3.2883720930232556,
+        "median_interactions": 2.0,
+        "mean_span_days": 15.873535691214466
+      },
+      {
+        "group": 17,
+        "contributing_users": 182,
+        "mean_interactions": 3.043956043956044,
+        "median_interactions": 2.0,
+        "mean_span_days": 16.020045342389093
+      },
+      {
+        "group": 18,
+        "contributing_users": 149,
+        "mean_interactions": 3.3557046979865772,
+        "median_interactions": 2.0,
+        "mean_span_days": 16.338388096569727
+      },
+      {
+        "group": 19,
+        "contributing_users": 128,
+        "mean_interactions": 3.3046875,
+        "median_interactions": 2.0,
+        "mean_span_days": 16.789139720775463
+      },
+      {
+        "group": 20,
+        "contributing_users": 109,
+        "mean_interactions": 3.0091743119266057,
+        "median_interactions": 2.0,
+        "mean_span_days": 13.729705126571528
+      },
+      {
+        "group": 21,
+        "contributing_users": 97,
+        "mean_interactions": 3.1752577319587627,
+        "median_interactions": 2.0,
+        "mean_span_days": 14.669023840206183
+      },
+      {
+        "group": 22,
+        "contributing_users": 84,
+        "mean_interactions": 3.1904761904761907,
+        "median_interactions": 2.0,
+        "mean_span_days": 15.531809413580246
+      },
+      {
+        "group": 23,
+        "contributing_users": 76,
+        "mean_interactions": 3.6842105263157894,
+        "median_interactions": 2.0,
+        "mean_span_days": 21.83575124878168
+      },
+      {
+        "group": 24,
+        "contributing_users": 68,
+        "mean_interactions": 3.764705882352941,
+        "median_interactions": 3.0,
+        "mean_span_days": 19.741562499999997
+      },
+      {
+        "group": 25,
+        "contributing_users": 65,
+        "mean_interactions": 3.4615384615384617,
+        "median_interactions": 2.0,
+        "mean_span_days": 20.95555537749288
+      },
+      {
+        "group": 26,
+        "contributing_users": 59,
+        "mean_interactions": 3.440677966101695,
+        "median_interactions": 2.0,
+        "mean_span_days": 16.833411409290644
+      },
+      {
+        "group": 27,
+        "contributing_users": 52,
+        "mean_interactions": 3.5576923076923075,
+        "median_interactions": 2.0,
+        "mean_span_days": 21.869202056623934
+      },
+      {
+        "group": 28,
+        "contributing_users": 44,
+        "mean_interactions": 3.5454545454545454,
+        "median_interactions": 2.0,
+        "mean_span_days": 20.758573495370367
+      },
+      {
+        "group": 29,
+        "contributing_users": 42,
+        "mean_interactions": 5.333333333333333,
+        "median_interactions": 3.0,
+        "mean_span_days": 30.74703676146384
+      },
+      {
+        "group": 30,
+        "contributing_users": 36,
+        "mean_interactions": 4.972222222222222,
+        "median_interactions": 3.0,
+        "mean_span_days": 25.10856385030864
+      },
+      {
+        "group": 31,
+        "contributing_users": 29,
+        "mean_interactions": 3.793103448275862,
+        "median_interactions": 3.0,
+        "mean_span_days": 19.59505906768838
+      },
+      {
+        "group": 32,
+        "contributing_users": 25,
+        "mean_interactions": 6.4,
+        "median_interactions": 2.0,
+        "mean_span_days": 37.554095370370376
+      },
+      {
+        "group": 33,
+        "contributing_users": 22,
+        "mean_interactions": 5.2727272727272725,
+        "median_interactions": 2.5,
+        "mean_span_days": 31.493687920875416
+      },
+      {
+        "group": 34,
+        "contributing_users": 20,
+        "mean_interactions": 5.1,
+        "median_interactions": 3.5,
+        "mean_span_days": 24.343309606481476
+      },
+      {
+        "group": 35,
+        "contributing_users": 16,
+        "mean_interactions": 5.75,
+        "median_interactions": 3.5,
+        "mean_span_days": 29.648317418981478
+      },
+      {
+        "group": 36,
+        "contributing_users": 13,
+        "mean_interactions": 4.384615384615385,
+        "median_interactions": 2.0,
+        "mean_span_days": 19.049379451566953
+      },
+      {
+        "group": 37,
+        "contributing_users": 9,
+        "mean_interactions": 9.333333333333334,
+        "median_interactions": 2.0,
+        "mean_span_days": 43.802408693415636
+      },
+      {
+        "group": 38,
+        "contributing_users": 7,
+        "mean_interactions": 9.571428571428571,
+        "median_interactions": 4.0,
+        "mean_span_days": 61.20790343915344
+      },
+      {
+        "group": 39,
+        "contributing_users": 5,
+        "mean_interactions": 3.4,
+        "median_interactions": 3.0,
+        "mean_span_days": 21.767449074074072
+      },
+      {
+        "group": 40,
+        "contributing_users": 5,
+        "mean_interactions": 5.4,
+        "median_interactions": 3.0,
+        "mean_span_days": 21.350081018518516
+      },
+      {
+        "group": 41,
+        "contributing_users": 2,
+        "mean_interactions": 2.0,
+        "median_interactions": 2.0,
+        "mean_span_days": 0.005451388888888889
+      },
+      {
+        "group": 42,
+        "contributing_users": 2,
+        "mean_interactions": 1.5,
+        "median_interactions": 1.5,
+        "mean_span_days": 7.581898148148148
+      },
+      {
+        "group": 43,
+        "contributing_users": 2,
+        "mean_interactions": 1.5,
+        "median_interactions": 1.5,
+        "mean_span_days": 0.977806712962963
+      },
+      {
+        "group": 44,
+        "contributing_users": 2,
+        "mean_interactions": 3.5,
+        "median_interactions": 3.5,
+        "mean_span_days": 24.429826388888888
+      },
+      {
+        "group": 45,
+        "contributing_users": 1,
+        "mean_interactions": 4.0,
+        "median_interactions": 4.0,
+        "mean_span_days": 21.149178240740742
+      },
+      {
+        "group": 46,
+        "contributing_users": 1,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      },
+      {
+        "group": 47,
+        "contributing_users": 1,
+        "mean_interactions": 1.0,
+        "median_interactions": 1.0,
+        "mean_span_days": 0.0
+      },
+      {
+        "group": 48,
+        "contributing_users": 1,
+        "mean_interactions": 4.0,
+        "median_interactions": 4.0,
+        "mean_span_days": 14.049027777777777
+      },
+      {
+        "group": 49,
+        "contributing_users": 1,
+        "mean_interactions": 10.0,
+        "median_interactions": 10.0,
+        "mean_span_days": 76.83916666666667
+      },
+      {
+        "group": 50,
+        "contributing_users": 1,
+        "mean_interactions": 2.0,
+        "median_interactions": 2.0,
+        "mean_span_days": 0.010462962962962962
+      },
+      {
+        "group": 51,
+        "contributing_users": 1,
+        "mean_interactions": 6.0,
+        "median_interactions": 6.0,
+        "mean_span_days": 20.811550925925925
+      },
+      {
+        "group": 52,
+        "contributing_users": 1,
+        "mean_interactions": 2.0,
+        "median_interactions": 2.0,
+        "mean_span_days": 0.005925925925925926
+      }
+    ]
+  },
+  "provenance": {
+    "label": "Yelp23",
+    "original_datasets_unchanged": true,
+    "source": "/workspace/P78123011/cache/normalized/yelp23_unique.jsonl",
+    "dated_mirror": "/workspace/P78123011/cache/raw/dated_analysis/yelp_recent/review.parquet",
+    "requested_positive_rows": 957516,
+    "uniquely_dated_rows": 926634,
+    "ambiguous_rows_excluded": 30882,
+    "missing_rows_excluded": 0,
+    "uniquely_dated_fraction": 0.9677477974258394,
+    "scope": "Original MAPLE positive user-item-rating rows with an unambiguous true date in the HF mirror; NOT the full original MAPLE population",
+    "dated_mirror_release": "Yelp Open Dataset recent mirror",
+    "timestamp_order": "chronological; old source-row-index split is not reused",
+    "filtered_interactions": 923682,
+    "filtered_users": 34436,
+    "min_timestamp_ms": 1109901996000,
+    "max_timestamp_ms": 1642621693000
+  },
+  "cache_sha256": "ace4fad8b405be29b8947450c19a23a76fe3b7f46a42b533d511c4df44b93659",
+  "timestamp_verification": {
+    "source": "/workspace/P78123011/cache/grouped_preliminary/Yelp23/filtered_timestamps.parquet",
+    "verified_users": 3879,
+    "verified_items": 21478,
+    "true_timestamps": true
+  },
+  "mamba_gate": 0.3,
+  "reusable_intermediates": {
+    "training_influence": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp23/intermediate/training/yelp23-dated-matched/history_item_influence.csv",
+    "signals": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp23/intermediate/signals/yelp23-dated-matched",
+    "timestamps": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp23/intermediate/timestamps.json.gz",
+    "time_group_map": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp23/intermediate/time_group_map.json.gz",
+    "model_weights_saved": false,
+    "supports": [
+      "preliminary_statistics",
+      "preliminary_grouped_statistics"
+    ]
+  }
+}

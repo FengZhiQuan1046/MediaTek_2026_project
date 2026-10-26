@@ -1,0 +1,5 @@
+dataset,split,cohort,metric,mean,ci_low,ci_high,n_users,status
+amazon-sports-and-outdoors,valid,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.3154664230715424,-0.04697399710318846,0.7879374430263865,98,exploratory_n_lt_100
+amazon-sports-and-outdoors,valid,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.007780612244897962,-0.061560905612244886,0.08235172193877541,98,exploratory_n_lt_100
+amazon-sports-and-outdoors,test,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,1.7705630858793333,1.1129060112394247,2.537528703136605,114,estimated
+amazon-sports-and-outdoors,test,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.14764254385964912,0.06523163377192982,0.22928042763157894,114,estimated

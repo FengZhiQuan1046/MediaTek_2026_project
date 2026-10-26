@@ -1,0 +1,5 @@
+dataset,split,cohort,metric,mean,ci_low,ci_high,n_users,status
+yelp19-dated-matched,valid,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.01533931732810038,-0.029419525253284357,0.058845651808809685,1167,estimated
+yelp19-dated-matched,valid,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.0032401456726649553,-0.011467973436161096,0.018242154027420736,1167,estimated
+yelp19-dated-matched,test,fixed_K16,lag1_minus_lag9to16_excess_cosine_z,0.02214387931118667,-0.019090862705214158,0.06370057206566199,1238,estimated
+yelp19-dated-matched,test,fixed_K16,lag1_minus_lag9to16_excess_cluster_match,0.015534127625201942,0.0001513277463651051,0.031709915185783526,1238,estimated

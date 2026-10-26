@@ -1,0 +1,161 @@
+{
+  "sources": [
+    {
+      "folder": "amazon-all-beauty",
+      "dataset": "amazon-all-beauty",
+      "run": "run_20261025_171322",
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay010/analysis/amazon-all-beauty/run_20261025_171322",
+      "sha256": {
+        "alignment_summary.csv": "66d3d001991065948be75063ea5ddb34573eb072be028ea7e0ab2acfd4d81826",
+        "model_item_influence_summary.csv": "4e36aca85ac1ba8daf7c538f00fa6f2214b9ec3c554c76c19dd6413ae830702b",
+        "information_coverage.csv": "ef7bf105624eaa399657501f1f72bd4e74e3b97dc86f4d049aba92b2fc415a52"
+      },
+      "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+      "settings": {
+        "max_users": 2000,
+        "max_lag": 100,
+        "short_window": 10,
+        "random_matches": 20,
+        "reference_items": 20000,
+        "normalization_pairs": 100000,
+        "cluster_items": 10000,
+        "clusters": 32,
+        "bootstrap": 2000,
+        "seed": 25252,
+        "mamba_gate": 0.5,
+        "mamba_decay": 0.1
+      },
+      "limitations": [
+        "Figure 3 uses sampled negatives rather than full-catalog reranking",
+        "Figures 1, 2, and 4 remain model-free text diagnostics",
+        "no timestamps in cached InteractionData",
+        "item_texts may include review fallback; provenance unavailable"
+      ]
+    },
+    {
+      "folder": "amazon_Baby_Products",
+      "dataset": "amazon:Baby_Products",
+      "run": "run_20261025_174851",
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay010/analysis/amazon_Baby_Products/run_20261025_174851",
+      "sha256": {
+        "alignment_summary.csv": "502ef40b17b554303ebde96ad4e9a90fa9a1935f1535f82cd40e1f3e3661d025",
+        "model_item_influence_summary.csv": "2a60e6ddb08b0ca06cccb1053d934d8335105168505b435a16aa17d0062870fe",
+        "information_coverage.csv": "b2b0e05e3a9a77d72f98e08e6420e0a66d016cdab9bef84efaa5a9d59f98b420"
+      },
+      "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+      "settings": {
+        "max_users": 2000,
+        "max_lag": 100,
+        "short_window": 10,
+        "random_matches": 20,
+        "reference_items": 20000,
+        "normalization_pairs": 100000,
+        "cluster_items": 10000,
+        "clusters": 32,
+        "bootstrap": 2000,
+        "seed": 25252,
+        "mamba_gate": 0.5,
+        "mamba_decay": 0.1
+      },
+      "limitations": [
+        "Figure 3 uses sampled negatives rather than full-catalog reranking",
+        "Figures 1, 2, and 4 remain model-free text diagnostics",
+        "no timestamps in cached InteractionData",
+        "item_texts may include review fallback; provenance unavailable"
+      ]
+    },
+    {
+      "folder": "amazon-sports-and-outdoors",
+      "dataset": "amazon-sports-and-outdoors",
+      "run": "run_20261025_191409",
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay010/analysis/amazon-sports-and-outdoors/run_20261025_191409",
+      "sha256": {
+        "alignment_summary.csv": "937f653608621372bc3fad868ea3de3d91f0621f329cf1219476debb33def694",
+        "model_item_influence_summary.csv": "f0b60dba5cefc98414af2fc55ff85668f3bddaa4f416cb38987b471467fda273",
+        "information_coverage.csv": "56a6e5da6e9561e9be1c0769ca554c283bf131d71b448417c69c9986f9139bfa"
+      },
+      "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+      "settings": {
+        "max_users": 2000,
+        "max_lag": 100,
+        "short_window": 10,
+        "random_matches": 20,
+        "reference_items": 20000,
+        "normalization_pairs": 100000,
+        "cluster_items": 10000,
+        "clusters": 32,
+        "bootstrap": 2000,
+        "seed": 25252,
+        "mamba_gate": 0.5,
+        "mamba_decay": 0.1
+      },
+      "limitations": [
+        "Figure 3 uses sampled negatives rather than full-catalog reranking",
+        "Figures 1, 2, and 4 remain model-free text diagnostics",
+        "no timestamps in cached InteractionData",
+        "item_texts may include review fallback; provenance unavailable"
+      ]
+    },
+    {
+      "folder": "amazon-toys-and-games",
+      "dataset": "amazon-toys-and-games",
+      "run": "run_20261025_211045",
+      "source": "/workspace/P78123011/MediaTek_2026_project/preliminary/outputs_decay010/analysis/amazon-toys-and-games/run_20261025_211045",
+      "sha256": {
+        "alignment_summary.csv": "877bbca5caf5bfdce77e09c793a28e9ea60c95d789d594e3c74d3d8196eca69d",
+        "model_item_influence_summary.csv": "b6a361575904d0eb4954baa7f68136a68e6bde3b232df2cc0dbc5fa75e17eb27",
+        "information_coverage.csv": "e58e4b70bd1a662d0c22aea7a18dd96cdb7daff8dcfd497b2f09aebfc8680c51"
+      },
+      "method": "trained_model_item_deletion_plus_full_catalog_normalized_text_diagnostics_v4",
+      "settings": {
+        "max_users": 2000,
+        "max_lag": 100,
+        "short_window": 10,
+        "random_matches": 20,
+        "reference_items": 20000,
+        "normalization_pairs": 100000,
+        "cluster_items": 10000,
+        "clusters": 32,
+        "bootstrap": 2000,
+        "seed": 25252,
+        "mamba_gate": 0.5,
+        "mamba_decay": 0.1
+      },
+      "limitations": [
+        "Figure 3 uses sampled negatives rather than full-catalog reranking",
+        "Figures 1, 2, and 4 remain model-free text diagnostics",
+        "no timestamps in cached InteractionData",
+        "item_texts may include review fallback; provenance unavailable"
+      ]
+    }
+  ],
+  "split": "test",
+  "min_users_main": 100,
+  "mamba_gate": 0.5,
+  "mamba_decay": 0.1,
+  "missing_main_curves": {
+    "alignment/fixed_K16": [
+      "Baby Products"
+    ],
+    "preference/fixed_K16": [
+      "Baby Products"
+    ]
+  },
+  "formats": [
+    "pdf",
+    "png",
+    "svg"
+  ],
+  "png_dpi": 400,
+  "matplotlib_version": "3.10.6",
+  "numpy_version": "2.2.6",
+  "font_family": "Liberation Serif",
+  "font_path": null,
+  "paper_coverage_x_range": [
+    1,
+    20
+  ],
+  "aggregation": "Overlay subset estimates; no pooling, smoothing, or recomputation.",
+  "preference_plot_metric": "history_normalized_cluster_match",
+  "preference_reference": "per-user 1/K if target cluster occurs in usable history, else 0"
+}

@@ -1,0 +1,18 @@
+{
+  "label": "Yelp19",
+  "original_datasets_unchanged": true,
+  "source": "/workspace/P78123011/cache/normalized/yelp19_unique.jsonl",
+  "dated_mirror": "/workspace/P78123011/cache/raw/dated_analysis/yelp_historical/dataset_challenge/yelp_review.csv",
+  "requested_positive_rows": 869264,
+  "uniquely_dated_rows": 733936,
+  "ambiguous_rows_excluded": 0,
+  "missing_rows_excluded": 135328,
+  "uniquely_dated_fraction": 0.8443188720572806,
+  "scope": "Original MAPLE positive user-item-rating rows with an unambiguous true date in the HF mirror; NOT the full original MAPLE population",
+  "dated_mirror_release": "Yelp2018 historical mirror",
+  "timestamp_order": "chronological; old source-row-index split is not reused",
+  "filtered_interactions": 730774,
+  "filtered_users": 25797,
+  "min_timestamp_ms": 1098144000000,
+  "max_timestamp_ms": 1512950400000
+}

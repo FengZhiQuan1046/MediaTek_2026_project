@@ -52,7 +52,9 @@ def load_sources(root, pinned=None):
                 break
         if selected is None:
             raise ValueError(f'No complete analysis with all summary CSVs for {folder}')
-        signature = (manifest['method'], {k: manifest['settings'][k] for k in SETTINGS})
+        signature = (manifest['method'], {**{k: manifest['settings'][k] for k in SETTINGS},
+                                          'mamba_gate': manifest['settings'].get('mamba_gate'),
+                                          'mamba_decay': manifest['settings'].get('mamba_decay')})
         if reference is not None and signature != reference:
             raise ValueError(f'Incompatible analysis method/settings: {selected}')
         reference = signature
@@ -198,6 +200,8 @@ def main():
     parser.add_argument('--formats', nargs='+', choices=['pdf', 'png', 'svg'], default=['pdf', 'png', 'svg'])
     parser.add_argument('--dpi', type=int, default=400)
     parser.add_argument('--font-path', type=Path, help='Times New Roman TTF/OTF file for final figures')
+    parser.add_argument('--abc-three-panel', action='store_true',
+                        help='Label the three-panel semantic/influence/coverage row (a)/(b)/(c).')
     args = parser.parse_args()
     if args.min_users < 1 or args.dpi < 1:
         parser.error('--min-users and --dpi must be positive')
@@ -213,11 +217,12 @@ def main():
     ci_note = f'Test split · Shading: 95% user-bootstrap CI · Points require n ≥ {n} users'
     # Three panel figure sized for a typical two-column conference page (7.15 in).
     # The coverage panel focuses on the first 20 items; the standalone figure retains 1–100.
-    fig, axes = plt.subplots(1, 3, figsize=(7.15, 2.55))
+    fig, axes = plt.subplots(1, 3, figsize=(7.15, 2.25))
+    panel_letters = ('a', 'b', 'c') if args.abc_three_panel else ('a', 'c', 'd')
     specs = [
-        ('alignment', '(a) Semantic alignment', 'Excess cosine (z)', 'Lag bin'),
-        ('influence', '(c) Item influence', 'Margin change', 'Lag'),
-        ('coverage', '(d) Signal coverage', 'Signal covered (%)', 'Recent items'),
+        ('alignment', f'({panel_letters[0]}) Semantic alignment', 'Excess cosine (z)', 'Lag bin'),
+        ('influence', f'({panel_letters[1]}) Item influence', 'Margin change', 'Lag'),
+        ('coverage', f'({panel_letters[2]}) Signal coverage', 'Signal covered (%)', 'Recent items'),
     ]
     for ax, (kind, title, ylabel, xlabel) in zip(axes, specs):
         decorate(ax, title, ylabel, xlabel, kind != 'coverage')
@@ -235,10 +240,11 @@ def main():
         ax.tick_params(labelsize=7)
     legend(fig)
     fig.subplots_adjust(left=.085, right=.985, top=.78, bottom=.21, wspace=.20)
-    save(fig, out, 'figure0_acd_row', args.formats, args.dpi)
+    save(fig, out, 'figure0_abc_row' if args.abc_three_panel else 'figure0_acd_row',
+         args.formats, args.dpi)
 
-    # Wider four-panel alternative, with a divider before the preference panel.
-    fig, axes = plt.subplots(1, 4, figsize=(8.80, 2.50))
+    # Wider four-panel alternative.
+    fig, axes = plt.subplots(1, 4, figsize=(8.80, 2.20))
     four_specs = [
         ('alignment', '(a) Semantic', 'Excess cosine (z)', 'Lag bin'),
         ('influence', '(b) Influence', 'Margin change', 'Lag'),
@@ -261,17 +267,6 @@ def main():
         ax.tick_params(labelsize=6.5)
     legend(fig)
     fig.subplots_adjust(left=.075, right=.955, top=.77, bottom=.21, wspace=.28)
-    # Move the final panel right while preserving its width. The larger
-    # canvas supplies the extra space, so all four plotting areas stay equal.
-    right_panel = axes[3].get_position()
-    extra_gap = .029
-    axes[3].set_position([right_panel.x0 + extra_gap, right_panel.y0,
-                          right_panel.width, right_panel.height])
-    gap_left = axes[2].get_position().x1
-    gap_right = axes[3].get_position().x0
-    divider_x = gap_left + .30 * (gap_right - gap_left)
-    fig.add_artist(Line2D([divider_x, divider_x], [.15, .82],
-                          transform=fig.transFigure, color='#4B5563', lw=1.55))
     save(fig, out, 'figure0_abcd_row', args.formats, args.dpi)
 
     fig, ax = plt.subplots(figsize=(3.5, 2.55))
@@ -325,8 +320,18 @@ def main():
         writer = csv.DictWriter(stream, fieldnames=keys)
         writer.writeheader()
         writer.writerows(records)
+    gate_values = sorted({x['settings'].get('mamba_gate') for x in provenance
+                          if x.get('settings', {}).get('mamba_gate') is not None})
+    decay_values = sorted({x['settings'].get('mamba_decay') for x in provenance
+                           if x.get('settings', {}).get('mamba_decay') is not None})
+    if len(gate_values) > 1:
+        raise RuntimeError(f'Cannot aggregate mixed Mamba gates: {gate_values}')
+    if len(decay_values) > 1:
+        raise RuntimeError(f'Cannot aggregate mixed Mamba decays: {decay_values}')
     (out / 'sources.json').write_text(json.dumps({
         'sources': provenance, 'split': 'test', 'min_users_main': n,
+        'mamba_gate': gate_values[0] if gate_values else None,
+        'mamba_decay': decay_values[0] if decay_values else None,
         'missing_main_curves': missing, 'formats': args.formats, 'png_dpi': args.dpi,
         'matplotlib_version': matplotlib.__version__, 'numpy_version': np.__version__,
         'font_family': font_family, 'font_path': str(args.font_path) if args.font_path else None,

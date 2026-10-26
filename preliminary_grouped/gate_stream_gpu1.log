@@ -1,0 +1,14 @@
+All_Beauty restore histories and verify original signals
+Traceback (most recent call last):
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/run_gate_stream.py", line 88, in <module>
+    main()
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/run_gate_stream.py", line 70, in main
+    reports[category] = grouped.calculate(
+  File "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/plot_grouped_preliminary.py", line 69, in calculate
+    with cache.open('rb') as stream:data=pickle.load(stream)
+ModuleNotFoundError: No module named 'src'
+All_Beauty restore histories and verify original signals
+All_Beauty loading 1 raw Arrow shards
+All_Beauty counting raw user/item degrees for 701528 rows
+All_Beauty verified user counts and complete cached sequences for 1457 users
+All_Beauty saved group statistics on cuda:0

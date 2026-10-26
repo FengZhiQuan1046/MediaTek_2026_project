@@ -998,6 +998,14 @@ def parse_args():
         ),
     )
     parser.add_argument("--short-window", type=int, default=10)
+    parser.add_argument(
+        "--mamba-gate", type=float, default=None,
+        help="Fix the selective Mamba output gate in [0, 1]; default learns it with gate_lora.",
+    )
+    parser.add_argument(
+        "--mamba-decay", type=float, default=None,
+        help="Fix the recurrent state retention in [0, 1]; 0 retains no previous state."
+    )
     parser.add_argument("--preference-count", type=int, default=32)
     parser.add_argument("--preference-hidden", type=int, default=128)
     parser.add_argument("--preference-temperature", type=float, default=0.2)
@@ -1114,6 +1122,10 @@ def parse_args():
         parser.error("candidate count must be >=2 and batch/history sizes must be positive")
     if not 0.0 <= args.target_recall_at_10 <= 1.0:
         parser.error("--target-recall-at-10 must be in [0, 1]")
+    if args.mamba_gate is not None and not 0.0 <= args.mamba_gate <= 1.0:
+        parser.error("--mamba-gate must be in [0, 1]")
+    if args.mamba_decay is not None and not 0.0 <= args.mamba_decay <= 1.0:
+        parser.error("--mamba-decay must be in [0, 1]")
     if not 0.0 < args.preference_score_weight < 1.0:
         parser.error("--preference-score-weight must be in (0, 1)")
     if min(
@@ -1266,6 +1278,8 @@ def main():
         enable_lora=bool(args.enable_lora),
         use_long=bool(args.use_long), use_short=bool(args.use_short),
         use_preference=bool(args.use_preference),
+        mamba_gate=args.mamba_gate,
+        mamba_decay=args.mamba_decay,
     )
     if args.resume_checkpoint:
         resume_path = Path(args.resume_checkpoint)
@@ -1279,6 +1293,10 @@ def main():
         model.adaptation_mode, args.enable_lora,
     )
     logger.info("ADAPTER_ROUTES %s", model.adapter_routes())
+    logger.info("MAMBA_GATE mode=%s value=%s",
+                "fixed" if args.mamba_gate is not None else "learned", args.mamba_gate)
+    logger.info("MAMBA_DECAY mode=%s value=%s",
+                "fixed" if args.mamba_decay is not None else "learned", args.mamba_decay)
     logger.info("agent_parameters=%s", model.agent_parameter_counts())
     logger.info("PREDICTION_PATH graph_only=%s active_agents=%d coordinator=%s",
                 model.graph_only, model.active_agent_count, model.use_coordinator)
@@ -1414,6 +1432,8 @@ def main():
             "prefix_sampling": "resampled_each_epoch",
             "future_horizon": args.future_horizon,
             "future_decay": args.future_decay,
+            "mamba_gate": args.mamba_gate,
+            "mamba_decay": args.mamba_decay,
             "negative_mining": "curriculum_mixed_model_hard_random_and_in_batch",
             "hard_negative_pool_multiplier": args.hard_negative_pool_multiplier,
             "hard_negative_fraction": args.hard_negative_fraction,
@@ -1467,6 +1487,8 @@ def main():
         "short_history_limit": min(args.max_history, args.short_window) if args.use_short else 0,
         "preference_history_limit": args.max_history if args.use_preference else 0,
         "adaptation_mode": model.adaptation_mode,
+        "mamba_gate": args.mamba_gate,
+        "mamba_decay": args.mamba_decay,
     }
     if args.save_model_weights:
         checkpoint = {

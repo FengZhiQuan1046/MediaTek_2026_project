@@ -1,0 +1,42 @@
+{
+  "dataset": "MovieLens1M",
+  "scope": "test observed history=train+validation, test target excluded",
+  "gap_days": 30,
+  "boundary": "new group only when consecutive gap >30 days",
+  "history_cap": 100,
+  "all_eligible_users_capped": {
+    "users": 6034,
+    "mean_groups_per_user": 1.5401060656281074,
+    "median_groups_per_user": 1.0,
+    "mean_interactions_per_group": 39.00882384590552,
+    "total_groups": 9293,
+    "total_observed_interactions": 362509
+  },
+  "sampled_preliminary_cohort_capped": {
+    "users": 2000,
+    "mean_groups_per_user": 1.528,
+    "median_groups_per_user": 1.0,
+    "mean_interactions_per_group": 39.475130890052355,
+    "total_groups": 3056,
+    "total_observed_interactions": 120636
+  },
+  "all_eligible_users_full_history": {
+    "users": 6034,
+    "mean_groups_per_user": 1.5825323168710639,
+    "median_groups_per_user": 1.0,
+    "mean_interactions_per_group": 59.5184836108493,
+    "total_groups": 9549,
+    "total_observed_interactions": 568342
+  },
+  "provenance": {
+    "label": "MovieLens1M",
+    "original_datasets_unchanged": true,
+    "source": "/workspace/P78123011/cache/raw/dated_analysis/movielens-1m",
+    "rating_minimum": 4,
+    "source_repo": "nasserCha/movielens_rating_1m",
+    "filtered_interactions": 574376,
+    "filtered_users": 6034,
+    "min_timestamp_ms": 956703932000,
+    "max_timestamp_ms": 1046454590000
+  }
+}

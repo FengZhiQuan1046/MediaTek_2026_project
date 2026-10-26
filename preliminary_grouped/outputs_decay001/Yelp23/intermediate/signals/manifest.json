@@ -1,0 +1,55 @@
+{
+  "status": "complete",
+  "settings": {
+    "cache_dir": "/workspace/P78123011/cache",
+    "training_output_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay001/Yelp23/intermediate/training",
+    "max_users": 2000,
+    "max_lag": 100,
+    "short_window": 10,
+    "random_matches": 20,
+    "reference_items": 20000,
+    "normalization_pairs": 100000,
+    "cluster_items": 10000,
+    "clusters": 32,
+    "bootstrap": 2000,
+    "seed": 25252,
+    "reverse_history_input": false,
+    "mamba_gate": 0.5,
+    "mamba_decay": 0.01
+  },
+  "datasets": [
+    {
+      "dataset": "yelp23-dated-matched",
+      "cache": "/workspace/P78123011/cache/grouped_preliminary/Yelp23/interaction_data.pkl",
+      "cache_sha256": "ace4fad8b405be29b8947450c19a23a76fe3b7f46a42b533d511c4df44b93659",
+      "eligible_users": 34436,
+      "sampled_users": 2000,
+      "num_items": 23924,
+      "train_items": 23924,
+      "reference_items": 20000,
+      "vectorized_items": 22837,
+      "cosine_normalization": {
+        "basis": "random distinct usable item pairs sampled uniformly from the full dataset catalog",
+        "catalog_items": 23924,
+        "mean": 0.5419288873672485,
+        "std": 0.08808877319097519,
+        "sampled_pairs": 100000
+      },
+      "information_coverage_users": {
+        "valid": 1997,
+        "test": 1995
+      },
+      "text_coverage": 1.0,
+      "cluster_fit_items": 10000,
+      "clusters": 32,
+      "matching_fallback_counts": {
+        "0": 99112
+      },
+      "target_occurrences_in_random_references": 133,
+      "history_input_order": "chronological",
+      "timestamp_status": "unavailable_in_ver4_cache",
+      "text_provenance": "metadata_or_review_fallback_unknown_per_item",
+      "model_item_influence_source": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay001/Yelp23/intermediate/training/yelp23-dated-matched/history_item_influence.csv"
+    }
+  ]
+}

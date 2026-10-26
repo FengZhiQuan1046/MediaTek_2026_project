@@ -1,0 +1,55 @@
+{
+  "status": "complete",
+  "settings": {
+    "cache_dir": "/workspace/P78123011/cache",
+    "training_output_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay010/MovieLens1M/intermediate/training",
+    "max_users": 2000,
+    "max_lag": 100,
+    "short_window": 10,
+    "random_matches": 20,
+    "reference_items": 20000,
+    "normalization_pairs": 100000,
+    "cluster_items": 10000,
+    "clusters": 32,
+    "bootstrap": 2000,
+    "seed": 25252,
+    "reverse_history_input": false,
+    "mamba_gate": 0.5,
+    "mamba_decay": 0.1
+  },
+  "datasets": [
+    {
+      "dataset": "movielens-1m",
+      "cache": "/workspace/P78123011/cache/grouped_preliminary/MovieLens1M/interaction_data.pkl",
+      "cache_sha256": "dd5d48f64b2e494c6b68ef9f38bfff6d6e35a89068373e2d9e07f1c2189eb9c3",
+      "eligible_users": 6034,
+      "sampled_users": 2000,
+      "num_items": 3125,
+      "train_items": 3125,
+      "reference_items": 3125,
+      "vectorized_items": 3125,
+      "cosine_normalization": {
+        "basis": "random distinct usable item pairs sampled uniformly from the full dataset catalog",
+        "catalog_items": 3125,
+        "mean": 0.16726355254650116,
+        "std": 0.1034766286611557,
+        "sampled_pairs": 100000
+      },
+      "information_coverage_users": {
+        "valid": 2000,
+        "test": 1998
+      },
+      "text_coverage": 1.0,
+      "cluster_fit_items": 3125,
+      "clusters": 32,
+      "matching_fallback_counts": {
+        "0": 243777
+      },
+      "target_occurrences_in_random_references": 3908,
+      "history_input_order": "chronological",
+      "timestamp_status": "unavailable_in_ver4_cache",
+      "text_provenance": "metadata_or_review_fallback_unknown_per_item",
+      "model_item_influence_source": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_decay010/MovieLens1M/intermediate/training/movielens-1m/history_item_influence.csv"
+    }
+  ]
+}

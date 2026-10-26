@@ -1,0 +1,107 @@
+2026-10-24 22:23:13,295 | INFO | run_id=20261024_222313 dataset=yelp19-dated-matched device=cuda:0
+2026-10-24 22:23:13,295 | INFO | CUDA_SCOPE requested_physical=1 visible_count=1 main_logical=cuda:0 graph_logical=cuda:0
+2026-10-24 22:23:13,295 | INFO | MODEL recommender=MultiAgentMambaRecommender semantic_encoder=MambaTextEncoder semantic_model_id=state-spaces/mamba-130m-hf graph_backbone=LightGCN adaptation=multi_lora
+2026-10-24 22:23:13,295 | INFO | ABLATION USE_LONG=1 USE_SHORT=0 USE_PREFERENCE=0 USE_GCN=1
+2026-10-24 22:23:13,295 | INFO | AGENT_HISTORY mode=full_history effective_max_history=100 long=100 short=0 preference=0
+2026-10-24 22:23:13,295 | INFO | EXPERIMENT_NOTE preliminary: chronological prefixes and targets; single full-history Mamba+LoRA+LightGCN; no saved weights
+2026-10-24 22:23:13,295 | INFO | EXPERIMENT_CONFIG {"agent_diversity_coef": 0.02, "batch_size": 128, "cache_dir": "/workspace/P78123011/cache", "candidates": 64, "coordinator_epochs": 0, "coordinator_lr": 0.0001, "data_path": null, "dataset": "yelp19-dated-matched", "device": "cuda:0", "dim": 128, "early_stopping_patience": 6, "enable_lora": 1, "eval_batch_size": 64, "eval_length_basis": "untruncated_train_history", "eval_length_threshold": null, "experiment_note": "preliminary: chronological prefixes and targets; single full-history Mamba+LoRA+LightGCN; no saved weights", "full_catalog_supervised": false, "future_decay": 0.5, "future_horizon": 3, "generate_reasons": false, "graph_device": "cuda:0", "hard_negative_fraction": 0.75, "hard_negative_pool_multiplier": 12, "hard_negative_warmup_epochs": 2, "history_influence_negatives": 64, "history_influence_output": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp19/intermediate/training/yelp19-dated-matched/history_item_influence.csv", "history_influence_user_limit": 2000, "item_prompt_prefix": "Preference-aware product representation: ", "item_vector_artifact": null, "joint_epochs": 3, "joint_lr": 5e-05, "lora_alpha": 32.0, "lora_dropout": 0.05, "lora_rank": 16, "lr_patience": 2, "mamba_encode_batch_size": 32, "mamba_gate": 0.3, "mamba_max_tokens": 32, "mamba_model_id": "state-spaces/mamba-130m-hf", "max_events": null, "max_history": 100, "max_transitions": 500000, "min_rating": 4.0, "monitor_metric": "ndcg@10", "output_dir": "/workspace/P78123011/MediaTek_2026_project/ver4/outputs_mamba_rl", "output_run_dir": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp19/intermediate/training/yelp19-dated-matched/single_mamba_lora_lightgcn_20261024_222312", "periodic_test_user_limit": 0, "popularity_alpha": 0.0, "preference_balance_coef": 0.01, "preference_coef": 0.2, "preference_contrastive_coef": 0.05, "preference_count": 32, "preference_hidden": 128, "preference_score_weight": 0.2, "preference_separation_coef": 0.01, "preference_sharpness_coef": 0.05, "preference_temperature": 0.2, "preference_transition_coef": 0.1, "reason_count": 20, "reason_max_new_tokens": 40, "refresh_data_cache": false, "resume_checkpoint": null, "reverse_history_input": false, "save_model_weights": false, "score_file": "/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp19/intermediate/training/yelp19-dated-matched/single_mamba_lora_lightgcn_20261024_222312/yelp19-dated-matched_scores.json", "seed": 25252, "short_window": 10, "skip_mamba": false, "specialist_epochs": 0, "specialist_lr": 0.0001, "target_recall_at_10": 0.15, "transition_beta": 0.0, "use_graph_embeddings": true, "use_in_batch_negatives": true, "use_long": 1, "use_preference": 0, "use_short": 0, "validate_every_steps": 2147483647, "validation_user_limit": 0}
+2026-10-24 22:23:13,360 | INFO | PREPARED_DATED_CACHE /workspace/P78123011/cache/grouped_preliminary/Yelp19/interaction_data.pkl
+2026-10-24 22:23:13,360 | INFO | HISTORY_INPUT_ORDER chronological
+2026-10-24 22:23:13,361 | INFO | users=25797 items=19336 train_interactions=679180
+2026-10-24 22:23:13,361 | INFO | CATALOG_PRIORS popularity_alpha=0.000000 transition_beta=0.000000 source=train_histories_only enabled=False
+2026-10-24 22:23:13,390 | INFO | ITEM_VECTOR_ARTIFACT path=/workspace/P78123011/cache/mamba_multi_agent/yelp19-dated-matched_19336_916bceb1f206_prompt_tok32.pt fingerprint=916bceb1f206
+2026-10-24 22:23:13,390 | INFO | SEMANTIC_BACKBONE model_id=state-spaces/mamba-130m-hf hidden_size=768 frozen=True usage=shared_cached_item_vectors
+2026-10-24 22:23:13,601 | INFO | GRAPH_EMBEDDINGS enabled=True source=train_histories_only main_device=cuda:0 graph_device=cuda:0
+2026-10-24 22:23:13,742 | INFO | ADAPTATION_MODE mode=multi_lora enable_lora=1
+2026-10-24 22:23:13,742 | INFO | ADAPTER_ROUTES {'long': ('candidate_lora', 'delta_lora', 'output_lora')}
+2026-10-24 22:23:13,742 | INFO | MAMBA_GATE mode=fixed value=0.3
+2026-10-24 22:23:13,742 | INFO | agent_parameters={'long': 12417, 'short': 12417, 'preference': 78786, 'coordinator': 0, 'shared_projection': 98304, 'graph': 5777024}
+2026-10-24 22:23:13,742 | INFO | PREDICTION_PATH graph_only=False active_agents=1 coordinator=False
+2026-10-24 22:23:14,503 | INFO | training_transitions=500000
+2026-10-24 22:23:14,503 | INFO | schedule specialist_epochs=0 coordinator_epochs=0 joint_ranking_epochs=3 validate_every_steps=2147483647 validation_users=0 periodic_test_users=0 monitor=ndcg@10 early_stopping_patience=6
+2026-10-24 22:23:14,503 | INFO | SKIP_STAGE stage=specialists epochs=0 use_coordinator=False
+2026-10-24 22:23:14,503 | INFO | SKIP_STAGE stage=coordinator epochs=0 use_coordinator=False
+2026-10-24 22:23:15,036 | INFO | TRAINING_BRANCHES stage=joint long=True short=False preference=False gcn=True preference_auxiliary=False preference_contrastive=False diversity_pairs=0 trainable_parameters=5887745
+2026-10-24 22:28:46,632 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=1 | step=3907 | users=25797/25797
+NDCG  | @5 0.004807 | @10 0.007287
+Recall| @5 0.007753 | @10 0.015467
+Hit   | @5 0.007753 | @10 0.015467
+================================
+2026-10-24 22:28:53,464 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=1 | step=3907 | users=25797/25797
+NDCG  | @5 0.005156 | @10 0.007487
+Recall| @5 0.008644 | @10 0.015893
+Hit   | @5 0.008644 | @10 0.015893
+================================
+2026-10-24 22:28:53,464 | INFO | VALID_STEP step=3907 stage=joint epoch=1 ndcg@10=0.007287 recall@10=0.015467 improved=True
+2026-10-24 22:28:53,479 | INFO | BEST_MODEL_IN_MEMORY step=3907 stage=joint ndcg@10=0.007287
+2026-10-24 22:28:53,479 | INFO | LEARNING_RATE step=3907 stage=joint lr=5e-05
+2026-10-24 22:28:53,479 | INFO | stage=joint epoch=1 loss=3.853765 steps=3907 transitions/s=1543.42
+2026-10-24 22:34:25,979 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=2 | step=7814 | users=25797/25797
+NDCG  | @5 0.008980 | @10 0.012321
+Recall| @5 0.014769 | @10 0.025313
+Hit   | @5 0.014769 | @10 0.025313
+================================
+2026-10-24 22:34:32,833 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=2 | step=7814 | users=25797/25797
+NDCG  | @5 0.008810 | @10 0.012194
+Recall| @5 0.014382 | @10 0.025042
+Hit   | @5 0.014382 | @10 0.025042
+================================
+2026-10-24 22:34:32,833 | INFO | VALID_STEP step=7814 stage=joint epoch=2 ndcg@10=0.012321 recall@10=0.025313 improved=True
+2026-10-24 22:34:32,846 | INFO | BEST_MODEL_IN_MEMORY step=7814 stage=joint ndcg@10=0.012321
+2026-10-24 22:34:32,846 | INFO | LEARNING_RATE step=7814 stage=joint lr=5e-05
+2026-10-24 22:34:32,846 | INFO | stage=joint epoch=2 loss=4.031985 steps=3907 transitions/s=1540.74
+2026-10-24 22:40:05,591 | INFO | 
+========== PERIODIC VALIDATION ==========
+stage=joint | epoch=3 | step=11721 | users=25797/25797
+NDCG  | @5 0.011685 | @10 0.016081
+Recall| @5 0.019227 | @10 0.032833
+Hit   | @5 0.019227 | @10 0.032833
+================================
+2026-10-24 22:40:12,490 | INFO | 
+========== PERIODIC TEST ==========
+stage=joint | epoch=3 | step=11721 | users=25797/25797
+NDCG  | @5 0.011463 | @10 0.015915
+Recall| @5 0.017870 | @10 0.031670
+Hit   | @5 0.017870 | @10 0.031670
+================================
+2026-10-24 22:40:12,490 | INFO | VALID_STEP step=11721 stage=joint epoch=3 ndcg@10=0.016081 recall@10=0.032833 improved=True
+2026-10-24 22:40:12,494 | INFO | BEST_MODEL_IN_MEMORY step=11721 stage=joint ndcg@10=0.016081
+2026-10-24 22:40:12,494 | INFO | LEARNING_RATE step=11721 stage=joint lr=5e-05
+2026-10-24 22:40:12,494 | INFO | stage=joint epoch=3 loss=4.013520 steps=3907 transitions/s=1540.00
+2026-10-24 22:40:19,462 | INFO | 
+========== FINAL CURRENT VALIDATION ==========
+stage=final | epoch=0 | step=11721 | users=25797/25797
+NDCG  | @5 0.011685 | @10 0.016081
+Recall| @5 0.019227 | @10 0.032833
+Hit   | @5 0.019227 | @10 0.032833
+================================
+2026-10-24 22:40:19,462 | INFO | VALID_STEP step=11721 stage=final epoch=0 ndcg@10=0.016081 recall@10=0.032833 improved=False
+2026-10-24 22:40:19,464 | INFO | RESTORE_BEST step=11721 stage=joint ndcg@10=0.016081
+2026-10-24 22:40:41,391 | INFO | HISTORY_ITEM_INFLUENCE path=/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp19/intermediate/training/yelp19-dated-matched/history_item_influence.csv rows=50684 users_limit=2000 negatives=64
+2026-10-24 22:40:41,391 | INFO | 
+========== BEST CHECKPOINT VALIDATION ==========
+stage=joint | epoch=0 | step=11721 | users=25797/25797
+NDCG  | @5 0.011685 | @10 0.016081
+Recall| @5 0.019227 | @10 0.032833
+Hit   | @5 0.019227 | @10 0.032833
+================================
+2026-10-24 22:40:41,391 | INFO | 
+========== FINAL FULL TEST ==========
+stage=joint | epoch=0 | step=11721 | users=25797/25797
+NDCG  | @5 0.011463 | @10 0.015915
+Recall| @5 0.017870 | @10 0.031670
+Hit   | @5 0.017870 | @10 0.031670
+================================
+2026-10-24 22:40:41,391 | INFO | VALID_BEST {"evaluated_users": 25797, "hit@10": 0.032833275187037256, "hit@5": 0.019227041904097377, "long_agent_weight": 1.0, "long_preference_state_cosine": 0.0, "long_short_state_cosine": 0.0, "ndcg@10": 0.01608089701507463, "ndcg@5": 0.011684810329223874, "preference_change_probability": 0.0, "preference_current_entropy": 5.89461797066066e-06, "preference_next_entropy": 5.89461797066066e-06, "preference_ranking_weight": 0.0, "recall@10": 0.032833275187037256, "recall@5": 0.019227041904097377, "scores_per_second": 72616957.03689507, "short_agent_weight": 0.0, "short_preference_state_cosine": 0.0, "total_users": 25797, "users_per_second": 3755.5314975638735}
+2026-10-24 22:40:41,391 | INFO | TEST_FINAL {"evaluated_users": 25797, "hit@10": 0.03167034926541846, "hit@5": 0.017870294995542116, "long_agent_weight": 1.0, "long_preference_state_cosine": 0.0, "long_short_state_cosine": 0.0, "ndcg@10": 0.0159152353284026, "ndcg@5": 0.011462834091220165, "preference_change_probability": 0.0, "preference_current_entropy": 5.89461797066066e-06, "preference_next_entropy": 5.89461797066066e-06, "preference_ranking_weight": 0.0, "recall@10": 0.03167034926541846, "recall@5": 0.017870294995542116, "scores_per_second": 71922268.56372873, "short_agent_weight": 0.0, "short_preference_state_cosine": 0.0, "total_users": 25797, "users_per_second": 3719.6042906355365}
+2026-10-24 22:40:41,391 | INFO | TARGET_RESULT metric=recall@10 target=>0.150000 actual=0.031670 achieved=False
+2026-10-24 22:40:41,616 | INFO | scores=/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp19/intermediate/training/yelp19-dated-matched/single_mamba_lora_lightgcn_20261024_222312/yelp19-dated-matched_scores.json
+2026-10-24 22:40:41,616 | INFO | outputs=/workspace/P78123011/MediaTek_2026_project/preliminary_grouped/outputs_gate030/Yelp19/intermediate/training/yelp19-dated-matched/single_mamba_lora_lightgcn_20261024_222312
